@@ -79,6 +79,11 @@ async function renderSharedReady() {
  const review = sharedReview;
  if (!review) return;
  const list = findPackList(review.pack.id, review.origin);
+ const completed = state.learningSession;
+ if (list && completed?.listId === list.id && completed.session.mode === review.mode && Learning.practiceMastered(completed.session)) {
+  finishLearningReport();
+  return;
+ }
  const saved = list && (SharedReview.matchingPractice(state, list.id) ? state : await parkedActivity(list.id));
  if (sharedReview !== review) return;
  const mode = SharedReview.matchingPractice(saved || {}, list?.id);
@@ -118,7 +123,7 @@ async function startSharedReview() {
   if (sharedReview !== review) return;
   if (review.mode === 'spelling') await start(records.map(row => row.word), list);
   else beginLearning(list, records, {...coachOptions(), mode:review.mode, type:'practice',
-   difficulty:'adaptive', audioReplay:true});
+   difficulty:'adaptive', audioReplay:true, masteryPractice:true});
  } catch (error) { $('shared-ready-status').textContent = error.message; }
  finally { button.disabled = false; }
 }

@@ -210,8 +210,22 @@ const Learning = (() => {
       id: task.recordIndex + ':' + task.skill + ':' + session.questions.length, taskId: task.id});
   }
 
+  function taskMastered(session, task) {
+    const skill = wordProgress(session.progress, session.records[task.recordIndex])[task.skill];
+    return skill.mastered && skill.streak >= 2;
+  }
+
+  function practiceMastered(session) {
+    return session.settings.masteryPractice === true && session.type === 'practice' &&
+      session.status === 'finished' && session.index === session.questions.length &&
+      session.tasks.length > 0 && session.tasks.every(task => taskMastered(session, task));
+  }
+
   function schedule(session) {
     const previous = session.questions.at(-1);
+    if (!session.queue.length && session.settings.masteryPractice) {
+      session.queue = session.tasks.filter(task => !taskMastered(session, task)).map(task => task.id);
+    }
     if (!session.queue.length) {
       session.status = 'finished';
       return;
@@ -347,6 +361,7 @@ const Learning = (() => {
     vocabulary.prompts = [...vocabulary.prompts.filter(id => id !== q.promptId), q.promptId].slice(-40);
     vocabulary.lastAt = at;
     if (assisted) vocabulary.assisted += Number(correct);
+    if (session.settings.masteryPractice && !correct) vocabulary.streak = 0;
     if (isChoice(q) && !assisted) {
       vocabulary.recognitionAttempts++;
       vocabulary.recognition += Number(correct);
@@ -389,9 +404,10 @@ const Learning = (() => {
     const validSuccess = result.correct && !result.assisted || result.correct && isBank(question) && !result.hintCount && wantsAssisted;
     if (validSuccess) task.successes++;
     const skill = wordProgress(session.progress, session.records[question.recordIndex])[task.skill];
+    const mastered = session.settings.masteryPractice ? taskMastered(session, task) : skill.mastered;
     const done = wantsRecognition || wantsAssisted ? task.successes >= 2
-      : skill.mastered && result.correct && !result.assisted && (task.skill === 'spelling' || isRecall(question));
-    if (!done && task.attempts < MAX_PRACTICE_ATTEMPTS && !session.queue.includes(task.id)) session.queue.push(task.id);
+      : mastered && result.correct && !result.assisted && (task.skill === 'spelling' || isRecall(question));
+    if (!done && (session.settings.masteryPractice || task.attempts < MAX_PRACTICE_ATTEMPTS) && !session.queue.includes(task.id)) session.queue.push(task.id);
     session.feedback = {correct: result.correct, kind: result.kind, assisted: result.assisted, input: result.input,
       correctionRequired: session.revealed || !result.correct && question.type === 'dictation' && session.settings.retypeOnMiss !== false,
       answer: question.answer, explanation: question.explanation || ''};
@@ -475,7 +491,8 @@ const Learning = (() => {
     })) return false;
     if (!tasks.every((task, i) => object(task) && task.id === i && count(task.recordIndex) && task.recordIndex < records.length &&
         ['spelling', 'vocabulary'].includes(task.skill) && (task.skill !== 'vocabulary' || vocabularyFor(records[task.recordIndex], type === 'test')) &&
-        [task.attempts, task.successes, task.consecutiveMisses].every(count) && task.attempts <= MAX_PRACTICE_ATTEMPTS &&
+        [task.attempts, task.successes, task.consecutiveMisses].every(count) &&
+        (settings.masteryPractice === true || task.attempts <= MAX_PRACTICE_ATTEMPTS) &&
         task.successes <= task.attempts && task.consecutiveMisses <= task.attempts)) return false;
     if (new Set(queue).size !== queue.length || !queue.every(id => count(id) && id < tasks.length)) return false;
     if (new Set(questions.map(question => question?.id)).size !== questions.length || !questions.every(q => {
@@ -569,7 +586,7 @@ const Learning = (() => {
     }), order);
   }
 
-  return {createSession, current, evaluate, audio, hint, lastHint, submit, skip, correct, advance, finish, resume, sessionOK, report, mastery, flashcards};
+  return {createSession, current, evaluate, audio, hint, lastHint, submit, skip, correct, advance, finish, resume, sessionOK, report, mastery, practiceMastered, flashcards};
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Learning;

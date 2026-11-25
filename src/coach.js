@@ -152,6 +152,7 @@ function beginLearning(list, records, options, dueLists) {
 let audioReady = false;
 let audioQuestion = null;
 let lastHint = null;
+let learningAdvanceTimer;
 const learningEntry = () => state.learningSession;
 
 function playQuestion(initial, slow) {
@@ -182,10 +183,13 @@ function playQuestion(initial, slow) {
 }
 
 function renderLearning(play) {
+ clearTimeout(learningAdvanceTimer);
  const entry = learningEntry();
  if (!entry) return;
  const session = entry.session, question = Learning.current(session);
  if (!question) { finishLearningReport(); return; }
+ if (session.type === 'practice' && session.settings.difficulty === 'adaptive' && sharedReview &&
+     findPackList(sharedReview.pack.id, sharedReview.origin)?.id === entry.listId) session.settings.masteryPractice = true;
  const test = session.type === 'test', result = session.feedback, correction = result?.correctionRequired;
  if (question !== audioQuestion) { audioQuestion = question; audioReady = false; lastHint = Learning.lastHint(session); }
  show('learning-screen');
@@ -211,7 +215,9 @@ function renderLearning(play) {
   const label = document.createElement('label'), input = document.createElement('input');
   label.className = 'choice';
   input.type = 'radio'; input.name = 'learning-choice'; input.value = choice;
-  label.append(input, document.createTextNode(choice));
+  const text = document.createElement('span');
+  text.textContent = choice;
+  label.append(input, text);
   $('learning-choices').append(label);
  }
  $('learning-typed').hidden = choices.length > 0 && !correction;
@@ -237,24 +243,41 @@ function renderLearning(play) {
  $('learning-end').hidden = test;
  $('learning-pause').textContent = test ? 'Save and pause' : 'Pause';
  $('learning-end').textContent = 'End practice';
- if (play) {
-  $('learning-title').focus();
-  if (question.type === 'dictation') playQuestion(true, false);
- }
+ if (correction || play && !result && question.type === 'dictation') $('learning-input').focus();
+ else if (play) (result ? $('learning-next') : $('learning-title')).focus();
+ if (play && !result && question.type === 'dictation') playQuestion(true, false);
+}
+
+function advanceLearning() {
+ const entry = learningEntry();
+ if (!entry) return;
+ Learning.advance(entry.session); save(); renderLearning(true);
+}
+
+function advanceSpellingAfterFeedback(entry, corrected) {
+ const feedback = entry.session.feedback;
+ learningAdvanceTimer = setTimeout(() => {
+  if (!$('learning-screen').hidden && learningEntry() === entry && entry.session.feedback === feedback) advanceLearning();
+ }, feedback.correct || corrected ? state.settings.autoAdvanceMs : state.settings.feedbackMs);
 }
 
 function submitLearning(value) {
  const item = learningEntry();
  if (!item || $('learning-submit').disabled) return;
  const session = item.session;
- if (session.feedback?.correctionRequired) {
+ const correcting = session.feedback?.correctionRequired;
+ const spelling = Learning.current(session)?.type === 'dictation';
+ if (correcting) {
   if (!Learning.correct(session, value)) { $('learning-input').setCustomValidity('Type the answer shown above.'); $('learning-input').reportValidity(); return; }
  } else {
   if (!Learning.submit(session, value)) return;
  }
  save();
  renderLearning(session.type === 'test');
- if (!session.feedback?.correctionRequired && !$('learning-next').hidden) $('learning-next').focus();
+ if (!$('learning-next').hidden) {
+  $('learning-next').focus();
+  if (spelling && session.feedback) advanceSpellingAfterFeedback(item, correcting);
+ }
 }
 
 function updateLearningProgress(entry) {
@@ -282,7 +305,16 @@ function finishLearningReport() {
   if (entry.session.status === 'finished') archiveQuestions(entry);
   save();
  }
- showReport(report, entry);
+ if (Learning.practiceMastered(entry.session)) showPracticeComplete(entry);
+ else showReport(report, entry);
+}
+
+function showPracticeComplete(entry) {
+ $('practice-complete-list').textContent = entry.listName;
+ $('practice-complete-message').textContent = entry.session.mode === 'mixed'
+  ? 'You mastered all the spelling and vocabulary in this set.' : 'You mastered all the vocabulary in this set.';
+ show('practice-complete-screen');
+ $('practice-complete-title').focus();
 }
 
 function missedFor(session) {
@@ -334,7 +366,8 @@ function showReport(report, entry) {
  const stats = $('report-stats');
  stats.replaceChildren();
  $('report-list').textContent = entry?.listName || list?.name || '';
- $('report-title').textContent = report ? (report.type === 'test' ? report.status === 'unfinished' ? 'Unfinished test' : 'Test results' : 'Practice results') : 'Learning progress';
+ $('report-title').textContent = report ? (report.type === 'test' ? report.status === 'unfinished' ? 'Unfinished test' : 'Test results' :
+  entry?.session.settings.masteryPractice ? 'Practice ended' : 'Practice results') : 'Learning progress';
  $('report-exit').textContent = report?.status === 'unfinished' ? 'Leave unfinished test' : sharedReview ? 'Back to set' : 'Return to setup';
  $('report-resume').hidden = report?.status !== 'unfinished';
  const previous = state.learningHistory.filter(row => row.listId === list?.id).slice().reverse();
@@ -729,6 +762,7 @@ function initCoach() {
  $('sample-pack').onclick = () => previewPack(SAMPLE_PACK);
  $('open-vocabulary').onclick = openVocabularyEditor;
  $('open-report').onclick = () => showReport();
+ $('practice-complete-done').onclick = backToSetup;
  $('report-exit').onclick = () => {
   if (learningEntry()?.session.status === 'unfinished' && !confirm('Leave this unfinished test? Its answers will remain locked and the test cannot be resumed.')) return;
   backToSetup();
@@ -760,10 +794,7 @@ function initCoach() {
   $('learning-hint-text').hidden = !lastHint;
   if (entry.session.revealed) { $('learning-hint').hidden = true; $('learning-input').focus(); }
  };
- $('learning-next').onclick = () => {
-  const entry = learningEntry(); if (!entry) return;
-  Learning.advance(entry.session); save(); renderLearning(true);
- };
+ $('learning-next').onclick = advanceLearning;
  $('study-exit').onclick = backToSetup;
  for (const id of ['study-reverse', 'study-unfamiliar']) $(id).onchange = () => {
   studyState.index = 0; studyState.revealed = false; renderStudy();

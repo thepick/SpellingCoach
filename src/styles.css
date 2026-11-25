@@ -22,7 +22,8 @@ a { color: var(--accent); text-underline-offset: .18em; }
 #learning-choices { gap: 8px; }
 .choice { display: flex; align-items: center; gap: 12px; padding: .8rem; border: 1px solid var(--line); border-radius: 10px; min-height: 48px; margin: 0; font-weight: 500; cursor: pointer; }
 .choice:has(input:checked) { border-color: var(--accent); background: var(--accentbg); }
-.choice input { accent-color: var(--accent); margin: 0; flex: none; }
+.choice input { accent-color: var(--accent); width: auto; padding: 0; margin: 0; flex: none; }
+.choice span { min-width: 0; overflow-wrap: anywhere; }
 .word-bank, .study-card { border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: var(--bg); }
 .study-card { margin-bottom: 16px; min-height: 150px; }
 .study-card p { margin: 0; }
@@ -53,8 +54,10 @@ select, input, textarea { max-width: 100%; }
 
 body:has(dialog.tools-dialog[open]) { overflow: hidden; }
 
-#shared-ready { width: min(100%, 33rem); margin: clamp(3rem, 12vh, 8rem) auto 0; text-align: center; padding: clamp(1.5rem, 6vw, 2.75rem); }
-#shared-ready .subhead { margin: .7rem 0 1.35rem; }
+:is(#shared-ready, #practice-complete-screen) { width: min(100%, 33rem); margin: clamp(3rem, 12vh, 8rem) auto 0; text-align: center; padding: clamp(1.5rem, 6vw, 2.75rem); }
+:is(#shared-ready, #practice-complete-screen) .subhead { margin: .7rem 0 1.35rem; }
+#practice-complete-list { margin: 0 0 .55rem; }
+#practice-complete-title:focus { outline: none; }
 #shared-ready p:empty { display: none; }
-#shared-start { width: 100%; max-width: 20rem; min-height: 52px; font-size: 1.08rem; }
-.app:has(#shared-ready:not([hidden])) .topbar:not(:has(#storage-warning:not([hidden]))) { display: none; }
+:is(#shared-start, #practice-complete-done) { width: 100%; max-width: 20rem; min-height: 52px; font-size: 1.08rem; }
+.app:has(:is(#shared-ready, #practice-complete-screen):not([hidden])) .topbar:not(:has(#storage-warning:not([hidden]))) { display: none; }

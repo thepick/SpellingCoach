@@ -117,6 +117,27 @@ test('spelling report counts only the first dictation attempt per word', () => {
   assert.equal(L.mastery(practice.progress, ['other']).spelling.mastered, 1);
 });
 
+test('shared mastery practice survives the normal retry limit and requires independent correct answers', () => {
+  let session = L.createSession(['solid'], {mode: 'mixed', masteryPractice: true});
+  for (let attempt = 0; attempt < 9; attempt++) {
+    assert.equal(L.submit(session, 'sollid').correctionRequired, true);
+    assert.equal(L.correct(session, 'solid'), true);
+    L.advance(session);
+  }
+  session = JSON.parse(JSON.stringify(session));
+  assert.equal(L.sessionOK(session), true);
+  assert.equal(L.practiceMastered(session), false);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    assert.equal(L.submit(session, 'solid').correct, true);
+    L.advance(session);
+  }
+  assert.equal(L.practiceMastered(session), true);
+
+  const ended = start({mode: 'mixed', masteryPractice: true});
+  L.finish(ended);
+  assert.equal(L.practiceMastered(ended), false);
+});
+
 test('speech masks case, whitespace and apostrophe variants of a hidden answer', () => {
   const question = {type: 'definition-recall', answer: "Mary Jane's", prompt: 'One of MARY   JANE’S things.'};
   assert.equal(L.audio(question), 'One of blank things.');
