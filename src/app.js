@@ -57,7 +57,7 @@ function selectedGroup(words,selection){
  return -1;
 }
 function selectedWords(){const l=selectedList();if(!l)return[];return Array.isArray(state.settings.selected[l.id])?state.settings.selected[l.id].filter(w=>l.words.includes(w)):[...l.words];}
-function addList(name,ws,defs){const l={id:newListId(),name:name||'New list',words:wordsUnique(ws),defs:dictionary(defs),updatedAt:now()};state.lists.push(l);state.settings.selected[l.id]=[...l.words];listId=l.id;save();renderSetup();if(ai.role==='teacher'&&ai.token)autosaveTeacherSet(l).catch(error=>status(error.message));return l;}
+function addList(name,ws,defs,generationSettings){const l={id:newListId(),name:name||'New list',words:wordsUnique(ws),defs:dictionary(defs),updatedAt:now()};const settings=GenerationSettings.validate(generationSettings);if(settings)l.generationSettings=settings;state.lists.push(l);state.settings.selected[l.id]=[...l.words];listId=l.id;save();renderSetup();if(ai.role==='teacher'&&ai.token)autosaveTeacherSet(l).catch(error=>status(error.message));return l;}
 function clearListLearningData(target,id){delete target.progress[id];delete target.history[id];if(target.learning)delete target.learning[id];if(target.familiar)delete target.familiar[id];if(target.learningHistory)target.learningHistory=target.learningHistory.filter(x=>x.listId!==id);}
 function comparator(s,a,b){const x=s.perWord[a],y=s.perWord[b];return(y.misses-x.misses)||((x.lastSeen||-Infinity)-(y.lastSeen||-Infinity))||(s.words.indexOf(a)-s.words.indexOf(b));}
 function buildRound(s){const left=s.words.filter(w=>!s.perWord[w].mastered).sort((a,b)=>comparator(s,a,b));s.roundMembers=left.slice(0,state.settings.roundSize);s.queue=[...s.roundMembers];}
@@ -220,11 +220,11 @@ function draftDefinitions(ws){const defs=dictionary();ws.forEach(w=>{if(listDraf
 function editorStatus(message){$('list-editor-status').textContent=message;}
 function openListEditor(l){
  listDraft={id:l?.id||null,defs:{...(l?.defs||{})}};
- $('create-list-form').reset();$('create-list-name').setCustomValidity('');$('create-list-words').setCustomValidity('');
- $('create-list-title').textContent=l?'Edit word list':'Create a word list';
- $('create-list-intro').textContent=l?'Update the name or words, then save your changes.':'Give your list a name, then add or import the words to practice.';
+ $('create-list-form').reset();$('create-list-grade-field').hidden=!!l;$('create-list-grade').value=String(l?.generationSettings?.readingLevel||5);$('create-list-name').setCustomValidity('');$('create-list-words').setCustomValidity('');
+ $('create-list-title').textContent=entryPage==='teacher'?(l?'Edit words':'Create a set'):(l?'Edit word list':'Create a word list');
+ $('create-list-intro').textContent=l?'Update the name or words, then save your changes.':entryPage==='teacher'?'Name your set, choose a grade preset, and add its words.':'Give your list a name, then add or import the words to practice.';
  $('create-list-name').value=l?.name||'';$('create-list-words').value=l?l.words.join('\n'):'';
- $('save-list-draft').textContent=l?'Save changes':'Create this list';$('save-list-draft').disabled=false;
+ $('save-list-draft').textContent=l?'Save changes':entryPage==='teacher'?'Create set':'Create this list';$('save-list-draft').disabled=false;
  $('split-list').hidden=true;
  $('split-list').textContent=l?'Split into new lists':'Split into lists';
  editorStatus('');$('create-list-dialog').showModal();$('create-list-name').focus();
@@ -252,7 +252,7 @@ $('create-list-form').onsubmit=e=>{
   l.name=name;l.words=ws;l.defs=defs;l.audioStatus=null;l.updatedAt=now();
   state.settings.selected[l.id]=ws.filter(w=>chosen.has(w)||!oldWords.includes(w));
   save();renderSetup();
- }else addList(name,ws,defs);
+ }else addList(name,ws,defs,presetForGrade(Number($('create-list-grade').value)));
  if (l && ai.role === 'teacher' && ai.token) autosaveTeacherSet(l).catch(error=>status('Saved in this browser. '+error.message));
  $('create-list-dialog').close();
  status((l?'Saved “':'Created “')+name+'” with '+ws.length+' words. Choose words to practice or begin your session.');
@@ -267,7 +267,7 @@ $('split-list').onclick=()=>{
    groups.push(Vocabulary.normalizeWords(ws.slice(index,index+Vocabulary.MAX_WORDS)));
   }
   if(groups.length<2)return;
-  groups.forEach((words,index)=>addList(name+' ('+(index+1)+')',words,draftDefinitions(words)));
+  groups.forEach((words,index)=>addList(name+' ('+(index+1)+')',words,draftDefinitions(words),presetForGrade(Number($('create-list-grade').value))));
   save();renderSetup();$('create-list-dialog').close();status('Split the words into '+groups.length+' lists.');
  }catch(error){editorStatus(error.message);}
 };

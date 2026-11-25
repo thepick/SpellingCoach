@@ -23,7 +23,7 @@ For local login testing, define distinct dummy values of at least 32 characters 
 
 ### Invited teachers and personal provider keys
 
-The WordLab deployment enables teacher vocabulary drafting (`AI_ENABLED=true`) and leaves student generation disabled. An owner can pause drafting in the operator settings. To stop all future provider calls at deployment, set both `AI_ENABLED` and `TROY_AUDIO_ENABLED` to false. Calls already accepted by a provider cannot be recalled.
+The WordLab deployment enables teacher vocabulary drafting (`AI_ENABLED=true`) and leaves student generation disabled. An owner can pause drafting in the operator settings. To stop all future provider calls at deployment, set both `AI_ENABLED` and `AUDIO_ENABLED` to false. Calls already accepted by a provider cannot be recalled.
 
 Before teachers save keys, configure `TEACHER_KEY_ENCRYPTION_SECRET` as a Cloudflare Worker secret with at least 32 securely generated characters. Keep it distinct from `SESSION_SIGNING_SECRET` and `ADMIN_AUTH_SECRET`. Use the already installed Wrangler command with `--config wrangler.wordlab.jsonc` to set it; do not put its value in a command, source file, or shared log. Back up the encryption secret securely. Changing or losing it makes saved keys unreadable: profiles report `reconnect` and teachers must enter their keys again. There is no automatic migration across encryption secrets.
 
@@ -39,9 +39,15 @@ Private saves automatically queue missing word, full-example, and blank-question
 
 New publications backed by private sets require every recording for the selected mode and carry `preparedAudio:true`. A spelling share excludes unapproved vocabulary. Existing packs without this flag retain their previous playback behavior. Publishing copies only recordings matching the saved snapshot; student playback never generates a provider request.
 
-Groq Troy is the primary audio voice. Waiting/retrying preserves Troy by default. OpenRouter vocabulary fallback uses `openrouter/free` with zero-price ceilings and validates the returned JSON locally; an explicitly enabled paid text fallback uses `openai/gpt-4.1-mini`. Alternate audio is separately off by default. When explicitly enabled, transient Groq failures may use the paid OpenRouter speech endpoint with `mistralai/voxtral-mini-tts-2603`, voice `en_paul_neutral`; this is a different Mistral voice, not Troy. Invalid credentials, rejected input/account/balance, and WordLab quota failures do not trigger paid audio fallback. Successful PCM responses are checked and wrapped as 24 kHz mono 16-bit WAVs. Audio input over 200 characters fails with an editable error and is never truncated.
+Paul is the sole voice for new recordings: the OpenRouter speech endpoint with `mistralai/voxtral-mini-tts-2603` and `en_paul_neutral`. Every teacher, including the owner, needs an effective OpenRouter key. Groq keys remain available for vocabulary text only. Audio is paid OpenRouter usage; the old `allowAlternateAudio` boolean is accepted for older clients but has no effect and is omitted from profile settings. There is no alternate speech provider or voice dispatch. OpenRouter vocabulary fallback uses `openrouter/free` with zero-price ceilings and validates returned JSON locally; an explicitly enabled paid text fallback uses `openai/gpt-4.1-mini`. The separate `allowPaidText` setting does not control Paul audio.
 
-WordLab's application caps are separate from provider limits: ordinary text generation has per-teacher reservations, daily meters and model delays; audio has a per-teacher allowance of 100 calls per UTC day and 10 per minute. An alternate audio attempt consumes its own audio call. Provider availability, billing, key validity, production Worker CPU/storage limits, and live voice quality still require a deployment pilot. The local suite uses simulated providers and stored WAV fixtures.
+`AUDIO_ENABLED=true` enables new audio requests independently of the vocabulary drafting pause. Set it false to stop new synthesis; existing recordings remain playable. The retired `TROY_AUDIO_ENABLED` binding has no effect. Successful PCM responses are checked and wrapped as 24 kHz mono 16-bit WAVs. Audio input over 200 characters fails with an editable error and is never truncated. New and resaved private sets reuse only matching Paul cache entries. Existing published WAVs are retained; this change does not bulk-regenerate or replace them.
+
+WordLab's application caps are separate from provider limits: ordinary text generation has per-teacher reservations, daily meters and model delays; audio has a per-teacher allowance of 100 calls per UTC day and 10 per minute. Each Paul request consumes one audio call. The owner's existing legacy counters count toward the same current day/minute windows during the upgrade. Missing keys and quota checks fail before a provider call. Provider availability, billing, key validity, production Worker CPU/storage limits, and live voice quality still require a deployment pilot. The local suite uses simulated providers and stored WAV fixtures.
+
+Teacher preferences are private grade presets. `GET /teacher/preferences` returns `{presets:{"3":settings,...,"12":settings}}`; unsaved grades are computed with the grade as reading level, one practice sentence, one example sentence, original spelling dialect, ESL/distractors/explanations/reuse enabled, and empty context/sense. `PUT /teacher/preferences` accepts `{grade,settings}` for grades 3 through 12, merges supplied fields with the selected grade's latest preset or defaults, validates the result, and rejects nonempty context or sense. It writes only the selected preset into the current account record without changing credentials or their revision.
+
+Private set saves optionally accept `generationSettings`, returned alongside the pack and audio status. Context and sense belong to this set metadata, not grade presets or the public pack format. Omitting metadata retains its previous value. Changing settings requires a higher pack version and matching `expectedVersion`; identical retries remain idempotent. These metadata edits preserve existing matching audio.
 
 Provider references checked for this implementation: [OpenRouter free router](https://openrouter.ai/docs/guides/routing/model-variants/free), [OpenRouter speech API](https://openrouter.ai/docs/guides/overview/multimodal/tts), and the [current speech model/voice catalog](https://openrouter.ai/api/v1/audio/speech/models). The catalog listed Voxtral with `en_paul_neutral` and PCM; it did not list the initially considered OpenAI TTS model, so that model is not used. PCM's pinned sample rate follows Mistral's [Voxtral TTS demo](https://huggingface.co/spaces/mistralai/voxtral-tts-demo/commit/478642e0819b005da9fce821e43745194dfa895a). Live paid synthesis was not exercised.
 
@@ -65,7 +71,7 @@ The `wrangler.wordlab.jsonc` configuration connects the WordLab website and API 
 6. If you decide to enable teacher-only OpenRouter fallback, verify a zero-cost endpoint and approved provider first. Configure OPENROUTER_API_KEY as a Worker secret, OPENROUTER_FREE_TIER_CONFIRMED as true, OPENROUTER_FREE_MODEL as an approved GPT-OSS :free variant and OPENROUTER_APPROVED_PROVIDER as the provider slug. The request enforces the provider allowlist and a zero-price ceiling. [OpenRouter provider selection](https://learn.openrouter.ai/courses/control-routing/provider-selection)
 7. Run a teacher-only pilot with the actual vocabulary samples. Record validity, instructional quality, latency, token consumption and 429 behavior across the candidate models and available batch sizes. Verify a 200-word job and a repeated approved-cache request against the deployed service, and record any free-plan limit reached. Teacher approval is required before classroom sharing.
 
-Set TROY_AUDIO_ENABLED and GROQ_FREE_TIER_CONFIRMED to true to enable teacher-only Troy preparation while leaving AI_ENABLED and STUDENT_AI_ENABLED false. For deploy-time shutdown of all provider calls, set both AI_ENABLED and TROY_AUDIO_ENABLED to false. An inference already accepted by a provider can finish. Local practice and saved pack audio operate independently.
+Set AUDIO_ENABLED to true and connect an OpenRouter key to enable teacher-only Paul preparation while leaving AI_ENABLED and STUDENT_AI_ENABLED false. For deploy-time shutdown of all provider calls, set both AI_ENABLED and AUDIO_ENABLED to false. An inference already accepted by a provider can finish. Local practice and saved pack audio operate independently.
 
 Changing ADMIN_AUTH_SECRET blocks the old credential from creating new teacher sessions. Changing SESSION_SIGNING_SECRET immediately invalidates signed sessions and existing class codes. Rotate each class code afterward. Store both secrets outside the repository and use a password manager for the teacher credential.
 
@@ -81,7 +87,8 @@ Every path below starts with /api. Send a JSON body where specified. Signed teac
 | POST /teacher/login | Sign in an invited teacher with username and password |
 | POST /teacher/accept | Redeem a single-use invitation and choose teacher credentials |
 | GET /teacher/profile | Read stable identity, effective key presence, settings and feature availability |
-| PUT /teacher/keys | Replace or delete encrypted personal keys and set explicit fallback options |
+| PUT /teacher/keys | Replace or delete encrypted personal keys and set the paid text option |
+| GET or PUT /teacher/preferences | Read or update private grade 3-12 generation presets |
 | POST /teacher/testkeys | Check effective keys using unbilled provider authentication endpoints |
 | GET or POST /teacher/sets | List full owned private sets or save a versioned pack and queue missing recordings |
 | GET or DELETE /teacher/sets/{id} | Load or delete an owned private set; published links are preserved |
@@ -101,8 +108,8 @@ Every path below starts with /api. Send a JSON body where specified. Signed teac
 | POST /admin/publish | Publish an approved pack with public, class or private visibility |
 | GET /admin/packs | List pack summaries |
 | GET or POST /admin/classes | List, create, revoke or rotate classroom codes |
-| POST /admin/dictation | Generate a Troy WAV from a teacher-provided sentence using the exact target word |
-| POST /admin/packaudio | Prepare and save a Troy WAV for a prompt from the published pack |
+| POST /admin/dictation | Generate a Paul WAV from a teacher-provided sentence using the exact target word |
+| POST /admin/packaudio | Prepare and save a Paul WAV for a prompt from the published pack |
 | GET /admin/usage | Read UTC-day usage, cache counts and recent jobs |
 | PUT /admin/settings | Set generationEnabled or the ordered groqModels allowlist |
 | DELETE /admin/cache?word={word} | Remove cached versions of a word |

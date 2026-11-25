@@ -3,7 +3,7 @@ import {
   normalizedWords, parseSettings, requireInput, shape, shortId, validatePack, validatedRecord, vocabularyWord, wordKey
 } from './validation.mjs';
 import { GROQ_MODELS, providerChoices, requestVocabulary, tokenBudget } from './provider.mjs';
-import { hasSpeechSignal, synthesizeDictation, synthesizeAlternateAudio } from './dictation.mjs';
+import { hasSpeechSignal, synthesizeDictation } from './dictation.mjs';
 import Learning from '../src/learning.js';
 import Dictation from '../src/dictation.js';
 import { TeacherAccounts } from './accounts.mjs';
@@ -122,7 +122,7 @@ function secureEquals(first, second) {
 }
 
 export class VocabularyService {
-  constructor(storage, env, { now = Date.now, fetcher = requestVocabulary, speechFetcher = synthesizeDictation, alternateSpeechFetcher = synthesizeAlternateAudio, connectionFetcher = (...args) => fetch(...args) } = {}) {
+  constructor(storage, env, { now = Date.now, fetcher = requestVocabulary, speechFetcher = synthesizeDictation, connectionFetcher = (...args) => fetch(...args) } = {}) {
     this.storage = storage;
     this.sql = storage.sql;
     this.atomic = (work) => storage.transactionSync(work);
@@ -131,7 +131,6 @@ export class VocabularyService {
     this.fetcher = fetcher;
     this.speechFetcher = speechFetcher;
     this.connectionFetcher = connectionFetcher;
-    this.alternateSpeechFetcher = alternateSpeechFetcher;
     this.audioInFlight = new Map();
     this.origins = new Set((env.ALLOWED_ORIGINS ?? '').split(',').map((origin) => origin.trim())
       .filter((origin) => /^https?:\/\/[^/]+$/i.test(origin)));
@@ -182,7 +181,7 @@ export class VocabularyService {
   }
 
   dictationEnabled() {
-    return (this.enabled(true) || this.env.TROY_AUDIO_ENABLED === 'true') && this.env.GROQ_FREE_TIER_CONFIRMED === 'true' && !!this.env.GROQ_API_KEY;
+    return this.env.AUDIO_ENABLED === 'true' && !!this.env.OPENROUTER_API_KEY;
   }
 
   publicConfig() {
@@ -679,7 +678,7 @@ export class VocabularyService {
     const cacheHits = this.meter(day, 'cacheHits');
     const wordLookups = this.meter(day, 'wordLookups');
     return {
-      day: new Date(day * DAY).toISOString().slice(0, 10), calls, dictationCalls: this.meter(day, 'dictationCalls'),
+      day: new Date(day * DAY).toISOString().slice(0, 10), calls, dictationCalls: this.meter(day, 'operator:dictationCalls') + this.meter(day, 'dictationCalls'),
       tokens: this.meter(day, 'tokens'), cacheHits, wordLookups,
       cacheHitRate: wordLookups ? cacheHits / wordLookups : 0,
       cacheRecords: this.one('SELECT COUNT(*) AS count FROM cache').count,
@@ -692,20 +691,6 @@ export class VocabularyService {
           return { id, classId, createdAt, status };
         })
     };
-  }
-
-  async generateSpeech(sentence) {
-    if (!this.dictationEnabled()) fail(503, 'unavailable', 'Practice audio generation is unavailable.');
-    const now = this.now(), day = localDay(now), minute = Math.floor(now / 60000);
-    this.atomic(() => {
-      const window = this.saved('dictationMinute');
-      const calls = window?.minute === minute ? window.calls : 0;
-      if (this.meter(day, 'dictationCalls') >= 100) fail(429, 'dictation_daily', 'The daily audio allowance is used up.');
-      if (calls >= 10) fail(429, 'dictation_budget', 'The minute audio allowance is used up.');
-      this.save('dictationMinute', {minute, calls: calls + 1});
-      this.charge(day, 'dictationCalls', 1);
-    });
-    return this.speechFetcher(this.env.GROQ_API_KEY, sentence);
   }
 
   async preparePackAudio(request) {
@@ -902,7 +887,7 @@ export class VocabularyService {
     if (pathname === '/api/health' && method === 'GET') return json({ ok: true, apiVersion: 1 });
     if (pathname === '/api/config' && method === 'GET') return json(this.publicConfig());
     if (pathname === '/api/access' && method === 'POST') return json(await this.login(request, false));
-    const teacherRoute = pathname.match(/^\/api\/teacher\/(login|accept|profile|keys|testkeys|sets)(?:\/([^/]{1,288})(?:\/(retry|audio)(?:\/(\d{1,3}-(?:s|[ve]\d)))?)?)?$/);
+    const teacherRoute = pathname.match(/^\/api\/teacher\/(login|accept|profile|keys|testkeys|preferences|sets)(?:\/([^/]{1,288})(?:\/(retry|audio)(?:\/(\d{1,3}-(?:s|[ve]\d)))?)?)?$/);
     if (teacherRoute) {
       let [,action,id,operation,prompt] = teacherRoute;
       if (id) { try { id = decodeURIComponent(id); } catch { notFound(); } if (!shortId(id)) notFound(); }
@@ -911,6 +896,7 @@ export class VocabularyService {
       if (identity.role !== 'teacher') fail(403,'forbidden','Teacher access is required.');
       if (action === 'profile' && method === 'GET' && !id) return json(this.accounts.profile(identity));
       if (action === 'keys' && method === 'PUT' && !id) return json(await this.accounts.updateKeys(identity,await bodyOf(request,2048)));
+      if (action === 'preferences' && !id && ['GET','PUT'].includes(method)) return json(this.accounts.preferences(identity,method === 'PUT' ? await bodyOf(request,8192) : undefined));
       if (action === 'testkeys' && method === 'POST' && !id) return json(await this.accounts.testKeys(identity));
       if (action === 'sets') {
         if (!id && method === 'POST') return json(await this.accounts.saveSet(identity,await bodyOf(request,1500000)));

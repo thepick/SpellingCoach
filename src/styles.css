@@ -66,10 +66,6 @@ body:has(dialog.tools-dialog[open]) { overflow: hidden; }
 #teacher-signin-screen .subhead { margin-top: .65rem; }
 #teacher-signin-status:empty, #teacher-dialog .tools-panel > .status:empty { display: none; }
 #teacher-signin-screen #teacher-login { width: 100%; }
-#teacher-dialog[data-view=share] :is(#teacher-job, #teacher-operations, #teacher-status, #teacher-publishing-title, #teacher-drafting-info) { display: none; }
-#teacher-dialog[data-view=admin] #teacher-admin > :not(#teacher-operations) { display: none; }
-#teacher-dialog[data-view=admin] #teacher-admin, #teacher-dialog[data-view=share] #teacher-admin { border: 0; margin: 0; padding: 0; }
-#teacher-dialog[data-view=admin] #teacher-draft-intro h2 { display: none; }
 #teacher-dialog { max-height: 90dvh; }
 .teacher-dialog-heading { flex-wrap: nowrap; align-items: flex-start; }
 .teacher-dialog-heading button { flex: none; }
@@ -106,6 +102,7 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 :is(#teacher-recordings, #teacher-invitations, #teacher-accounts) li span { min-width: 0; overflow-wrap: anywhere; }
 :is(#teacher-recordings, #teacher-invitations, #teacher-accounts) button { flex: none; }
 #teacher-recordings { max-height: 20rem; overflow: auto; }
-#teacher-dialog[data-view=share] #teacher-account { display: none; }
 #teacher-account .checkline { align-items: baseline; }
 #teacher-account input[type=checkbox] { flex: none; }
+
+#teacher-account, #teacher-grade-defaults, #teacher-private-audio { border-top: 0; margin-top: 0; padding-top: 0; }

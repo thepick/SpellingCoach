@@ -10,6 +10,145 @@ let privateAudioTimer;
 let restoringTeacherSets = false;
 let teacherLoginRequest = 0;
 const teacherSaves = new Map();
+let teacherPresets = GenerationSettings.presets();
+let preferencesIdentity = null;
+let preferencesRequest = null;
+let preferencesMutation = 0;
+let pendingPresetSave = null;
+let presetEditVersion = 0;
+let hydratedGenerationList = null;
+let hydratedGenerationText = '';
+const generationFields = {readingLevel:'grade',practiceSentences:'sentences',exampleSentences:'examples',
+ reuseApproved:'reuse',esl:'esl',distractors:'distractors',explanations:'explanations',dialect:'dialect',context:'context',sense:'sense'};
+
+function writeGenerationForm(prefix,settings) {
+ for (const [key,suffix] of Object.entries(generationFields)) {
+  const input = $(prefix+'-'+(prefix==='ai'?suffix:key));
+  if (!input) continue;
+  if (typeof settings[key] === 'boolean') input.checked=settings[key]; else input.value=settings[key];
+ }
+}
+function readGenerationForm(prefix,preset=false) {
+ const value={};
+ for (const [key,suffix] of Object.entries(generationFields)) {
+  const input=$(prefix+'-'+(prefix==='ai'?suffix:key));
+  value[key]=['reuseApproved','esl','distractors','explanations'].includes(key)?!!input?.checked:
+   ['readingLevel','practiceSentences','exampleSentences'].includes(key)?Number(input?.value):input?.value || '';
+ }
+ if (preset) { value.context='';value.sense=''; }
+ return GenerationSettings.validate(value,preset);
+}
+function presetForGrade(grade) {
+ return GenerationSettings.validate(teacherPresets[grade],true) || GenerationSettings.defaults(grade);
+}
+function hydrateGenerationSettings(list) {
+ const settings=GenerationSettings.validate(list?.generationSettings) || GenerationSettings.defaults();
+ const text=JSON.stringify(settings);
+ if (hydratedGenerationList===list && hydratedGenerationText===text) return;
+ hydratedGenerationList=list; hydratedGenerationText=text;
+ writeGenerationForm('ai',settings);
+ validateGenerationForm();
+}
+function persistSetGenerationSettings(sync=false) {
+ const list=selectedList();
+ if (!validateGenerationForm()) return;
+ const settings=readGenerationForm('ai');
+ if (!list || !settings) return;
+ if (JSON.stringify(list.generationSettings)!==JSON.stringify(settings)) {
+  list.generationSettings=settings; list.packVersion=(list.packVersion || 1)+1; list.updatedAt=now();
+  hydratedGenerationList=list; hydratedGenerationText=JSON.stringify(settings); save();
+ }
+ if (sync && ai.role==='teacher' && ai.token) autosaveTeacherSet(list).catch(error=>teacherStatus(error.message));
+}
+function validateGenerationForm(report=false) {
+ for (const suffix of Object.values(generationFields)) $('ai-'+suffix)?.setCustomValidity?.('');
+ let problem;
+ for (const [suffix,min,max,label] of [['grade',1,12,'Reading grade'],['sentences',1,5,'Practice sentences'],['examples',1,2,'Examples']]) {
+  const input=$('ai-'+suffix), value=Number(input?.value);
+  if (!Number.isInteger(value) || value<min || value>max) { problem={input,message:label+' must be a whole number from '+min+' through '+max+'.'};break; }
+ }
+ if (!problem) for (const [suffix,max,label] of [['context',1000,'Textbook context'],['sense',160,'Intended meaning']]) {
+  const input=$('ai-'+suffix), value=input?.value || '';
+  if ([...value].length>max || /[<>\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u202A-\u202E\u2066-\u2069]/u.test(value)) {
+   problem={input,message:label+' must be plain text without angle brackets or control characters, up to '+max+' characters.'};break;
+  }
+ }
+ if (!problem && !readGenerationForm('ai')) problem={input:$('ai-dialect'),message:'Choose a valid spelling dialect and generation settings.'};
+ $('teacher-settings-status').textContent=problem?.message || '';
+ if (problem) { problem.input?.setCustomValidity?.(problem.message);if(report)problem.input?.reportValidity?.(); }
+ return !problem;
+}
+function preferenceOwner() { return {root:ai.root,token:ai.token,id:ai.teacher?.id,state}; }
+function samePreferenceOwner(owner) { return owner.token===ai.token && owner.root===ai.root && owner.id===ai.teacher?.id && owner.state===state; }
+async function loadTeacherPreferences() {
+ const owner=preferenceOwner(), edit=presetEditVersion, mutation=preferencesMutation;
+ if (!owner.token || !owner.id) return;
+ if (preferencesIdentity && samePreferenceOwner(preferencesIdentity)) return;
+ if (preferencesRequest && samePreferenceOwner(preferencesRequest.owner)) return preferencesRequest.promise;
+ const request={owner};
+ request.promise=(async()=>{
+  const response=await service('/teacher/preferences',{root:owner.root,token:owner.token});
+  if (!samePreferenceOwner(owner) || mutation!==preferencesMutation) return;
+  const presets=GenerationSettings.presets();
+  for (let grade=3;grade<=12;grade++) presets[grade]=GenerationSettings.validate(response.presets?.[grade],true) || presets[grade];
+  teacherPresets=presets; preferencesIdentity=owner;
+  if (edit===presetEditVersion) writeGenerationForm('preset',presetForGrade(Number($('preset-grade').value)||5));
+ })();
+ preferencesRequest=request;
+ try { await request.promise; } finally { if (preferencesRequest===request) preferencesRequest=null; }
+}
+async function saveTeacherPreset() {
+ if(pendingPresetSave && samePreferenceOwner(pendingPresetSave))return;
+ const owner=preferenceOwner(), grade=Number($('preset-grade').value), edit=presetEditVersion;
+ const settings=readGenerationForm('preset',true);
+ if (!Number.isInteger(grade) || grade<3 || grade>12 || !settings) throw Error('Choose a grade from 3 through 12 and valid sentence counts.');
+ pendingPresetSave=owner;
+ ++preferencesMutation;
+ $('preset-save').disabled=true;
+ try {
+  const response=await service('/teacher/preferences',{root:owner.root,token:owner.token,method:'PUT',body:{grade,settings}});
+  if (!samePreferenceOwner(owner)) return;
+  const saved=GenerationSettings.validate(response.presets?.[grade],true);
+  if (!saved) throw Error('The saved grade defaults could not be read. Try loading them again.');
+  ++preferencesMutation;
+  teacherPresets[grade]=saved;
+  if (edit===presetEditVersion && Number($('preset-grade').value)===grade) writeGenerationForm('preset',saved);
+  $('preset-status').textContent='Grade '+grade+' defaults saved. Existing sets are unchanged.';
+ } finally {
+  if(pendingPresetSave===owner)pendingPresetSave=null;
+  if(samePreferenceOwner(owner))$('preset-save').disabled=false;
+ }
+}
+
+function renderTeacherView(view) {
+ if(view==='tools' && ai.role==='teacher' && ai.token)view='setup';
+ const titles={setup:'AI setup',presets:'Grade defaults',prepare:'Prepare vocabulary',share:'Student link',administration:'Administration',tools:'Online teacher tools'};
+ const list=selectedList();
+ $('teacher-view-nav').hidden=entryPage!=='offline' || ai.role!=='teacher' || !ai.token;
+ for (const name of ['setup','presets','prepare','share','administration']) {
+  const button=$('teacher-nav-'+name);button.setAttribute?.('aria-pressed',String(name===view));
+  button.disabled=['prepare','share'].includes(name) && !list;
+  if(name==='administration')button.hidden=!ai.teacher?.isAdmin;
+ }
+ $('teacher-dialog').dataset.view=view;
+ $('teacher-title').textContent=(titles[view] || titles.tools)+(['prepare','share'].includes(view)&&list?' · '+list.name:'');
+ $('teacher-connect').hidden=!!ai.token;
+ $('teacher-account').hidden=view!=='setup' || !ai.token;
+ $('teacher-grade-defaults').hidden=view!=='presets' || !ai.token;
+ $('teacher-private-audio').hidden=!['prepare','share'].includes(view) || !ai.token || !list;
+ $('teacher-job').hidden=!['prepare','tools'].includes(view) || !ai.token;
+ $('teacher-drafting-info').hidden=view!=='prepare' || !ai.token || !!ai.config.generationEnabled;
+ $('teacher-admin').hidden=view!=='share' || ai.role!=='teacher';
+ $('teacher-operations').hidden=view!=='administration' || ai.role!=='teacher' || !ai.teacher?.isAdmin;
+}
+function initTeacherViewNavigation() {
+ for (const view of ['setup','presets','prepare','share','administration']) $('teacher-nav-'+view).onclick=()=>showTeacherTools(view);
+}
+function sharedDraftCacheSettings(reuse) {
+ if (!reuse || !ai.teacher?.isAdmin) return undefined;
+ const settings=GenerationSettings.validate(selectedList()?.generationSettings) || GenerationSettings.defaults();
+ return settings.context || settings.sense ? undefined : settings;
+}
 
 function teacherStorageKey() {
  return 'spell.teacher:' + encodeURIComponent(ai.root) + ':' + encodeURIComponent(ai.teacher.id);
@@ -58,7 +197,7 @@ async function loadTeacherWorkspace() {
 }
 
 function teacherKeyChanges() {
- const body = {allowPaidText:$('teacher-paid-text').checked, allowAlternateAudio:$('teacher-alternate-audio').checked};
+ const body = {allowPaidText:$('teacher-paid-text').checked};
  for (const provider of ['groq','openrouter']) {
   const value = $('teacher-' + provider + '-key').value.trim();
   if ($('teacher-delete-' + provider).checked) body[provider] = null;
@@ -70,6 +209,7 @@ function teacherKeyChanges() {
 function renderTeacherProfile(profile) {
  ai.teacher = profile.teacher;
  ai.config = profile.config;
+ ai.keys = {...profile.keys};
  $('teacher-account-name').textContent = profile.teacher.name + ' · ' + profile.teacher.username;
  for (const provider of ['groq','openrouter']) {
   $('teacher-' + provider + '-status').textContent = profile.keys[provider] ? '— key saved' : '— no key saved';
@@ -77,12 +217,13 @@ function renderTeacherProfile(profile) {
   $('teacher-delete-' + provider).checked = false;
  }
  $('teacher-paid-text').checked = profile.settings.allowPaidText;
- $('teacher-alternate-audio').checked = profile.settings.allowAlternateAudio;
  if (profile.message || profile.reconnect?.length) $('teacher-account-status').textContent = profile.message || 'Reenter your '+profile.reconnect.join(' and ')+' key to reconnect.';
  refreshTeacher();
 }
 
 function resetTeacherWorkspace() {
+ teacherPresets=GenerationSettings.presets(); preferencesIdentity=null; preferencesRequest=null; preferencesMutation=0; pendingPresetSave=null;
+ ++presetEditVersion; hydratedGenerationList=null; hydratedGenerationText='';
  stopRecording(); clearTimeout(privateAudioTimer); clearTimeout(audioStatusTimer); clearTimeout(timer);
  clearTimeout(learningAdvanceTimer);
  if (speech) speechSynthesis.cancel();
@@ -124,7 +265,11 @@ async function restoreTeacherSets() {
     continue;
    }
    const list = findPackList(pack.id);
-   if (list && list.packVersion === pack.version) { list.remoteVersion = pack.version; list.audioStatus = saved.audioStatus; save(); }
+   if (list && list.packVersion === pack.version) {
+    const settings=GenerationSettings.validate(saved.generationSettings);
+    if(settings)list.generationSettings=settings;else delete list.generationSettings;
+    list.remoteVersion = pack.version; list.audioStatus = saved.audioStatus; save();
+   }
   }
  } finally { restoringTeacherSets = false; }
  if (ai.token !== token || state !== owner) return;
@@ -143,7 +288,8 @@ async function autosaveTeacherSet(list) {
   const pack = outputPack(list, rows), stamp = list.updatedAt;
   $('teacher-private-audio-status').textContent = 'Saving privately and queuing recordings…';
   let saved;
-  try { saved = await service('/teacher/sets', {root,token,method:'POST',body:{pack,expectedVersion:list.remoteVersion || 0}}); }
+  try { saved = await service('/teacher/sets', {root,token,method:'POST',body:{pack,expectedVersion:list.remoteVersion || 0,
+   ...(GenerationSettings.validate(list.generationSettings)?{generationSettings:GenerationSettings.validate(list.generationSettings)}:{})}}); }
   catch (error) {
    if (ai.token !== token || state !== owner) return;
    if (error.status === 409) { list.remoteConflict = true; save(); throw Error('This set changed in another tab or browser. Export your local changes, then reload saved sets before editing again.'); }
@@ -151,7 +297,7 @@ async function autosaveTeacherSet(list) {
   }
   if (ai.token !== token || state !== owner) return;
   list.packId = saved.pack.id; list.remoteVersion = saved.pack.version; save();
-  if (list.updatedAt !== stamp) return;
+  if (list.updatedAt !== stamp || (list.packVersion || 1)!==pack.version) return;
   list.packVersion = saved.pack.version;
   list.audioStatus = saved.audioStatus; save(); renderPrivateAudio(); watchPrivateAudio();
   status('Set saved privately. Recordings prepare automatically.');
@@ -209,6 +355,7 @@ function renderPrivateAudio() {
   $('teacher-recordings').append(row);
  }
  if (sharing.list === list) renderSharing();
+ renderTeacherView($('teacher-dialog').dataset.view || 'setup');
 }
 
 function watchPrivateAudio() {
@@ -328,7 +475,11 @@ function initTeacherAccounts() {
      await saveVocabulary(list,pack.words,{name:pack.name,words:pack.words.map(row=>row.word),packId:pack.id,packVersion:pack.version});
      state.settings.selected[list.id] = list.words.slice(); save();
     } else await importPack(pack);
-    const restored = findPackList(pack.id); if (restored) { restored.remoteVersion = pack.version; restored.remoteConflict = false; restored.audioStatus = saved.audioStatus; save(); }
+    const restored = findPackList(pack.id); if (restored) {
+     const settings=GenerationSettings.validate(saved.generationSettings);
+     if(settings)restored.generationSettings=settings;else delete restored.generationSettings;
+     restored.remoteVersion = pack.version; restored.remoteConflict = false; restored.audioStatus = saved.audioStatus; save();
+    }
    }
   } finally { restoringTeacherSets = false; }
   renderSetup(); renderPrivateAudio(); watchPrivateAudio();
@@ -413,10 +564,9 @@ function refreshTeacher() {
  $('teacher-account').hidden = !teacher || !signedIn;
  refreshTeacherLogin();
  if (entryPage === 'teacher') {
-  const toolsTitle = canDraft ? 'Draft vocabulary with AI' : 'Online vocabulary tools';
+  const toolsTitle = 'AI setup';
   $('setup-word-selection-title').closest('.stack').hidden = !canDraft;
   $('open-teacher').textContent = toolsTitle;
-  if ($('teacher-dialog').dataset.view === 'admin') $('teacher-title').textContent = toolsTitle;
  }
  $('teacher-logout').hidden = !signedIn;
  $('teacher-url').disabled = signedIn;
@@ -424,6 +574,7 @@ function refreshTeacher() {
  $('teacher-login').disabled = signedIn;
  $('teacher-keys-save').disabled = !signedIn;
  $('teacher-test-keys').disabled = !signedIn;
+ $('preset-save').disabled = !signedIn || !!(pendingPresetSave && samePreferenceOwner(pendingPresetSave));
  $('class-login').disabled = signedIn;
  $('teacher-job').hidden = !signedIn || !canDraft && !ai.job;
  $('teacher-draft-form').hidden = !canDraft;
@@ -435,8 +586,8 @@ function refreshTeacher() {
  const list = selectedList(), selected = teacher ? list?.words.length || 0 : selectedWords().length;
  $('teacher-drafting-info').hidden = !signedIn || canDraft;
  $('teacher-drafting-status').textContent = teacher && ai.config.draftingAvailable
-  ? 'AI drafting is paused. You can edit vocabulary by hand and still publish sets.'
-  : 'AI drafting is off. You can edit vocabulary by hand and still publish sets.';
+  ? 'AI drafting is paused. You can edit vocabulary by hand and still create student links.'
+  : 'AI drafting is off. You can edit vocabulary by hand and still create student links.';
  $('teacher-write-vocabulary').disabled = !list;
  $('teacher-selection').textContent = !list ? 'Create a set to draft vocabulary.' : !selected
   ? 'Add words to the set to draft vocabulary.' : selected + (selected === 1 ? ' word in ' : ' words in ') + list.name + '. Drafts save automatically; review them before sharing.';
@@ -459,6 +610,7 @@ function refreshTeacher() {
    (message ? ' · ' + message : '') + (retryAt && retryAt > Date.now() ? ' Retry after ' + new Date(retryAt).toLocaleTimeString() + '.' : '') +
    (failedWords?.length ? ' Failed: ' + failedWords.join(', ') + '.' : '');
  } else $('ai-progress').textContent = '';
+ renderTeacherView($('teacher-dialog').dataset.view || 'setup');
 }
 
 function applyJob(job) {
@@ -506,13 +658,9 @@ async function jobAction(action) {
 }
 
 function aiSettings() {
- const settings = {
-  readingLevel: Number($('ai-grade').value), dialect: 'original',
-  practiceSentences: Number($('ai-sentences').value), exampleSentences: Number($('ai-examples').value),
-  reuseApproved: $('ai-reuse').checked, esl: $('ai-esl').checked,
-  distractors: $('ai-distractors').checked, explanations: $('ai-explanations').checked
- };
- if (ai.role === 'teacher' && $('ai-context').value.trim()) settings.context = $('ai-context').value.trim();
+ if (!validateGenerationForm(true)) throw Error($('teacher-settings-status').textContent);
+ const settings = GenerationSettings.validate(selectedList()?.generationSettings) || readGenerationForm('ai') || GenerationSettings.defaults();
+ if (ai.role !== 'teacher') {settings.context='';settings.sense='';}
  return settings;
 }
 
@@ -525,6 +673,7 @@ function publicPackLink(id, root) {
 }
 
 function updateTeacherSelection(list, records) {
+ hydrateGenerationSettings(list);
  if (entryPage !== 'teacher') return;
  $('teacher-open-publishing').disabled = !list;
  $('teacher-open-drafting').disabled = !list || ai.role !== 'teacher' || !ai.config.generationEnabled;
@@ -540,7 +689,7 @@ function renderSharing() {
  const {approved, drafts, missing} = info || {approved:[], drafts:[], missing:[]};
  const clips = sharing.list?.audioStatus?.recordings || [];
  const required = clips.filter(clip=>mode !== 'spelling' || /-s$/.test(clip.key));
- const audioReady = !ai.teacher || ai.teacher.isAdmin && !ai.config.dictationEnabled ||
+ const audioReady = !ai.teacher ||
   required.length >= (sharing.list?.words.length || 0) && required.every(clip=>clip.status === 'ready');
  const shareReady = !!info?.ready && !publishing && audioReady && !sharing.list?.remoteConflict;
  const needsReview = !!info && mode !== 'spelling' && !info.ready;
@@ -548,7 +697,7 @@ function renderSharing() {
   ai.publishedHints === $('shared-hints').checked && ai.publishedUpdatedAt === sharing.list.updatedAt;
  $('ai-publish-readiness').textContent = !sharing.list ? 'Create or select a set first.' :
   !info ? 'Checking which words are ready…' : info.ready && !audioReady ?
-   'Prepare the missing recordings before sharing. Check Prepared recordings below, then retry failed recordings.' : mode === 'spelling' ?
+   (!ai.config.dictationEnabled ? ai.keys?.openrouter ? 'Paul audio is unavailable. Check AI setup and retry before creating this student link.' : 'Connect OpenRouter in AI setup to prepare paid Paul recordings before creating this student link.' : 'Prepare the missing recordings before sharing. Check Prepared recordings below, then retry failed recordings.') : mode === 'spelling' ?
    'Ready to share. Students will spell all ' + info.words.length + ' words.' : drafts.length ?
     'Review and approve the remaining vocabulary drafts before sharing.' : !approved.length ?
      'Add and approve vocabulary, or choose Spelling to share this word list.' : mode === 'mixed' ?
@@ -573,6 +722,11 @@ function renderSharing() {
  $('ai-preview').disabled = entryPage === 'teacher' ? !info?.ready || publishing : !hasLink || !!pending;
  $('ai-link-actions').hidden = !hasLink;
  $('ai-publish-options').hidden = !ai.teacher?.isAdmin || !ai.config.draftingAvailable;
+ const settings=GenerationSettings.validate(sharing.list?.generationSettings);
+ const contextual=!!(settings?.context || settings?.sense);
+ $('ai-publish-cache').disabled=contextual;
+ if(contextual)$('ai-publish-cache').checked=false;
+ $('ai-publish-cache-help').textContent=contextual ? 'This set’s context or intended meaning stays out of the shared drafting cache. You can still create its student link.' : 'Optionally contribute approved vocabulary for reuse in other sets.';
  $('ai-student-link').value = hasLink ? ai.published : '';
  $('ai-share').disabled = !hasLink || waitingForAudio;
  $('ai-qr').disabled = !hasLink || waitingForAudio;
@@ -606,6 +760,8 @@ function watchPracticeAudio() {
 }
 
 async function showTeacherTools(view = 'tools') {
+ if(view==='admin')view='prepare';
+ if(view==='tools' && ai.role==='teacher')view='setup';
  $('tools-dialog').close();
  if (!$('teacher-url').value) $('teacher-url').value = ONLINE_CONFIG;
  const list = selectedList(), changedSet = sharing.list !== list;
@@ -618,12 +774,14 @@ async function showTeacherTools(view = 'tools') {
  }
  const dialog = $('teacher-dialog');
  dialog.dataset.view = view;
- $('teacher-title').textContent = view === 'share' && list ? 'Share “' + list.name + '”' :
-  view === 'admin' && ai.config.generationEnabled ? 'Draft vocabulary with AI' : 'Online vocabulary tools';
- dialog.querySelector('#teacher-operations').open = false;
+ dialog.querySelector('#teacher-operations').open = view==='administration';
  if (view !== 'share') teacherStatus('');
  refreshTeacher();
  dialog.showModal();
+ if(view==='presets') {
+  writeGenerationForm('preset',presetForGrade(Number($('preset-grade').value)||5));
+  try { await loadTeacherPreferences(); } catch(error) { if(sharing===current)$('preset-status').textContent='Could not load saved defaults. Built-in defaults are available. '+error.message; }
+ }
  try {
   const rows = list ? await loadVocabulary(list) : null;
   if (sharing !== current) return;
@@ -659,7 +817,7 @@ function showTeacherEntry() {
   $('teacher-workspace-actions').hidden = false;
   $('teacher-workspace-logout').hidden = false;
   $('setup-word-selection-title').textContent = 'Words for AI drafting';
-  $('setup-word-selection-help').textContent = 'Choose which words need AI-written vocabulary. When you publish, students get the whole set.';
+  $('setup-word-selection-help').textContent = 'Prepare vocabulary for the set, review its drafts, then create a student link. Spelling links include every word.';
   renderSetup();
   show('setup-screen');
   $('setup-list-label').textContent = 'Practice set';
@@ -684,10 +842,20 @@ function showTeacherEntry() {
 }
 
 function initTeacher() {
- $('teacher-open-drafting').onclick = async ()=>{await showTeacherTools('admin');$('ai-generate').scrollIntoView({block:'center'});$('ai-generate').focus();};
- $('teacher-open-connections').onclick = async ()=>{await showTeacherTools('admin');$('teacher-groq-key').scrollIntoView({block:'center'});$('teacher-groq-key').focus();};
- $('teacher-open-invitations').onclick = teacherAction(async ()=>{await showTeacherTools('admin');$('teacher-operations').open=true;await refreshTeacherAccounts();$('teacher-invite-label').scrollIntoView({block:'center'});$('teacher-invite-label').focus();});
- $('open-teacher').onclick = () => showTeacherTools(entryPage === 'teacher' ? 'admin' : 'tools');
+ initTeacherViewNavigation();
+ $('teacher-open-drafting').onclick = ()=>showTeacherTools('prepare');
+ $('teacher-open-connections').onclick = ()=>showTeacherTools('setup');
+ $('teacher-open-presets').onclick = ()=>showTeacherTools('presets');
+ $('teacher-open-invitations').onclick = teacherAction(async ()=>{await showTeacherTools('administration');await refreshTeacherAccounts();});
+ $('open-teacher').onclick = () => showTeacherTools(ai.role==='teacher'?'setup':'tools');
+ $('preset-grade').onchange=()=>{++presetEditVersion;writeGenerationForm('preset',presetForGrade(Number($('preset-grade').value)));$('preset-status').textContent='';};
+ $('preset-form').oninput=()=>{++presetEditVersion;};
+ $('preset-form').onsubmit=teacherAction(saveTeacherPreset);
+ for(const suffix of Object.values(generationFields)) {
+  const input=$('ai-'+suffix); if(!input)continue;
+  input.addEventListener('input',()=>persistSetGenerationSettings(false));
+  input.addEventListener('change',()=>persistSetGenerationSettings(true));
+ }
  $('teacher-open-publishing').onclick = () => showTeacherTools('share');
  $('teacher-write-vocabulary').onclick = () => {
   $('teacher-dialog').close();
@@ -761,6 +929,7 @@ function initTeacher() {
     const profile = await service('/teacher/profile');
     if (request !== teacherLoginRequest || ai.token !== response.token) return;
     renderTeacherProfile(profile); await restoreTeacherSets();
+    try { await loadTeacherPreferences(); } catch(error) { if(ai.token===response.token)teacherStatus('Saved grade defaults could not load. Built-in defaults are available.'); }
    }
    catch (error) { teacherStatus('Signed in. Saved sets could not reload. ' + error.message); }
   } else {
@@ -778,7 +947,7 @@ function initTeacher() {
   const shared = new URLSearchParams(location.hash.slice(1));
   if (entryPage === 'teacher' && !shared.has('pack')) showTeacherEntry();
   else if (shared.has('pack') && serviceOrigin(shared.get('service') || ONLINE_CONFIG) === root) { $('teacher-dialog').close(); await openSharedReview(); }
-  if (invite) { await showTeacherTools('admin'); teacherStatus('Account created. Add your Groq key to prepare recordings and vocabulary.'); $('teacher-groq-key').focus(); }
+  if (invite) { await showTeacherTools('setup'); teacherStatus('Account created. Add Groq for vocabulary text and OpenRouter for paid Paul recordings.'); $('teacher-groq-key').focus(); }
  });
  $('teacher-logout').onclick = () => {
   ++teacherLoginRequest;
@@ -846,22 +1015,22 @@ function initTeacher() {
   const mode = $('shared-mode').value, allowHints = $('shared-hints').checked;
   const reuse = $('ai-publish-cache').checked, {root, token} = ai;
   publishing = true; renderSharing();
-  status.textContent = 'Publishing…';
+  status.textContent = 'Creating student link…';
   try {
    const list = selectedList();
-   if (!list) throw Error('Create or select a set before publishing.');
+   if (!list) throw Error('Create or select a set before creating a student link.');
    const stamp = list.updatedAt;
    const records = await loadVocabulary(list);
    await autosaveTeacherSet(list);
-   if (list.updatedAt !== stamp || ai.token !== token) throw Error('The set changed while preparing to publish. Try again with the current version.');
+   if (list.updatedAt !== stamp || ai.token !== token) throw Error('The set changed while preparing the link. Try again with the current version.');
    const info = SharedReview.sharingContent(records, mode);
-   if (!info.ready) throw Error('Review the vocabulary before publishing, or choose Spelling.');
+   if (!info.ready) throw Error('Review the vocabulary before creating a student link, or choose Spelling.');
    const pack = outputPack(list, info.words);
-   const cacheSettings = ai.teacher?.isAdmin && reuse && pack.words.some(row => row.vocabulary) ? {...aiSettings(), context: ''} : undefined;
+   const cacheSettings = pack.words.some(row => row.vocabulary) ? sharedDraftCacheSettings(reuse) : undefined;
    const {pack: published, audioStatus} = await service('/admin/publish', {root, token, method: 'POST',
     body: {pack, mode, allowHints, visibility: 'public', cacheSettings}, requestId: newListId()});
    if (ai.token !== token) return;
-   if (list.updatedAt !== stamp) throw Error('The set changed while publishing. Publish again to share the current version.');
+   if (list.updatedAt !== stamp) throw Error('The set changed while creating the link. Create it again for the current version.');
    if ((list.packVersion || 0) < published.version) { list.packVersion = published.version; save(); }
    ai.published = publicPackLink(published.id, root);
    ai.publishedListId = list.id;
@@ -871,7 +1040,7 @@ function initTeacher() {
    ai.audioStatus = audioStatus;
    $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
    refreshTeacher();
-   status.textContent = 'Set published.';
+   status.textContent = 'Student link ready. Copy it below.';
    watchPracticeAudio();
   } catch (error) {
    if (ai.token === token) status.textContent = error.status === 401 ? 'Your sign-in expired. Sign out, sign back in, and try again.' : error.message;
@@ -924,7 +1093,7 @@ function initTeacher() {
  $('ai-qr').onclick = teacherAction(async () => {
   const box = $('ai-qr-result');
   const image = document.createElement('img');
-  image.alt = 'QR code for the published vocabulary pack';
+  image.alt = 'QR code for the student link';
   image.src = packQRCode(ai.published);
   box.replaceChildren(image);
   box.hidden = false;
