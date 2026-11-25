@@ -260,6 +260,18 @@ test('publishing queues practice recordings and alarms finish them without a tea
   assert.deepEqual(spoken,['solid','solid']);
 });
 
+test('operator retry wakes legacy public daily waits but preserves leases and provider retry times',async()=>{
+  const now=Date.parse('2026-11-25T01:00:00Z');
+  for(const delay of [3600000,70000,61000]) {
+    const f=fixture({},undefined,async()=>audioFixture());
+    const pack={kind:'spellingcoach-pack',v:1,version:1,id:'old-public-wait',name:'Old wait',words:[{word:'solid',vocabulary:null}]};
+    await f.call('POST','/admin/publish',{pack,visibility:'public',mode:'spelling'});
+    f.db.prepare('UPDATE audio_queue SET due = ? WHERE pack = ?').run(now+delay,pack.id);
+    assert.equal((await f.call('POST','/admin/packaudioqueue',{id:pack.id})).status,200);
+    assert.equal(f.db.prepare('SELECT due FROM audio_queue WHERE pack = ?').get(pack.id).due,delay>70000?now:now+delay);
+  }
+});
+
 test('the old demo link returns the canonical pack ID', async () => {
   const {call} = fixture();
   const pack = {kind:'spellingcoach-pack',v:1,version:1,id:'matter-mixed-troy',name:'Matter',words:[{word:'solid',vocabulary:null}]};
@@ -443,15 +455,12 @@ test('Paul WAV streaming headers are finalized without altering the PCM samples'
  assert.throws(() => finishStreamedWav(wav.subarray(0, 44)));
 });
 
-test('Paul generation has its own minute budget', async () => {
- const { call, advance } = fixture({}, undefined, async () => readFileSync(new URL('../demo-audio/matter-mixed/words/solid.wav',import.meta.url)));
+test('Paul generation can exceed the retired application minute cap', async () => {
+ const { call } = fixture({}, undefined, async () => audioFixture());
  const body = {word: 'contracts', sentence: 'Metal contracts as it cools.'};
  const calls = await Promise.all(Array.from({length:11}, () => call('POST', '/admin/dictation', body)));
- assert.equal(calls.filter(result => result.status === 200).length, 10);
- assert.equal(calls.filter(result => result.status === 429).length, 1);
- assert.equal((await call('GET', '/admin/usage')).data.dictationCalls, 10);
- advance(60000);
- assert.equal((await call('POST', '/admin/dictation', body)).status, 200);
+ assert.equal(calls.filter(result => result.status === 200).length, 11);
+ assert.equal((await call('GET', '/admin/usage')).data.dictationCalls, 11);
 });
 
 const invited = async (f, username = 'teacher-one') => {
@@ -722,12 +731,12 @@ test('connection tests use unbilled endpoints and return sanitized statuses for 
   assert.deepEqual((await f.call('POST','/teacher/testkeys',undefined,one.token)).data,{groq:'unavailable',openrouter:'unavailable'});
 });
 
-test('Paul audio propagates auth, account and budget errors without trying another voice',async () => {
+test('Paul audio propagates auth, account and provider errors without trying another voice',async () => {
   let calls=0,status=401,code='provider_auth';
   const f=fixture(encryptionEnv,undefined,async()=>{calls++;throw new ApiError(status,code,'Sanitized provider failure');}),one=await invited(f);
   await f.call('PUT','/teacher/keys',{groq:'groq-text-only-key',openrouter:'personal-router-key',allowAlternateAudio:true},one.token);
   const identity=await f.service.principal(new Request('https://worker.test/api/teacher/profile',{headers:{Authorization:'Bearer '+one.token}}));
-  for(const failure of [[401,'provider_auth'],[400,'provider_request'],[402,'provider_request'],[429,'dictation_daily'],[502,'dictation_unavailable']]) {
+  for(const failure of [[401,'provider_auth'],[400,'provider_request'],[402,'provider_request'],[502,'dictation_unavailable'],[429,'dictation_rate_limit']]) {
     [status,code]=failure;
     await assert.rejects(f.service.accounts.speech(identity,{text:'textile',skill:'spelling'}),error=>error.status===status);
   }
@@ -998,7 +1007,7 @@ test('new or resaved private sets ignore Troy cache while existing published WAV
   assert.deepEqual((await f.call('GET','/packs/'+pack.id+'/audio/1/0-s',undefined,'')).data,new Uint8Array(wav));
 });
 
-test('Paul audio kill switch is independent of vocabulary pause and a request consumes exactly one quota unit',async()=>{
+test('Paul audio kill switch is independent of vocabulary pause and each request is counted once',async()=>{
   let calls=0;
   const f=fixture(encryptionEnv,undefined,async()=>{calls++;return audioFixture();});
   await f.call('PUT','/admin/settings',{generationEnabled:false});
@@ -1009,8 +1018,8 @@ test('Paul audio kill switch is independent of vocabulary pause and a request co
   assert.equal((await f.call('POST','/admin/dictation',{word:'textile',sentence:'We cut the textile.'})).status,503);
   assert.equal(calls,1);
   f.env.AUDIO_ENABLED='true';f.service.charge(day,'operator:dictationCalls',99);
-  const capped=await f.call('POST','/admin/dictation',{word:'textile',sentence:'We cut the textile.'});
-  assert.equal(capped.status,429);assert.equal(capped.data.error.code,'dictation_daily');assert.equal(calls,1);
+  assert.equal((await f.call('POST','/admin/dictation',{word:'textile',sentence:'We cut the textile.'})).status,200);
+  assert.equal(f.service.meter(day,'operator:dictationCalls'),101);assert.equal(calls,2);
 });
 
 test('legacy voice blocks do not poison Paul and retired alternate settings are a true no-op',async()=>{
@@ -1039,22 +1048,57 @@ test('partial preset updates merge the selected grade defaults and its latest sa
   assert.equal((await f.call('PUT','/teacher/preferences',{grade:12},one.token)).status,400);
 });
 
-test('owner Paul quotas include current legacy audio usage without carrying it into later windows',async()=>{
+test('retired owner daily and minute counters do not block Paul or erase usage',async()=>{
+  const now=Date.parse('2026-11-25T01:00:00Z'),day=Math.floor(now/86400000),minute=Math.floor(now/60000);
+  for(const [daily,perMinute] of [[100,0],[0,10],[100,10]]) {
+    let calls=0;
+    const f=fixture(encryptionEnv,undefined,async()=>{calls++;return audioFixture();});
+    f.service.charge(day,'dictationCalls',daily);f.service.charge(day,'operator:dictationCalls',daily);
+    f.service.save('dictationMinute',{minute,calls:perMinute});
+    f.service.charge(day,'operator:audio-minute:'+minute,perMinute);
+    assert.equal((await f.call('POST','/admin/dictation',{word:'textile',sentence:'We cut the textile.'})).status,200);
+    assert.equal(calls,1);
+    assert.equal((await f.call('GET','/admin/usage')).data.dictationCalls,daily*2+1);
+  }
+});
+
+test('an invited teacher can exceed retired audio caps while provider cooldown still applies',async()=>{
   let calls=0;
-  const f=fixture(encryptionEnv,undefined,async()=>{calls++;return audioFixture();}),now=Date.parse('2026-11-25T01:00:00Z'),day=Math.floor(now/86400000),minute=Math.floor(now/60000);
-  const body={word:'textile',sentence:'We cut the textile.'};
-  f.service.charge(day,'dictationCalls',98);f.service.charge(day,'operator:dictationCalls',1);
-  f.service.save('dictationMinute',{minute,calls:9});
-  assert.equal((await f.call('POST','/admin/dictation',body)).status,200);assert.equal(calls,1);
-  assert.equal((await f.call('GET','/admin/usage')).data.dictationCalls,100);
-  assert.equal((await f.call('POST','/admin/dictation',body)).data.error.code,'dictation_daily');
-  f.advance(86400000);
-  assert.equal((await f.call('POST','/admin/dictation',body)).status,200);assert.equal(calls,2);
-  const g=fixture(encryptionEnv,undefined,async()=>audioFixture());
-  g.service.save('dictationMinute',{minute,calls:9});
-  assert.equal((await g.call('POST','/admin/dictation',body)).status,200);
-  assert.equal((await g.call('POST','/admin/dictation',body)).data.error.code,'dictation_budget');
-  g.advance(60000);assert.equal((await g.call('POST','/admin/dictation',body)).status,200);
+  const f=fixture(encryptionEnv,undefined,async(key)=>{
+    assert.equal(key,'personal-paul-key');calls++;
+    if(calls===2) throw new ApiError(429,'dictation_rate_limit','Try again');
+    return audioFixture();
+  }),one=await invited(f);
+  await f.call('PUT','/teacher/keys',{openrouter:'personal-paul-key'},one.token);
+  const day=Math.floor(Date.parse('2026-11-25T01:00:00Z')/86400000),minute=Math.floor(Date.parse('2026-11-25T01:00:00Z')/60000);
+  f.service.charge(day,one.teacher.id+':dictationCalls',100);
+  f.service.charge(day,one.teacher.id+':audio-minute:'+minute,10);
+  const identity=await f.service.principal(new Request('https://worker.test/api/teacher/profile',{headers:{Authorization:'Bearer '+one.token}}));
+  await f.service.accounts.speech(identity,{text:'textile',skill:'spelling'});
+  await assert.rejects(f.service.accounts.speech(identity,{text:'cloth',skill:'spelling'}),error=>error.code==='dictation_rate_limit');
+  await assert.rejects(f.service.accounts.speech(identity,{text:'fabric',skill:'spelling'}),error=>error.code==='dictation_rate_limit');
+  assert.equal(calls,2);assert.equal(f.service.meter(day,one.teacher.id+':dictationCalls'),102);
+  f.advance(61000);
+  await f.service.accounts.speech(identity,{text:'fabric',skill:'spelling'});
+  assert.equal(calls,3);assert.equal(f.service.meter(day,one.teacher.id+':dictationCalls'),103);
+});
+
+test('reading a set wakes a retired daily cap wait without stealing a lease or provider retry',async()=>{
+  const now=Date.parse('2026-11-25T01:00:00Z');
+  for(const [code,delay,wakes] of [['dictation_daily',3600000,true],['dictation_daily',70000,false],['dictation_rate_limit',3600000,false]]) {
+    let calls=0;
+    const f=fixture(encryptionEnv,undefined,async()=>{calls++;return audioFixture();}),pack=privatePack('waiting-audio');
+    await f.call('POST','/teacher/sets',{pack,expectedVersion:0});
+    const record=f.service.accounts.readSet('operator',pack.id);
+    Object.assign(record.recordings[0],{status:'pending',errorCode:code,error:'Old wait'});
+    f.service.accounts.writeSet('operator',record);
+    f.db.prepare('UPDATE teacher_audio_queue SET due = ? WHERE owner = ? AND id = ?').run(now+delay,'operator',pack.id);
+    const detail=await f.call('GET','/teacher/sets/'+pack.id);
+    assert.equal(detail.status,200);
+    assert.equal(f.db.prepare('SELECT due FROM teacher_audio_queue WHERE owner = ? AND id = ?').get('operator',pack.id).due,wakes?now:now+delay);
+    assert.equal(calls,0);
+    if(wakes) {await f.runAudioAlarm();assert.equal(calls,1);assert.equal((await f.call('GET','/teacher/sets/'+pack.id)).data.audioStatus.ready,1);}
+  }
 });
 
 test('ready private audio from a different model is not reused even with Paul provider and voice labels',async()=>{

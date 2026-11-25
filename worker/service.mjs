@@ -766,6 +766,12 @@ export class VocabularyService {
     const publication = this.one('SELECT value FROM packs WHERE id = ?',pack.id);
     if (publication && (JSON.parse(publication.value).owner ?? 'operator') !== 'operator') return audioStatus;
     const audioEnabled = identity.credentials ? this.accounts.config(identity).dictationEnabled : this.dictationEnabled();
+    const queued = retry && this.one('SELECT due FROM audio_queue WHERE pack = ? AND version = ?',pack.id,pack.version);
+    // Only the retired daily cap scheduled this legacy queue beyond normal lease and retry windows.
+    if (audioEnabled && queued?.due > this.now()+70000) {
+      this.sql.exec('UPDATE audio_queue SET due = ? WHERE pack = ? AND version = ? AND due = ?',this.now(),pack.id,pack.version,queued.due);
+      await this.scheduleAudio();
+    }
     if (audioEnabled && audioStatus.ready < audioStatus.total && !audioStatus.pending) {
       const existing = this.one('SELECT pack FROM audio_queue WHERE pack = ? AND version = ?', pack.id, pack.version);
       if (!existing || retry) {
@@ -803,8 +809,7 @@ export class VocabularyService {
       if (error.status === 429 || tries < 1) {
         next = index;
         attempts = error.status === 429 ? tries : tries + 1;
-        due = error.code === 'dictation_daily' ? nextDay(now) :
-          error.status === 429 ? now + 61_000 : this.now() + 1500;
+        due = error.status === 429 ? now + 61_000 : this.now() + 1500;
       }
     }
     this.sql.exec('UPDATE audio_queue SET cursor = ?, tries = ?, due = ? WHERE pack = ? AND version = ? AND due = ?',
@@ -900,7 +905,7 @@ export class VocabularyService {
       if (action === 'testkeys' && method === 'POST' && !id) return json(await this.accounts.testKeys(identity));
       if (action === 'sets') {
         if (!id && method === 'POST') return json(await this.accounts.saveSet(identity,await bodyOf(request,1500000)));
-        if (!id && method === 'GET') return json({sets:this.rows('SELECT value FROM teacher_sets WHERE owner = ? ORDER BY id',identity.teacherId).map(({value}) => this.accounts.setDetail(identity.teacherId,JSON.parse(value)))});
+        if (!id && method === 'GET') return json({sets:await Promise.all(this.rows('SELECT value FROM teacher_sets WHERE owner = ? ORDER BY id',identity.teacherId).map(({value}) => this.accounts.setDetail(identity.teacherId,JSON.parse(value))))});
         const record = this.accounts.readSet(identity.teacherId,id);
         if (!record) notFound();
         if (!operation && method === 'DELETE') {
@@ -919,7 +924,7 @@ export class VocabularyService {
           if (!clip) notFound();
           return audioResponse(clip.bytes,request.headers.get('Range'));
         }
-        if (!operation && method === 'GET') return json(this.accounts.setDetail(identity.teacherId,record));
+        if (!operation && method === 'GET') return json(await this.accounts.setDetail(identity.teacherId,record));
       }
       notFound();
     }

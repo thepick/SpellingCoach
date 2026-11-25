@@ -238,10 +238,16 @@ export class TeacherAccounts {
     }))};
   }
 
-  setDetail(owner,record) {
+  async setDetail(owner,record) {
     const queue = this.s.one('SELECT due FROM teacher_audio_queue WHERE owner = ? AND id = ? AND version = ?',owner,record.pack.id,record.pack.version);
     const teacher = owner === 'operator' ? null : this.read(owner);
     const revoked = teacher?.revoked;
+    // Wake retired daily-cap waits without taking an active 70-second queue lease.
+    if (!revoked && queue?.due > this.s.now()+70000 && record.recordings.find(r => r.status === 'pending')?.errorCode === 'dictation_daily') {
+      this.s.sql.exec('UPDATE teacher_audio_queue SET due = ? WHERE owner = ? AND id = ? AND version = ? AND due = ?',this.s.now(),owner,record.pack.id,record.pack.version,queue.due);
+      queue.due = this.s.one('SELECT due FROM teacher_audio_queue WHERE owner = ? AND id = ? AND version = ?',owner,record.pack.id,record.pack.version)?.due;
+      await this.s.scheduleAudio();
+    }
     const recordings = record.recordings.map(({cacheKey,skill,...r}) => revoked && r.status !== 'ready' ? {...r,status:'failed',error:'Teacher access was revoked.'} : r);
     return {pack:record.pack,...(record.generationSettings ? {generationSettings:record.generationSettings} : {}),audio:recordings.filter(r => r.status === 'ready').map(r => r.key),audioStatus:{
       ready:recordings.filter(r => r.status === 'ready').length,total:recordings.length,pending:!revoked && queue?.due != null,
@@ -341,7 +347,7 @@ export class TeacherAccounts {
       generated = undefined;
       prompt.error = error instanceof ApiError ? error.message : 'The recording could not be created.';
       prompt.errorCode = error instanceof ApiError ? error.code : 'dictation_unavailable';
-      if (error.status === 429) due = error.code === 'dictation_daily' ? (Math.floor(s.now()/DAY)+1)*DAY : error.retryAt ?? s.now()+61000;
+      if (error.status === 429) due = error.retryAt ?? s.now()+61000;
       else { prompt.status = 'failed'; }
     }
     if (!this.unchanged(identity)) { s.sql.exec('UPDATE teacher_audio_queue SET due = ? WHERE owner = ? AND id = ? AND version = ? AND due = ?',this.current(identity) ? s.now() : null,owner,id,version,lease); return; }
@@ -379,7 +385,7 @@ export class TeacherAccounts {
     if (this.s.env.AUDIO_ENABLED !== 'true') fail(503,'generation_offline','Paul audio generation is disabled.');
     if (!identity.credentials.openrouter) fail(503,'provider_key_required',identity.reconnect?.includes('openrouter')
       ? 'Reconnect your OpenRouter key to prepare Paul audio.' : 'Connect your OpenRouter key to prepare Paul audio.');
-    const s = this.s, owner = identity.teacherId, day = Math.floor(s.now()/DAY), minute = Math.floor(s.now()/60000);
+    const s = this.s, owner = identity.teacherId, day = Math.floor(s.now()/DAY);
     const blocked = s.saved(AUDIO_BLOCK+owner);
     if (blocked?.revision === identity.keyRevision) fail(503,blocked.code,blocked.message);
     const retryAt = s.one('SELECT until FROM provider_delay WHERE key = ?',owner+':audio:openrouter')?.until ?? 0;
@@ -387,12 +393,7 @@ export class TeacherAccounts {
     s.atomic(() => {
       if (!this.unchanged(identity)) fail(409,'account_changed','Provider settings changed. Retry the recording.');
       if (!dispatch()) fail(409,'set_changed','The set changed before the recording could start.');
-      const legacyCalls = owner === 'operator' ? s.meter(day,'dictationCalls') : 0;
-      const legacyWindow = owner === 'operator' ? s.saved('dictationMinute') : null;
-      const legacyMinute = legacyWindow?.minute === minute ? legacyWindow.calls : 0;
-      if (s.meter(day,owner+':dictationCalls') + legacyCalls >= 100) fail(429,'dictation_daily','Your daily audio allowance is used up.');
-      if (s.meter(day,owner+':audio-minute:'+minute) + legacyMinute >= 10) fail(429,'dictation_budget','Your minute audio allowance is used up.');
-      s.charge(day,owner+':dictationCalls',1); s.charge(day,owner+':audio-minute:'+minute,1);
+      s.charge(day,owner+':dictationCalls',1);
     });
     let bytes;
     try { bytes = await s.speechFetcher(identity.credentials.openrouter,prompt.text); }
