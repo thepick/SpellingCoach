@@ -18,11 +18,21 @@ const SharedReview = (() => {
    ? 'learning' : null;
  }
 
- return {instructions, reviewMode, matchingPractice};
+ function sharingContent(records, mode) {
+  const approved = [], drafts = [], missing = [];
+  for (const row of records) {
+   (row.vocabulary?.status === 'approved' ? approved : row.vocabulary ? drafts : missing).push(row.word);
+  }
+  const words = mode === 'spelling' ? records.map(row => row.vocabulary?.status === 'approved' ? row : {...row, vocabulary:null}) : records;
+  return {approved, drafts, missing, words, ready:words.length > 0 && (mode === 'spelling' || !drafts.length && approved.length > 0)};
+ }
+
+ return {instructions, reviewMode, matchingPractice, sharingContent};
 })();
 if (typeof module === 'object' && module.exports) module.exports = SharedReview;
 
 let sharedReview = null;
+const LOCAL_PREVIEW_KEY = 'wordlab.local-preview';
 let sharedLoad = 0;
 const parkedKey = (id, type) => 'paused-activity:' + JSON.stringify([id, type]);
 
@@ -148,21 +158,30 @@ async function openSharedReview() {
  $('shared-start').hidden = true;
  show('shared-ready');
  const id = args.get('pack');
+ const previewTicket = studentPreview ? args.get('draft') : null;
  try {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,95}$/.test(id)) throw Error('Invalid pack link.');
   if (state.learningCheckpoint && !state.learningSession) await recoverCheckpoint(false);
-  const origin = serviceOrigin(args.get('service') || ONLINE_CONFIG);
-  const token = ai.root === origin ? ai.token : '';
-  const response = await service('/packs/' + encodeURIComponent(id), {root:origin, token});
-  const pack = Vocabulary.validatePack(response.pack);
+  const origin = previewTicket ? location.origin : serviceOrigin(args.get('service') || ONLINE_CONFIG);
+  let pack;
+  if (previewTicket) {
+   const local = JSON.parse(localStorage.getItem(LOCAL_PREVIEW_KEY) || 'null');
+   if (local?.ticket !== previewTicket || local.expiresAt < Date.now()) throw Error('Preview expired.');
+   localStorage.removeItem(LOCAL_PREVIEW_KEY);
+   pack = Vocabulary.validatePack(local.pack);
+  } else {
+   const token = ai.root === origin ? ai.token : '';
+   const response = await service('/packs/' + encodeURIComponent(id), {root:origin, token});
+   pack = Vocabulary.validatePack(response.pack);
+  }
   if (pack.id !== id) throw Error('Wrong review set.');
   if (load !== sharedLoad) return;
   sharedReview = {pack, origin, mode:SharedReview.reviewMode(args.get('mode'), pack.words), allowHints:args.get('hints') !== 'off'};
   await renderSharedReady();
  } catch (error) {
   if (load !== sharedLoad) return;
-  $('shared-title').textContent = 'This set could not open';
-  $('shared-instruction').textContent = 'Check your connection or ask your teacher for a new link.';
+  $('shared-title').textContent = previewTicket ? 'Preview unavailable' : 'This set could not open';
+  $('shared-instruction').textContent = previewTicket ? 'Open a fresh preview from the teacher workspace.' : 'Check your connection or ask your teacher for a new link.';
   if (error.status === 401 || error.status === 403 || error.status === 404) {
    $('shared-ready-status').textContent = entryPage === 'offline' ? 'If the set uses a class code, sign in from Tools.' : 'Ask your teacher for a public practice link.';
   }

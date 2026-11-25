@@ -81,6 +81,7 @@ function coachOptions() {
 
 function updateCoachSetup() {
  const list = selectedList(), options = coachOptions(), records = selectedRecords();
+ updateTeacherSelection(list, vocabCache.records);
  const study = options.mode === 'study', test = !study && options.type === 'test';
  const available = records.filter(row => row.vocabulary && (!test || row.vocabulary.status === 'approved')).length;
  $('open-vocabulary').disabled = !list;
@@ -758,17 +759,18 @@ async function changeVocabulary(next, preferred) {
  renderVocabularyEditor(preferred);
 }
 
-async function openVocabularyEditor() {
+async function openVocabularyEditor(filter = '') {
  const list = selectedList();
  if (!list) return;
  try {
   editorRecords = await loadVocabulary(list);
   if (selectedList() !== list) return;
   editorList = list; editorPage = 0; undoVocabulary = null;
-  $('vocab-search').value = ''; $('vocab-filter').value = '';
+  $('vocab-search').value = ''; $('vocab-filter').value = filter;
   editorStatusText('');
   renderVocabularyEditor();
   $('vocab-dialog').showModal();
+  return true;
  } catch (error) { status(error.message); }
 }
 
@@ -777,7 +779,7 @@ function initCoach() {
   $(id).addEventListener('change', updateCoachSetup);
  }
  $('sample-pack').onclick = () => previewPack(SAMPLE_PACK);
- $('open-vocabulary').onclick = openVocabularyEditor;
+ $('open-vocabulary').onclick = () => openVocabularyEditor();
  $('open-report').onclick = () => showReport();
  $('practice-complete-done').onclick = backToSetup;
  $('report-exit').onclick = () => {

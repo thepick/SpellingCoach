@@ -2,6 +2,8 @@ const CLASS_RECOVERY = 'class-generation-recovery';
 const GENERATION_KEY = 'spell.generation.v1';
 const ONLINE_CONFIG = 'https://wordlab.mtomlinson.ca';
 let ai = {root: '', token: '', role: '', config: {}, job: null, listId: '', published: '', generation: 0};
+let sharing = {list:null, records:null};
+let publishing = false;
 function teacherStatus(message) {
  $('teacher-status').textContent = message;
  $('teacher-signin-status').textContent = message;
@@ -47,6 +49,7 @@ function saveJob() {
 
 function refreshTeacher() {
  const teacher = ai.role === 'teacher', signedIn = !!ai.token;
+ if (entryPage === 'teacher') $('setup-word-selection-title').closest('.stack').hidden = !ai.config.generationEnabled;
  $('teacher-logout').hidden = !signedIn;
  $('teacher-url').disabled = signedIn;
  $('teacher-secret').disabled = signedIn;
@@ -66,9 +69,7 @@ function refreshTeacher() {
  $('ai-cancel').disabled = !active;
  $('ai-apply').disabled = !ai.job?.words.length;
  $('ai-retry-words').disabled = active || !ai.job?.failedWords.length;
- $('ai-share').disabled = !ai.published;
- $('ai-preview').disabled = !ai.published;
- $('ai-qr').disabled = !ai.published;
+ renderSharing();
  $('ai-stop').textContent = ai.config.generationEnabled ? 'Disable generation' : 'Enable generation';
  if (ai.job) {
   const {counts, status: current, message, retryAt, failedWords} = ai.job;
@@ -119,7 +120,7 @@ async function jobAction(action) {
 
 function aiSettings() {
  const settings = {
-  readingLevel: Number($('ai-grade').value), dialect: $('ai-dialect').value,
+  readingLevel: Number($('ai-grade').value), dialect: 'original',
   practiceSentences: Number($('ai-sentences').value), exampleSentences: Number($('ai-examples').value),
   reuseApproved: $('ai-reuse').checked, esl: $('ai-esl').checked,
   distractors: $('ai-distractors').checked, explanations: $('ai-explanations').checked
@@ -136,6 +137,73 @@ function publicPackLink(id, mode, allowHints, root) {
  return site.href;
 }
 
+function updateTeacherSelection(list, records) {
+ if (entryPage !== 'teacher') return;
+ $('teacher-open-publishing').disabled = !list;
+ const summary = records && SharedReview.sharingContent(records, 'mixed');
+ $('setup-set-summary').textContent = !list ? '' : list.words.length + (list.words.length === 1 ? ' word' : ' words') +
+  (summary ? ' · ' + summary.approved.length + ' with approved vocabulary · ' + summary.drafts.length + ' to review' : '');
+}
+
+function renderSharing() {
+ const mode = $('shared-mode').value;
+ const info = sharing.records && SharedReview.sharingContent(sharing.records, mode);
+ const {approved, drafts, missing} = info || {approved:[], drafts:[], missing:[]};
+ const shareReady = !!info?.ready && !publishing;
+ const needsReview = !!info && mode !== 'spelling' && !info.ready;
+ const hasLink = !!ai.published && ai.publishedListId === sharing.list?.id && ai.publishedMode === mode &&
+  ai.publishedHints === $('shared-hints').checked;
+ $('ai-publish-readiness').textContent = !sharing.list ? 'Create or select a set first.' :
+  !info ? 'Checking which words are ready…' : mode === 'spelling' ?
+   'Ready to share. Students will spell all ' + info.words.length + ' words.' : drafts.length ?
+    'Review and approve the remaining vocabulary drafts before sharing.' : !approved.length ?
+     'Add and approve vocabulary, or choose Spelling to share this word list.' : mode === 'mixed' ?
+      'Ready to share. ' + approved.length + ' words include vocabulary' + (missing.length ? ' and ' + missing.length + ' are spelling only.' : '.') :
+      'Ready to share. Students will practice ' + approved.length + ' words with approved vocabulary.';
+ $('ai-publish-readiness').className = needsReview ? 'notice' : 'hint';
+ $('ai-vocabulary-details').hidden = !info || mode === 'spelling';
+ $('ai-vocabulary-words').textContent = [['Approved', approved], ['Needs review', drafts], ['No vocabulary', missing]]
+  .filter(([, words]) => words.length).map(([label, words]) => label + ': ' + words.join(', ')).join('\n');
+ $('ai-publish-review').hidden = !needsReview;
+ $('ai-publish-review').textContent = drafts.length ? 'Review drafts' : 'Add vocabulary';
+ $('ai-publish').disabled = !shareReady;
+ $('ai-preview').disabled = entryPage === 'teacher' ? !shareReady : !hasLink;
+ $('ai-link-actions').hidden = !hasLink;
+ $('ai-student-link').value = hasLink ? ai.published : '';
+ $('ai-share').disabled = !hasLink;
+ $('ai-qr').disabled = !hasLink;
+ $('shared-mode').disabled = publishing;
+ $('shared-hints').disabled = publishing || mode === 'spelling';
+}
+
+async function showTeacherTools(view = 'tools') {
+ $('tools-dialog').close();
+ if (!$('teacher-url').value) $('teacher-url').value = ONLINE_CONFIG;
+ const list = selectedList(), changedSet = sharing.list !== list;
+ const current = {list, records:null};
+ sharing = current;
+ if (changedSet) {
+  $('shared-hints').checked = true;
+  $('ai-publish-status').textContent = '';
+  $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
+ }
+ const dialog = $('teacher-dialog');
+ dialog.dataset.view = view;
+ $('teacher-title').textContent = view === 'share' && list ? 'Share “' + list.name + '”' :
+  view === 'admin' ? 'Generation and administration' : 'Online vocabulary tools';
+ if (view !== 'share') teacherStatus(!ai.config.generationEnabled && view === 'admin' ?
+  'Online generation is currently unavailable.' : 'Select the words you want to generate before opening these tools.');
+ refreshTeacher();
+ dialog.showModal();
+ try {
+  const rows = list ? await loadVocabulary(list) : null;
+  if (sharing !== current) return;
+  current.records = rows;
+  if (changedSet && rows) $('shared-mode').value = rows.some(row => row.vocabulary) ? 'mixed' : 'spelling';
+  renderSharing();
+ } catch (error) { $('ai-publish-readiness').textContent = error.message; }
+}
+
 function showTeacherEntry() {
  if (ai.role === 'teacher' && ai.token) {
   $('setup-title').textContent = 'Teacher workspace';
@@ -148,7 +216,12 @@ function showTeacherEntry() {
   $('setup-word-selection-help').textContent = 'Generate content for selected words. Publishing shares the whole set.';
   renderSetup();
   show('setup-screen');
-  $('setup-title').focus();
+  $('setup-list-label').textContent = 'Practice set';
+  $('new-list').textContent = 'Create a set';
+  $('edit-list').textContent = 'Edit words';
+  $('open-vocabulary').textContent = 'Edit content';
+  $('open-teacher').textContent = 'Generation and administration';
+  $(selectedList() ? 'list-select' : 'new-list').focus();
   return;
  }
  const form = $('teacher-connect');
@@ -165,19 +238,31 @@ function showTeacherEntry() {
 }
 
 function initTeacher() {
- $('open-teacher').onclick = () => {
-  $('tools-dialog').close();
-  if (!$('teacher-url').value) $('teacher-url').value = ONLINE_CONFIG;
-  if (ai.publishedListId !== selectedList()?.id) {
-   ai.published = '';
-   $('ai-publish-status').textContent = '';
-   $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
-  }
-  teacherStatus('Select the words you want to generate before opening these tools.');
-  refreshTeacher();
-  $('teacher-dialog').showModal();
+ $('open-teacher').onclick = () => showTeacherTools(entryPage === 'teacher' ? 'admin' : 'tools');
+ $('teacher-open-publishing').onclick = () => showTeacherTools('share');
+ for (const id of ['shared-mode', 'shared-hints']) $(id).onchange = () => {
+  $('ai-publish-status').textContent = '';
+  $('ai-qr-result').hidden = true;
+  renderSharing();
  };
- $('teacher-open-publishing').onclick = () => $('open-teacher').click();
+ let returnToSharing = '';
+ $('ai-publish-review').onclick = async () => {
+  const dialog = $('teacher-dialog');
+  const info = SharedReview.sharingContent(sharing.records, $('shared-mode').value);
+  const view = dialog.dataset.view;
+  dialog.close();
+  if (await openVocabularyEditor(info.drafts.length ? 'draft' : 'missing')) {
+   returnToSharing = view;
+   $('vocab-close').textContent = 'Back to sharing';
+  } else showTeacherTools(view);
+ };
+ $('vocab-dialog').addEventListener('close', () => {
+  if (!returnToSharing) return;
+  const view = returnToSharing; returnToSharing = '';
+  $('vocab-close').textContent = 'Close';
+  $('ai-publish-status').textContent = '';
+  showTeacherTools(view);
+ });
  $('teacher-workspace-logout').onclick = () => $('teacher-logout').click();
  $('teacher-close').onclick = () => $('teacher-dialog').close();
  $('teacher-connect').onsubmit = teacherAction(async event => {
@@ -277,23 +362,18 @@ function initTeacher() {
   finally { $('regenerate-submit').disabled = false; }
  };
  $('ai-publish').onclick = async () => {
-  const button = $('ai-publish'), status = $('ai-publish-status');
+  const status = $('ai-publish-status');
   const mode = $('shared-mode').value, allowHints = $('shared-hints').checked;
   const reuse = $('ai-publish-cache').checked, {root, token} = ai;
-  button.disabled = true;
+  publishing = true; renderSharing();
   status.textContent = 'Publishing…';
   try {
    const list = selectedList();
    if (!list) throw Error('Create or select a set before publishing.');
    const records = await loadVocabulary(list);
-   if (mode !== 'spelling') {
-    if (!records.some(row => row.vocabulary)) throw Error('Add and approve vocabulary in Vocabulary content, or choose Spelling to publish this word list.');
-    if (records.some(row => row.vocabulary && row.vocabulary.status !== 'approved')) {
-     throw Error('Approve the drafts in Vocabulary content before publishing this set.');
-    }
-   }
-   const words = mode === 'spelling' ? records.map(row => row.vocabulary?.status === 'approved' ? row : {...row, vocabulary: null}) : records;
-   const pack = outputPack(list, words);
+   const info = SharedReview.sharingContent(records, mode);
+   if (!info.ready) throw Error('Review the vocabulary before publishing, or choose Spelling.');
+   const pack = outputPack(list, info.words);
    const cacheSettings = reuse && pack.words.some(row => row.vocabulary) ? {...aiSettings(), context: ''} : undefined;
    const {pack: published} = await service('/admin/publish', {root, token, method: 'POST',
     body: {pack, mode, visibility: 'public', cacheSettings}, requestId: newListId()});
@@ -301,21 +381,43 @@ function initTeacher() {
    if ((list.packVersion || 0) < published.version) { list.packVersion = published.version; save(); }
    ai.published = publicPackLink(published.id, mode, allowHints, root);
    ai.publishedListId = list.id;
+   ai.publishedMode = mode;
+   ai.publishedHints = allowHints;
    $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
    refreshTeacher();
    status.textContent = 'Published “' + published.name + '”. Preview or copy the student link.';
   } catch (error) {
    if (ai.token === token) status.textContent = error.status === 401 ? 'Your sign-in expired. Sign out, sign back in, and try again.' : error.message;
-  } finally { button.disabled = false; }
+  } finally { publishing = false; renderSharing(); }
  };
  $('ai-share').onclick = teacherAction(async () => {
   $('ai-publish-status').textContent = await copy(ai.published) ? 'Student link copied.' : ai.published;
  });
  $('ai-preview').onclick = () => {
-  if (!ai.published) return;
-  const url = new URL(ai.published);
-  url.searchParams.set('preview', '1');
-  window.open(url.href, '_blank', 'noopener');
+  try {
+   let url;
+   if (entryPage === 'teacher') {
+    const mode = $('shared-mode').value;
+    const {ready, words} = SharedReview.sharingContent(sharing.records, mode);
+    if (!ready) return;
+    const pack = outputPack(sharing.list, words), ticket = newListId();
+    url = new URL(publicPackLink(pack.id, mode, $('shared-hints').checked, ai.root));
+    const args = new URLSearchParams(url.hash.slice(1));
+    args.set('draft', ticket); url.hash = args.toString();
+    localStorage.setItem(LOCAL_PREVIEW_KEY, JSON.stringify({ticket, pack, expiresAt: Date.now() + 60000}));
+    setTimeout(() => {
+     try {
+      const pending = JSON.parse(localStorage.getItem(LOCAL_PREVIEW_KEY) || 'null');
+      if (pending?.ticket === ticket) localStorage.removeItem(LOCAL_PREVIEW_KEY);
+     } catch {}
+    }, 60000);
+   } else {
+    if (!ai.published) return;
+    url = new URL(ai.published);
+   }
+   url.searchParams.set('preview', '1');
+   window.open(url.href, '_blank', 'noopener');
+  } catch (error) { $('ai-publish-status').textContent = error.message; }
  };
  $('ai-qr').onclick = teacherAction(async () => {
   const box = $('ai-qr-result');
