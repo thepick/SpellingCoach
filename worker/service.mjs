@@ -603,10 +603,11 @@ export class VocabularyService {
   }
 
   async publish(input, identity = {isAdmin:true,teacherId:'operator'}) {
-    requireInput(shape(input, ['pack', 'visibility', 'classId', 'cacheSettings', 'mode', 'allowHints'])
+    requireInput(shape(input, ['pack', 'visibility', 'classId', 'cacheSettings', 'mode', 'allowHints', 'retypeOnMiss', 'allowVariants'])
       && ['public', 'class', 'private'].includes(input.visibility), 'Choose a valid pack visibility.');
     requireInput(input.mode === undefined || ['spelling', 'vocabulary', 'mixed'].includes(input.mode), 'Choose a valid practice mode.');
     requireInput(input.allowHints === undefined || typeof input.allowHints === 'boolean', 'Choose whether to allow hints.');
+    for (const key of ['retypeOnMiss','allowVariants']) requireInput(input[key] === undefined || typeof input[key] === 'boolean','Practice rules must be true or false.');
     const { visibility } = input;
     const pack = validatePack(input.pack, { allowSpellingOnly: input.mode === 'spelling' });
     pack.id = Dictation.canonicalPackId(pack.id);
@@ -614,18 +615,24 @@ export class VocabularyService {
     if (!identity.isAdmin && (visibility === 'class' || input.cacheSettings !== undefined)) fail(403,'forbidden','Only the owner manages classrooms and the shared vocabulary cache.');
     requireInput(visibility === 'class' ? shortId(classId) && this.readClass(classId) : classId == null || classId === '',
       'Class packs must have a valid classroom.');
-    const settings = input.cacheSettings === undefined ? null : parseSettings(input.cacheSettings, true);
+    let settings = input.cacheSettings === undefined ? null : parseSettings(input.cacheSettings, true);
     const vocabularyEntries = pack.words.filter((entry) => entry.vocabulary !== null);
     requireInput(!settings || (visibility === 'public' && vocabularyEntries.length > 0 && !settings.context && !settings.sense
       && vocabularyEntries.every((entry) => cacheEligible(entry, settings))), 'Reusable packs must be public and match the declared settings.');
-    const practice = {mode:input.mode || 'mixed', allowHints:input.allowHints !== false};
+    const practice = {mode:input.mode || 'mixed', allowHints:input.allowHints !== false,
+      ...Object.fromEntries(['retypeOnMiss','allowVariants'].filter(key => input[key] !== undefined).map(key => [key,input[key]]))};
     const privateSet = this.accounts.readSet(identity.teacherId,pack.id);
     const info = {pack, visibility, practice, ...(privateSet ? {preparedAudio:true} : {}), ...(visibility === 'class' ? {classId} : {})};
     const storage = { ...info, owner:identity.teacherId, ...(settings ? { cacheSettings: settings } : {}) };
     return this.atomic(() => {
       const existing = this.one('SELECT version, value FROM packs WHERE id = ?', pack.id);
+      const prior = existing && JSON.parse(existing.value);
       if (!this.accounts.unchanged(identity)) fail(409,'account_changed','Teacher access or provider settings changed.');
-      if (existing && !identity.isAdmin && (JSON.parse(existing.value).owner ?? 'operator') !== identity.teacherId) notFound();
+      if (existing && !identity.isAdmin && (prior.owner ?? 'operator') !== identity.teacherId) notFound();
+      if (input.cacheSettings === undefined && existing?.version === pack.version && canonical(prior.pack) === canonical(pack) && prior.cacheSettings) {
+        settings = prior.cacheSettings;
+        storage.cacheSettings = settings;
+      }
       if (!identity.isAdmin && !privateSet) fail(409,'private_set_required','Save this set privately and prepare its recordings before sharing.');
       if (privateSet && canonical(this.accounts.publishedSnapshot(privateSet.pack,practice.mode)) !== canonical(pack)) fail(409,'pack_version','The private set changed. Reload before sharing.');
       if (privateSet) {
@@ -635,7 +642,7 @@ export class VocabularyService {
         if (!ready) fail(409,'audio_not_ready','Prepare all recordings for this practice mode before sharing.');
       }
       if (existing && existing.version >= pack.version) {
-        const {practice: previousPractice, preparedAudio:previousPrepared, ...previous} = {owner:'operator',...JSON.parse(existing.value)};
+        const {practice: previousPractice, preparedAudio:previousPrepared, ...previous} = {owner:'operator',...prior};
         const {practice: currentPractice, preparedAudio:currentPrepared, ...current} = storage;
         if (existing.version !== pack.version || canonical(previous) !== canonical(current)) {
           fail(409, 'pack_version', 'Increase the pack version to publish changes.');

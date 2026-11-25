@@ -169,10 +169,11 @@ function startBuiltPage(entry='teacher') {
   addEventListener(){},removeEventListener(){},setAttribute(){},removeAttribute(){},setCustomValidity(){},
   append(...children){this.children.push(...children);},replaceChildren(...children){this.children=children;},add(child){this.children.push(child);},
   closest(){return node();},querySelector(){return node();},querySelectorAll(){return [];},
-  close(){this.open=false;},showModal(){this.open=true;},focus(){this.focused=true;},reset(){},
+  close(){this.open=false;},showModal(){this.open=true;},focus(){this.focused=true;},reset(){},click(){return this.onclick?.();},
  });
  for(const match of html.matchAll(/\bid="([^"]+)"/g)) elements.set(match[1],node());
- elements.get('teacher-login-kind').value='teacher';
+ const loginOptions=html.match(/<select id="teacher-login-kind">([\s\S]*?)<\/select>/)[1];
+ elements.get('teacher-login-kind').value=(loginOptions.match(/<option value="([^"]+)"[^>]*selected[^>]*>/)||loginOptions.match(/<option value="([^"]+)"/))[1];
  const document={body:{dataset:{entry}},documentElement:{dataset:{}},getElementById:id=>elements.get(id)||null,
   querySelectorAll:()=>[],querySelector:()=>null,addEventListener(){},createElement:()=>node()};
  const context=vm.createContext({document,URL,URLSearchParams,console,structuredClone,AbortSignal,
@@ -191,8 +192,25 @@ test('actual built teacher script starts with real module ordering and a local s
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(page.elements.get('teacher-signin-screen').hidden,false);
  assert.equal(page.elements.get('teacher-url').value,'http://127.0.0.1:8765');
- assert.equal(page.elements.get('teacher-username').focused,true);
+ assert.equal(page.elements.get('teacher-login-kind').value,'owner');
+ assert.equal(page.elements.get('teacher-username-field').hidden,true);
+ assert.equal(page.elements.get('teacher-secret').focused,true);
  assert.equal(page.elements.get('teacher-secret').value,'');
+});
+
+test('teacher sign-in remains selectable and invitation links always use the teacher flow',()=>{
+ const h=harness({location:{origin:'https://example.test',hash:''}});
+ h.run("ai={token:'',config:{}};$('teacher-login-kind').value='teacher';refreshTeacherLogin()");
+ assert.equal(h.elements.get('teacher-username-field').hidden,false);
+ assert.equal(h.elements.get('teacher-username').required,true);
+ assert.equal(h.elements.get('teacher-username').disabled,false);
+ h.run("$('teacher-username').value='a!';$('teacher-login-kind').value='owner';refreshTeacherLogin()");
+ assert.equal(h.elements.get('teacher-username').disabled,true);
+ h.run("location.hash='#invite=fixture';refreshTeacherLogin()");
+ assert.equal(h.elements.get('teacher-login-kind').value,'teacher');
+ assert.equal(h.elements.get('teacher-login-kind').disabled,true);
+ assert.equal(h.elements.get('teacher-name-field').hidden,false);
+ assert.equal(h.elements.get('teacher-secret').autocomplete,'new-password');
 });
 
 test('deleting a saved teacher set waits for its pending save and the server deletion',async()=>{
@@ -246,6 +264,10 @@ test('actual built owner login opens a signed-in workspace without module orderi
  assert.equal(page.elements.get('teacher-operations').hidden,true);
  assert.deepEqual(calls.map(url=>new URL(url).pathname),['/api/admin/access','/api/teacher/profile','/api/teacher/sets','/api/teacher/preferences']);
  assert.ok(calls.every(url=>url.startsWith('http://127.0.0.1:8765/')));
+ page.elements.get('teacher-workspace-logout').click();
+ assert.equal(page.elements.get('teacher-login').disabled,false);
+ assert.equal(page.elements.get('teacher-signin-screen').hidden,false);
+ assert.equal(page.elements.get('teacher-login-kind').value,'owner');
 });
 
 test('reopening grade defaults keeps its pending save locked and rejects a duplicate PUT',async()=>{

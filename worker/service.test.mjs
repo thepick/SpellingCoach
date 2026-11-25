@@ -1111,3 +1111,36 @@ test('ready private audio from a different model is not reused even with Paul pr
   const saved=await f.call('POST','/teacher/sets',{pack,expectedVersion:1},one.token);
   assert.equal(saved.data.audioStatus.ready,0);assert.equal(saved.data.audioStatus.pending,true);
 });
+
+test('published correction and variant rules are optional booleans and can change without a content version bump',async()=>{
+  const {call}=fixture();
+  const pack={kind:'spellingcoach-pack',v:1,version:1,id:'teacher-practice-rules',name:'Rules',words:[approved('textile')]};
+  const publish=rules=>call('POST','/admin/publish',{pack,visibility:'public',mode:'mixed',...rules});
+  assert.equal((await publish({retypeOnMiss:false,allowVariants:true})).status,200);
+  let saved=await call('GET','/packs/'+pack.id,undefined,'');
+  assert.deepEqual(saved.data.practice,{mode:'mixed',allowHints:true,retypeOnMiss:false,allowVariants:true});
+  assert.equal((await publish({retypeOnMiss:true,allowVariants:false})).status,200);
+  saved=await call('GET','/packs/'+pack.id,undefined,'');
+  assert.equal(saved.data.pack.version,1);assert.equal(saved.data.practice.retypeOnMiss,true);assert.equal(saved.data.practice.allowVariants,false);
+  for(const rules of [{retypeOnMiss:0},{retypeOnMiss:'false'},{allowVariants:null},{allowVariants:'true'}])assert.equal((await publish(rules)).status,400);
+  assert.equal((await publish({})).status,200);
+  saved=await call('GET','/packs/'+pack.id,undefined,'');
+  assert.deepEqual(saved.data.practice,{mode:'mixed',allowHints:true});
+});
+
+test('a reusable owner pack retains its cache metadata during same-version practice-rule changes',async()=>{
+  const f=fixture(),pack={kind:'spellingcoach-pack',v:1,id:'reusable-practice-rules',name:'Reusable',version:1,words:[approved('textile')]};
+  assert.equal((await f.call('POST','/admin/publish',{pack,visibility:'public',cacheSettings:{},retypeOnMiss:true})).status,200);
+  const before=JSON.parse(f.db.prepare('SELECT value FROM packs WHERE id = ?').get(pack.id).value).cacheSettings;
+  const changed=await f.call('POST','/admin/publish',{pack,visibility:'public',retypeOnMiss:false,allowVariants:true});
+  assert.equal(changed.status,200);
+  const stored=JSON.parse(f.db.prepare('SELECT value FROM packs WHERE id = ?').get(pack.id).value);
+  assert.deepEqual(stored.cacheSettings,before);assert.equal(stored.practice.retypeOnMiss,false);assert.equal(stored.practice.allowVariants,true);
+  const publicPack=await f.call('GET','/packs/'+pack.id,undefined,'');assert.equal(Object.hasOwn(publicPack.data,'cacheSettings'),false);
+  const cached=await f.call('POST','/generate',{words:['textile']});assert.equal(cached.data.counts.cached,1);
+  assert.equal((await f.call('POST','/admin/publish',{pack:{...pack,name:'Changed content'},visibility:'public',retypeOnMiss:false})).status,409);
+  assert.equal((await f.call('POST','/admin/publish',{pack,visibility:'public',cacheSettings:{readingLevel:6},retypeOnMiss:false})).status,400);
+  assert.equal((await f.call('POST','/admin/publish',{pack,visibility:'private',retypeOnMiss:false})).status,409);
+  assert.equal((await f.call('POST','/admin/publish',{pack:{...pack,version:2},visibility:'public',retypeOnMiss:false})).status,200);
+  assert.equal(JSON.parse(f.db.prepare('SELECT value FROM packs WHERE id = ?').get(pack.id).value).cacheSettings,undefined);
+});

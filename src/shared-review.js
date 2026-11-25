@@ -27,7 +27,11 @@ const SharedReview = (() => {
   return {approved, drafts, missing, words, ready:words.length > 0 && (mode === 'spelling' || !drafts.length && approved.length > 0)};
  }
 
- return {instructions, reviewMode, matchingPractice, sharingContent};
+ function practiceRules(practice) {
+  return Object.fromEntries(['retypeOnMiss','allowVariants'].filter(key=>typeof practice?.[key] === 'boolean').map(key=>[key,practice[key]]));
+ }
+
+ return {instructions, reviewMode, matchingPractice, sharingContent, practiceRules};
 })();
 if (typeof module === 'object' && module.exports) module.exports = SharedReview;
 
@@ -140,11 +144,13 @@ async function startSharedReview() {
  if (!review || button.disabled) return;
  button.disabled = true;
  $('shared-ready-status').textContent = '';
+ const rules = SharedReview.practiceRules(review.practice);
  try {
   const oldList = findPackList(review.pack.id, review.origin);
   const activeMode = SharedReview.matchingPractice(state, oldList?.id, review.mode);
   if (activeMode) {
-   if (activeMode === 'learning') state.learningSession.session.settings.allowHints = review.allowHints;
+   if (activeMode === 'learning') Object.assign(state.learningSession.session.settings,{allowHints:review.allowHints},rules);
+   else if (typeof rules.retypeOnMiss === 'boolean') state.session.retypeOnMiss = rules.retypeOnMiss;
    listId = oldList.id;
    resumeActivity();
    return;
@@ -153,7 +159,8 @@ async function startSharedReview() {
   await parkCurrentActivity();
   const parkedMode = SharedReview.matchingPractice(parked || {}, oldList?.id, review.mode);
   if (parkedMode) {
-   if (parkedMode === 'learning') parked.learningSession.session.settings.allowHints = review.allowHints;
+   if (parkedMode === 'learning') Object.assign(parked.learningSession.session.settings,{allowHints:review.allowHints},rules);
+   else if (typeof rules.retypeOnMiss === 'boolean') parked.session.retypeOnMiss = rules.retypeOnMiss;
    await resumeParkedActivity(oldList, parked);
    return;
   }
@@ -161,10 +168,10 @@ async function startSharedReview() {
   const list = selectedList();
   const records = await loadVocabulary(list);
   if (sharedReview !== review) return;
-  if (review.mode === 'spelling') await start(records.map(row => row.word), list);
+  if (review.mode === 'spelling') await start(records.map(row => row.word), list, rules);
   else beginLearning(list, records, {...coachOptions(), mode:review.mode, type:'practice', allowHints:review.allowHints,
    bankOrder:review.pack.id === Dictation.demoPackId && review.pack.version === 1 ? matterBankOrder : undefined,
-   difficulty:'adaptive', audioReplay:true, masteryPractice:true});
+   difficulty:'adaptive', audioReplay:true, masteryPractice:true,...rules});
  } catch (error) { $('shared-ready-status').textContent = error.message; }
  finally { button.disabled = false; }
 }
@@ -219,7 +226,7 @@ async function openSharedReview() {
   }
   if (pack.id !== id) throw Error('Wrong review set.');
   if (load !== sharedLoad) return;
-  sharedReview = {pack, origin, audio, audioStatus, preparedAudio, localPreview:!!previewTicket, mode:SharedReview.reviewMode(practice?.mode, pack.words), allowHints:practice?.allowHints !== false};
+  sharedReview = {pack, origin, audio, audioStatus, preparedAudio, practice, localPreview:!!previewTicket, mode:SharedReview.reviewMode(practice?.mode, pack.words), allowHints:practice?.allowHints !== false};
   $('local-preview-notice').hidden = preparedAudio;
   $('local-preview-notice').textContent = previewTicket ? 'Draft preview uses this device’s voice. Use recording previews in the teacher workspace to check Paul. This preview makes no AI requests.' : 'This older set uses this device’s voice when a saved recording is unavailable.';
   await renderSharedReady();

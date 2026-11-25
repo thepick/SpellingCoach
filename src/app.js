@@ -67,13 +67,13 @@ function next(s){
  if(s.words.every(w=>s.perWord[w].mastered)){s.current='';s.phase='done';return false;}
  s.round++;buildRound(s);if(!s.queue.length){s.current='';s.phase='done';return false;}takeNext(s);return true;
 }
-async function start(ws,list){
+async function start(ws,list,practice={}){
  if(!ws.length||!list)return;
  const records=await loadVocabulary(list).catch(()=>[]);
  if(state.session||state.learningSession)return;
  const meanings=dictionary();for(const {word,vocabulary} of records)if(vocabulary)meanings[word]={senseId:vocabulary.senseId,partOfSpeech:vocabulary.partOfSpeech,definition:vocabulary.definition};const defs=dictionary();for(const w of ws)defs[w]=(list.defs&&list.defs[w])||'';
  const perWord=dictionary();for(const w of ws){const old=state.progress[list.id]?.words?.[w]||{};perWord[w]={streak:0,misses:Number(old.misses)||0,lastSeen:Number(old.lastSeen)||null,initialDone:false,initialCorrect:false,missed:false,mastered:false,retypeMisses:0};}
- state.session={v:1,listId:list.id,listName:list.name,words:[...ws],defs,meanings,startedAt:now(),round:1,roundMembers:[],queue:[],current:'',currentType:'initial',phase:'prompt',perWord,log:[],missed:[],firstCorrect:0,initialCount:0,retypeMisses:0};
+ state.session={v:1,listId:list.id,listName:list.name,words:[...ws],defs,meanings,startedAt:now(),round:1,roundMembers:[],queue:[],current:'',currentType:'initial',phase:'prompt',perWord,log:[],missed:[],firstCorrect:0,initialCount:0,retypeMisses:0,...(typeof practice.retypeOnMiss==='boolean'?{retypeOnMiss:practice.retypeOnMiss}:{})};
  buildRound(state.session);next(state.session);save();renderPractice(true);
 }
 function submit(s,text){
@@ -81,7 +81,7 @@ function submit(s,text){
  s.log.push({type,word:w,typed:String(text),ok,at:now()});if(type==='initial'){p.initialDone=true;s.initialCount++;cp.initialAttempts++;if(ok){s.firstCorrect++;p.initialCorrect=true;cp.initialCorrect++;}}
  cp.lastSeen=Date.now();recordLegacySpelling(s.listId,w,ok);
  if(ok){p.streak++;if(p.streak>=2)p.mastered=true;s.phase='feedback';}
- else{p.streak=0;p.misses++;p.missed=true;cp.misses++;if(!s.missed.includes(w))s.missed.push(w);s.queue.push(w);s.feedbackDiff=diff(text,w);s.phase=state.settings.retypeOnMiss?'retype':'feedback';}
+ else{p.streak=0;p.misses++;p.missed=true;cp.misses++;if(!s.missed.includes(w))s.missed.push(w);s.queue.push(w);s.feedbackDiff=diff(text,w);s.phase=(typeof s.retypeOnMiss==='boolean'?s.retypeOnMiss:state.settings.retypeOnMiss)?'retype':'feedback';}
  save();return{ok,type,typed:String(text),word:w,diff:diff(text,w)};
 }
 function retype(s,text){
@@ -118,7 +118,7 @@ function countSelected(){
 }
 function loadSettings(){const x=state.settings;$('round-size').value=x.roundSize;$('retype-toggle').checked=x.retypeOnMiss;$('auto-advance').value=x.autoAdvanceMs;$('feedback-delay').value=x.feedbackMs;$('speech-rate').value=x.rate;$('rate-label').textContent=Number(x.rate).toFixed(2);$('pin-entry').value=x.pin;$('allow-variants').checked=x.allowVariants;refreshVoices();$('voice-select').value=x.voiceURI;}
 function speak(value,rate,onError,onStart){if(!speech){if(onError)onError();return;}try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(String(value)),v=voices.find(x=>x.voiceURI===state.settings.voiceURI)||voices.find(x=>/^en-US/i.test(x.lang))||voices.find(x=>/^en/i.test(x.lang));if(v)u.voice=v;if(onStart)u.onstart=onStart;if(onError)u.onerror=e=>{if(!['canceled','interrupted'].includes(e.error))onError();};u.rate=rate||state.settings.rate;speechSynthesis.speak(u);}catch(e){if(onError){onError();return;}speech=false;$('replay-button').hidden=true;$('slow-replay').hidden=true;$('visual-word').className='visual-prompt';$('visual-word').textContent='Prompt: '+value;}}
-function refreshVoices(){if(!speech)return;voices=speechSynthesis.getVoices().filter(v=>/^en(?:-|_)/i.test(v.lang));const sel=$('voice-select'),old=state.settings.voiceURI;sel.innerHTML='<option value="">System default</option>';voices.forEach(v=>sel.add(new Option(v.name+' ('+v.lang+')',v.voiceURI)));sel.value=old;}
+function refreshVoices(){if(!speech)return;voices=speechSynthesis.getVoices().filter(v=>/^en(?:-|_)/i.test(v.lang));const sel=$('voice-select'),old=state.settings.voiceURI;sel.innerHTML='<option value="">Automatic device voice</option>';voices.forEach(v=>sel.add(new Option(v.name+' ('+v.lang+')',v.voiceURI)));sel.value=old;}
 function renderTiles(s){const host=$('tiles');host.innerHTML='';s.words.forEach(w=>{const p=s.perWord[w],el=document.createElement('span');el.className='tile'+(p.mastered?' mastered':p.streak===1?' familiar':'');el.setAttribute('aria-label',p.mastered?'Mastered':p.streak===1?'One correct':'Not mastered');el.title=p.mastered?'Mastered':p.streak===1?'One correct':'Not mastered';host.append(el);});}
 function feedback(msg,kind,d){const box=$('feedback');box.className='feedback'+(kind?' '+kind:'');box.innerHTML='';if(msg){const t=document.createElement('div');t.textContent=msg;box.append(t);}if(d){const x=document.createElement('div');x.className='diff';x.innerHTML=textDiff(d);box.append(x);}}
 function renderCorrection(id, inputId, answer, explanation = '') {
@@ -159,7 +159,7 @@ function showSummary(r){const s=state.session;if(!s)return;clearTimeout(timer);s
 function copy(text){if(navigator.clipboard?.writeText)return navigator.clipboard.writeText(text).then(()=>true,()=>fallbackCopy(text));return Promise.resolve(fallbackCopy(text));}
 function fallbackCopy(text){const t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';(document.querySelector('dialog[open]')||document.body).append(t);t.select();let ok=false;try{ok=document.execCommand('copy');}catch(e){}t.remove();return ok;}
 function download(file,text,type){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=file;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-function practiceMissed(){const s=state.session;if(!s)return;const r=s.summary||summary(s);if(!Array.isArray(r.missed)||!r.missed.length)return;const l={id:s.listId,name:s.listName,words:s.words,defs:s.defs};state.session=null;save();start(r.missed,l);}
+function practiceMissed(){const s=state.session;if(!s)return;const r=s.summary||summary(s);if(!Array.isArray(r.missed)||!r.missed.length)return;const l={id:s.listId,name:s.listName,words:s.words,defs:s.defs};state.session=null;save();start(r.missed,l,{retypeOnMiss:s.retypeOnMiss});}
 function finishToSetup(){const checkpoint=state.learningCheckpoint;if(state.session&&!state.session.summary)finish(false);state.session=null;state.learningSession=null;save();if(checkpoint)getStore(checkpoint.backend).then(store=>store.remove(checkpoint.key)).catch(()=>{});renderSetup();if(sharedReview)renderSharedReady();else showLanding();}
 function backToSetup(){if(state.settings.pin){$('pin-check').value='';$('pin-error').textContent='';$('pin-overlay').hidden=false;$('pin-check').focus();}else finishToSetup();}
 function validBackup(x){if(!x||x.v!==1||!Array.isArray(x.lists)||!x.lists.every(listOK))throw Error('Choose a WordLab backup with a valid lists array.');return x.lists.map(l=>({id:l.id,name:l.name,words:wordsUnique(l.words),defs:dictionary(l.defs),updatedAt:now()}));}
@@ -322,7 +322,15 @@ $('copy-list').onclick=()=>{
  copy(ws.map(csv).join('\r\n')).then(ok=>{if(listDraft===draft)editorStatus(ok?'Draft copied as CSV.':'Copy failed.');});
 };
 $('preview-voice').onclick=()=>speak('The quick brown fox jumps over the lazy dog.',state.settings.rate);
-$('open-tools').onclick=()=>{$('tools-dialog').showModal();};
+$('open-tools').onclick=()=>{
+ $('tools-teaching-options').hidden=entryPage==='student';
+ $('local-teaching-defaults').hidden=!!sharedReview;
+ for(const id of ['retype-toggle','allow-variants'])$(id).disabled=!!sharedReview;
+ const savedRules=sharedReview?.practice;
+ const assignedRules=typeof savedRules?.retypeOnMiss==='boolean'&&typeof savedRules?.allowVariants==='boolean';
+ $('tools-teaching-help').textContent=sharedReview?(assignedRules?'This assignment uses its teacher’s saved rules. Local defaults cannot change them.':'This older link may use local teaching defaults. Ask the teacher to update the link to save its teaching rules.'):'Defaults for local practice and new student links. Shared sets have their own rules in Student link.';
+ $('tools-dialog').showModal();
+};
 $('close-tools').onclick=()=>$('tools-dialog').close();
 $('done-tools').onclick=()=>$('tools-dialog').close();
 ['round-size','retype-toggle','auto-advance','feedback-delay','voice-select','pin-entry','allow-variants'].forEach(id=>$(id).addEventListener('change',()=>{state.settings.roundSize=clamp($('round-size').value,1,20,7);state.settings.retypeOnMiss=$('retype-toggle').checked;state.settings.autoAdvanceMs=clamp($('auto-advance').value,0,5000,600);state.settings.feedbackMs=clamp($('feedback-delay').value,300,10000,1800);state.settings.voiceURI=$('voice-select').value;state.settings.rate=Math.max(.5,Math.min(1.2,Number($('speech-rate').value)||.85));state.settings.pin=/^\d{4}$/.test($('pin-entry').value)?$('pin-entry').value:'';state.settings.allowVariants=$('allow-variants').checked;save();}));
