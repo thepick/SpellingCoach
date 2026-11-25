@@ -11,7 +11,7 @@ function newListId() {
 }
 
 function listMetadata(list) {
- const keys = ['vocabKey', 'vocabBackend', 'packId', 'packVersion', 'sharedOrigin', 'orderReceipt'];
+ const keys = ['vocabKey', 'vocabBackend', 'packId', 'packVersion', 'remoteVersion', 'remoteConflict', 'sharedOrigin', 'orderReceipt'];
  const result = {};
  for (const key of keys) if (Object.prototype.hasOwnProperty.call(list, key)) result[key] = list[key];
  return result;
@@ -46,9 +46,10 @@ function loadState() {
     throw Error('Migration could not be verified.');
    }
    try {
-    const originalBackup = localStorage.getItem(LEGACY_BACKUP_KEY);
-    if (originalBackup === null) localStorage.setItem(LEGACY_BACKUP_KEY, text);
-    else if (originalBackup !== text) localStorage.setItem(LEGACY_BACKUP_KEY + '.' + Date.now(), text);
+    const recoveryKey = KEY.startsWith('spell.teacher:') ? KEY + '.v1.backup' : LEGACY_BACKUP_KEY;
+    const originalBackup = localStorage.getItem(recoveryKey);
+    if (originalBackup === null) localStorage.setItem(recoveryKey, text);
+    else if (originalBackup !== text) localStorage.setItem(recoveryKey + '.' + Date.now(), text);
     localStorage.setItem(KEY, JSON.stringify(migrated));
    } catch (error) {
     storageIssue = 'The upgrade could not save a recovery copy. The original spelling data is still in this browser.';

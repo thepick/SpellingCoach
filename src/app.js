@@ -4,7 +4,8 @@
 const SELFTEST = new URLSearchParams(location.search).has('selftest');
 const entryPage = document.body.dataset.entry || 'offline';
 const studentPreview = entryPage === 'student' && new URLSearchParams(location.search).get('preview') === '1';
-const VERSION='0.2.0',KEY='spell.state',D={roundSize:7,retypeOnMiss:true,autoAdvanceMs:600,feedbackMs:1800,voiceURI:'',rate:.85,pin:'',allowVariants:false};
+let KEY = entryPage === 'teacher' ? 'spell.teacher.signed-out' : 'spell.state';
+const VERSION='0.2.0',D={roundSize:7,retypeOnMiss:true,autoAdvanceMs:600,feedbackMs:1800,voiceURI:'',rate:.85,pin:'',allowVariants:false};
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),now=()=>new Date().toISOString();
 const norm=s=>String(s??'').trim().replace(/\s+/g,' ').replace(/[’‘]/g,"'");
 function equal(a,b){a=norm(a);b=norm(b);return /[A-Z]/.test(b)?a===b:a.toLowerCase()===b.toLowerCase();}
@@ -56,7 +57,7 @@ function selectedGroup(words,selection){
  return -1;
 }
 function selectedWords(){const l=selectedList();if(!l)return[];return Array.isArray(state.settings.selected[l.id])?state.settings.selected[l.id].filter(w=>l.words.includes(w)):[...l.words];}
-function addList(name,ws,defs){const l={id:newListId(),name:name||'New list',words:wordsUnique(ws),defs:dictionary(defs),updatedAt:now()};state.lists.push(l);state.settings.selected[l.id]=[...l.words];listId=l.id;save();renderSetup();return l;}
+function addList(name,ws,defs){const l={id:newListId(),name:name||'New list',words:wordsUnique(ws),defs:dictionary(defs),updatedAt:now()};state.lists.push(l);state.settings.selected[l.id]=[...l.words];listId=l.id;save();renderSetup();if(ai.role==='teacher'&&ai.token)autosaveTeacherSet(l).catch(error=>status(error.message));return l;}
 function clearListLearningData(target,id){delete target.progress[id];delete target.history[id];if(target.learning)delete target.learning[id];if(target.familiar)delete target.familiar[id];if(target.learningHistory)target.learningHistory=target.learningHistory.filter(x=>x.listId!==id);}
 function comparator(s,a,b){const x=s.perWord[a],y=s.perWord[b];return(y.misses-x.misses)||((x.lastSeen||-Infinity)-(y.lastSeen||-Infinity))||(s.words.indexOf(a)-s.words.indexOf(b));}
 function buildRound(s){const left=s.words.filter(w=>!s.perWord[w].mastered).sort((a,b)=>comparator(s,a,b));s.roundMembers=left.slice(0,state.settings.roundSize);s.queue=[...s.roundMembers];}
@@ -132,7 +133,7 @@ function playPracticeRecording(rate, slow = false){
  const s=state.session;if(!s)return;
  if(s.phase==='prompt')$('answer-input').focus();
  const clip=sharedAudioPath(s.listId,s.current,'dictation',s.current);
- const fallback=()=>dictate(s.listId,s.current,s.meanings?.[s.current],rate);
+ const fallback=()=>sharedReview?.preparedAudio ? feedback('The prepared recording is unavailable. Ask your teacher to prepare it before practicing.','bad') : dictate(s.listId,s.current,s.meanings?.[s.current],rate);
  if(clip)playPublishedRecording(clip,slow,()=>feedback('The recording could not play. Press Listen to try again.','bad'),()=>feedback('',''));else fallback();
 }
 function renderPractice(play){
@@ -248,10 +249,11 @@ $('create-list-form').onsubmit=e=>{
  if(l){
   const oldWords=l.words,chosen=new Set(selectedWords());
   if (l.name !== name || oldWords.length !== ws.length || oldWords.some((word, index) => word !== ws[index])) l.packVersion = (l.packVersion || 1) + 1;
-  l.name=name;l.words=ws;l.defs=defs;l.updatedAt=now();
+  l.name=name;l.words=ws;l.defs=defs;l.audioStatus=null;l.updatedAt=now();
   state.settings.selected[l.id]=ws.filter(w=>chosen.has(w)||!oldWords.includes(w));
   save();renderSetup();
  }else addList(name,ws,defs);
+ if (l && ai.role === 'teacher' && ai.token) autosaveTeacherSet(l).catch(error=>status('Saved in this browser. '+error.message));
  $('create-list-dialog').close();
  status((l?'Saved “':'Created “')+name+'” with '+ws.length+' words. Choose words to practice or begin your session.');
 };
@@ -269,7 +271,15 @@ $('split-list').onclick=()=>{
   save();renderSetup();$('create-list-dialog').close();status('Split the words into '+groups.length+' lists.');
  }catch(error){editorStatus(error.message);}
 };
-$('delete-list').onclick=()=>{const l=selectedList();if(l&&confirm('Delete “'+l.name+'” and its words?')){state.lists=state.lists.filter(x=>x.id!==l.id);delete state.settings.selected[l.id];clearListLearningData(state,l.id);clearParkedActivity(l.id);removeVocabulary(l);listId=state.lists[0]?.id||'';save();renderSetup();status('List deleted.');}};
+$('delete-list').onclick=async()=>{
+ const l=selectedList(),owner=state;if(!l)return;
+ const message=ai.role==='teacher'&&ai.token?'Delete private saved set “'+l.name+'” and stop pending recordings? Published student links remain available.':'Delete “'+l.name+'” and its words?';
+ if(!confirm(message))return;
+ try{
+  if(!await deleteTeacherSet(l)||state!==owner)return;
+  state.lists=state.lists.filter(x=>x.id!==l.id);delete state.settings.selected[l.id];clearListLearningData(state,l.id);clearParkedActivity(l.id);removeVocabulary(l);listId=state.lists[0]?.id||'';save();renderSetup();status('List deleted.');
+ }catch(error){if(state===owner)status('Could not delete the saved set. '+error.message);}
+};
 $('reset-progress').onclick=()=>{const l=selectedList();if(!l)return;const message='Reset learning progress for “'+l.name+'”? This clears its review statistics and past practice summaries. The word list, definitions, selection, and settings will stay.';if(!confirm(message))return;clearListLearningData(state,l.id);clearParkedActivity(l.id);save();status('Learning progress and practice summaries reset for “'+l.name+'”.');};
 
 $('select-all').onclick=()=>{const l=selectedList();if(l){state.settings.selected[l.id]=[...l.words];save();renderSetup();}};

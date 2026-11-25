@@ -35,7 +35,7 @@ function sharedAudioPath(listId, word, type, spoken) {
  if (!review.audio?.size) return null;
  const index = review.pack.words.findIndex(row => row.word === word);
  if (index < 0) return null;
- const skill = type === 'dictation' ? 'spelling' : 'vocabulary';
+ const skill = type === 'dictation' ? 'spelling' : type === 'study' ? 'study' : 'vocabulary';
  const prompt = Learning.practiceAudioPrompts(review.pack.words[index], index)
   .find(item => item.skill === skill && item.text === spoken && review.audio.has(item.key));
  return prompt ? review.origin + '/api/packs/' + encodeURIComponent(review.pack.id) + '/audio/' + review.pack.version + '/' + prompt.key : null;
@@ -68,10 +68,26 @@ async function dictate(listId, word, vocabulary, rate, onError, onStart) {
  speak(word, rate, onError, onStart);
 }
 
+async function playStudyRecordings(card, example) {
+ const spoken = example || card.word, study = studyState;
+ const reverseHidden = $('study-reverse').checked && !study.revealed && !example;
+ const clip = !reverseHidden && sharedAudioPath(study.list.id,card.word,example ? 'study' : 'dictation',spoken);
+ const failed = () => {
+  if (studyState !== study) return;
+  let message = $('study-audio-status');
+  if (!message) { message = document.createElement('p'); message.id = 'study-audio-status'; message.setAttribute('role','status'); $('study-back').after(message); }
+  message.textContent = 'The prepared recording is unavailable. Ask your teacher to prepare it, or read the example.';
+ };
+ if ($('study-audio-status')) $('study-audio-status').textContent = '';
+ if (clip) await playPublishedRecording(clip,false,failed);
+ else if (sharedReview?.preparedAudio) failed();
+ else speak(example || (study.revealed ? card.audio : card.frontAudio),undefined,failed);
+}
+
 function editorRecordingTarget() {
  const word = $('vocab-word').value;
  const row = editorRecords.find(item => item.word === word);
- return row && editorList ? {listId: editorList.id, word, vocabulary: row.vocabulary} : null;
+ return row && editorList ? {listId: editorList.id, word, vocabulary: row.vocabulary, workspace:state, token:ai.token} : null;
 }
 
 async function renderRecordingControls() {
@@ -87,10 +103,11 @@ async function renderRecordingControls() {
 
 function updateTroyControls() {
  const teacher = ai.role === 'teacher';
+ const manual = teacher && !!ai.teacher?.isAdmin;
  $('troy-sign-in').hidden = teacher;
- $('generate-troy').disabled = !teacher || !ai.config.dictationEnabled || generatingTroy ||
+ $('generate-troy').disabled = !manual || !ai.config.dictationEnabled || generatingTroy ||
   !$('troy-sentence').value.trim();
- $('troy-help').textContent = teacher && !ai.config.dictationEnabled
+ $('troy-help').textContent = teacher && !manual ? 'Recordings prepare automatically when you save this set. Check Prepared recordings in your online vocabulary tools.' : teacher && !ai.config.dictationEnabled
   ? 'Audio generation is unavailable. You can attach a WAV file.'
   : 'Use the exact spelling word in a sentence that shows its meaning.';
 }
@@ -103,9 +120,12 @@ function prefillTroySentence(row) {
 
 let generatingTroy = false;
 async function saveRecording(target, bytes) {
+ if (target.workspace !== state || target.token !== ai.token) throw Error('The workspace changed. Recording was not saved.');
  Dictation.validateRecording(bytes);
  const key = Dictation.recordingKey(target.listId, target.word, target.vocabulary);
- await (await getStore('indexedDB')).put(key, new Blob([bytes], {type:'audio/wav'}));
+ const store = await getStore('indexedDB');
+ if (target.workspace !== state || target.token !== ai.token) throw Error('The workspace changed. Recording was not saved.');
+ await store.put(key, new Blob([bytes], {type:'audio/wav'}));
 }
 
 function initDictation() {

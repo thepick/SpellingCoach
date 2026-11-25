@@ -9,7 +9,7 @@ dialog.tools-dialog{width:min(760px,calc(100vw - 28px));max-height:90vh;overflow
 .brand { display: inline-flex; align-items: center; gap: 9px; }
 .brand-icon { display: block; flex: none; }
 .theme-control { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--muted); font-size: .875rem; }
-.theme-control select { width: auto; min-height: 40px; padding: .45rem .55rem; font-weight: 600; }
+.theme-control select { width: auto; min-height: 40px; padding: .45rem .55rem; font-weight: 600; text-align: center; text-align-last: center; }
 @media (max-width: 430px) { .topbar { gap: 8px; flex-wrap: wrap; } .brand { font-size: 1.125rem; } .theme-control { gap: 6px; } }
 [hidden] { display: none !important; }
 a { color: var(--accent); text-underline-offset: .18em; }
@@ -100,3 +100,12 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 #shared-ready p:empty { display: none; }
 :is(#shared-start, #practice-complete-done) { width: 100%; max-width: 20rem; min-height: 52px; font-size: 1.08rem; }
 .app:has(:is(#shared-ready, #practice-complete-screen):not([hidden])) .topbar:not(:has(#storage-warning:not([hidden]))) { display: none; }
+
+#teacher-recordings, #teacher-invitations, #teacher-accounts { list-style: none; padding: 0; }
+:is(#teacher-recordings, #teacher-invitations, #teacher-accounts) li { display: flex; align-items: start; justify-content: space-between; gap: .75rem; padding: .65rem 0; border-bottom: 1px solid var(--line); }
+:is(#teacher-recordings, #teacher-invitations, #teacher-accounts) li span { min-width: 0; overflow-wrap: anywhere; }
+:is(#teacher-recordings, #teacher-invitations, #teacher-accounts) button { flex: none; }
+#teacher-recordings { max-height: 20rem; overflow: auto; }
+#teacher-dialog[data-view=share] #teacher-account { display: none; }
+#teacher-account .checkline { align-items: baseline; }
+#teacher-account input[type=checkbox] { flex: none; }

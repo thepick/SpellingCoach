@@ -259,3 +259,24 @@ test('beginner completion records recognition without recall and repeated misses
   }
   assert.equal(repeat.status, 'finished');
 });
+
+test('audio preparation keeps word and blank prompts separate from full study examples', () => {
+  const row = record('wistfully');
+  row.vocabulary.examples = ['She looked wistfully at her old home.', 'He smiled wistfully at the photograph.'];
+  const prompts = L.practiceAudioPrompts(row, 4);
+  assert.deepEqual(prompts.find(prompt => prompt.key === '4-s'), {key:'4-s', skill:'spelling', text:'wistfully'});
+  assert.deepEqual(prompts.filter(prompt => prompt.skill === 'study'), [
+    {key:'4-e0', skill:'study', text:'She looked wistfully at her old home.'},
+    {key:'4-e1', skill:'study', text:'He smiled wistfully at the photograph.'}
+  ]);
+  const practice = prompts.filter(prompt => prompt.skill === 'vocabulary');
+  assert.equal(practice.length, 3);
+  assert.equal(practice[0].key, '4-v0');
+  for (const prompt of practice) {
+    assert.match(prompt.text, /blank/);
+    assert.equal(prompt.text.includes('wistfully'), false);
+  }
+  assert.deepEqual(L.practiceAudioPrompts({word:'cloth',vocabulary:null}, 0), [
+    {key:'0-s',skill:'spelling',text:'cloth'}
+  ]);
+});

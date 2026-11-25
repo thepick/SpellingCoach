@@ -2,6 +2,11 @@ import { ApiError } from './validation.mjs';
 
 const MAX_WAV_BYTES = 1024 * 1024;
 const unavailable = () => new ApiError(502, 'dictation_unavailable', 'WordLab could not create a recording.');
+function providerFailure(response) {
+  if (response.status === 401 || response.status === 403) return new ApiError(response.status,'provider_auth','The audio provider rejected this key. Replace or reconnect the key.');
+  if (response.status >= 400 && response.status < 500) return new ApiError(response.status,'provider_request','The audio provider rejected the request or account. Check the key, account balance, and input.');
+  return unavailable();
+}
 
 export function finishStreamedWav(bytes) {
   const wav = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -44,6 +49,7 @@ export function hasSpeechSignal(bytes) {
 }
 
 export async function synthesizeDictation(key, sentence) {
+  if (typeof sentence !== 'string' || !sentence.length || sentence.length > 200) throw new ApiError(400,'invalid_input','Audio text must contain 1–200 characters.');
   let response;
   try {
     response = await fetch('https://api.groq.com/openai/v1/audio/speech', {
@@ -53,7 +59,8 @@ export async function synthesizeDictation(key, sentence) {
     });
   } catch { throw unavailable(); }
   if (response.status === 429) throw new ApiError(429, 'dictation_rate_limit', 'Groq’s audio allowance is busy. Try again later.');
-  if (!response.ok || !response.body) throw unavailable();
+  if (!response.ok) throw providerFailure(response);
+  if (!response.body) throw unavailable();
   const reader = response.body.getReader();
   let length = 0;
   const chunks = [];
@@ -69,5 +76,43 @@ export async function synthesizeDictation(key, sentence) {
   const bytes = new Uint8Array(length);
   let offset = 0;
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+  return finishStreamedWav(bytes);
+}
+
+export async function synthesizeAlternateAudio(key, sentence, fetchRequest = fetch) {
+  if (typeof sentence !== 'string' || !sentence.length || sentence.length > 200) throw new ApiError(400,'invalid_input','Audio text must contain 1–200 characters.');
+  let response;
+  try {
+    response = await fetchRequest('https://openrouter.ai/api/v1/audio/speech',{
+      method:'POST',redirect:'manual',signal:AbortSignal.timeout(25000),
+      headers:{Authorization:'Bearer ' + key,'Content-Type':'application/json'},
+      body:JSON.stringify({model:'mistralai/voxtral-mini-tts-2603',voice:'en_paul_neutral',input:sentence,response_format:'pcm',provider:{data_collection:'deny'}})
+    });
+  } catch { throw unavailable(); }
+  if (response.status === 429) throw new ApiError(429,'dictation_rate_limit','The alternate audio provider is busy. Try again later.');
+  if (!response.ok) throw providerFailure(response);
+  if (!response.body) throw unavailable();
+  const contentType = response.headers.get('Content-Type') ?? '';
+  if (!/^audio\/(?:pcm|L16)(?:;|$)/i.test(contentType)) throw unavailable();
+  const rate = /(?:^|;)\s*(?:rate|samplerate)\s*=\s*"?(\d+)/i.exec(contentType)?.[1];
+  const channels = /(?:^|;)\s*channels\s*=\s*"?(\d+)/i.exec(contentType)?.[1];
+  // Mistral's Voxtral TTS 2603 params/demo specify 24 kHz mono PCM; reject conflicting response metadata.
+  if (rate && rate !== '24000' || channels && channels !== '1' || /^audio\/L16/i.test(contentType)) throw unavailable();
+  const reader = response.body.getReader(), chunks = [];
+  let size = 0;
+  for (;;) {
+    const {done,value} = await reader.read();
+    if (done) break;
+    size += value.length;
+    if (size > MAX_WAV_BYTES - 44) { await reader.cancel(); throw unavailable(); }
+    chunks.push(value);
+  }
+  if (size < 2 || size % 2) throw unavailable();
+  const bytes = new Uint8Array(44+size), view = new DataView(bytes.buffer);
+  for (const [at,text] of [[0,'RIFF'],[8,'WAVE'],[12,'fmt '],[36,'data']]) bytes.set(new TextEncoder().encode(text),at);
+  view.setUint32(4,36+size,true); view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,1,true);
+  view.setUint32(24,24000,true); view.setUint32(28,48000,true); view.setUint16(32,2,true); view.setUint16(34,16,true); view.setUint32(40,size,true);
+  let offset = 44;
+  for (const chunk of chunks) { bytes.set(chunk,offset); offset += chunk.length; }
   return finishStreamedWav(bytes);
 }

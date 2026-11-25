@@ -228,7 +228,8 @@ const Learning = (() => {
 
   function practiceAudioPrompts(record, index) {
     return [{key:index + '-s', skill:'spelling', text:record.word}, ...phasedPrompts(record, index)
-      .map((question, prompt) => ({key:index + '-v' + prompt, skill:'vocabulary', text:audio(question)}))];
+      .map((question, prompt) => ({key:index + '-v' + prompt, skill:'vocabulary', text:audio(question)})),
+      ...(record.vocabulary?.examples || []).map((text, example) => ({key:index + '-e' + example, skill:'study', text}))];
   }
 
   function ordered(values, order) {

@@ -19,7 +19,11 @@ function getStore(backend) {
    throw error;
   }));
  }
- return vocabularyStores.get(backend);
+ const namespace = KEY.startsWith('spell.teacher:') ? KEY + ':' : '';
+ return vocabularyStores.get(backend).then(store => !namespace ? store : {
+  kind:store.kind,
+  get:key=>store.get(namespace+key), put:(key,value)=>store.put(namespace+key,value), remove:key=>store.remove(namespace+key)
+ });
 }
 const titleForType = {
  dictation: 'Listen, then spell',
@@ -193,6 +197,7 @@ function playQuestion(initial, slow) {
   () => speak(message, rate, failed, ready);
  const clip = sharedAudioPath(owner, question.word, question.type, Learning.audio(question));
  if (clip) playPublishedRecording(clip, slow, failed, ready);
+ else if (sharedReview?.preparedAudio) failed();
  else fallback();
 }
 
@@ -522,10 +527,15 @@ function renderStudy() {
  if (card && study.revealed) {
   for (const line of [card.back, card.partOfSpeech, ...card.examples].filter(Boolean)) {
    const p = document.createElement('p'); p.textContent = line; $('study-back').append(p);
+   if (card.examples.includes(line)) {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'ghost small';
+    button.textContent = 'Listen to example'; button.setAttribute('aria-label','Listen to example: '+line);
+    button.onclick = ()=>playStudyRecordings(card,line); $('study-back').append(button);
+   }
   }
  }
  $('study-reveal').textContent = study.revealed ? 'Hide answer' : 'Reveal answer';
- $('study-listen').disabled = !card || !speech;
+ $('study-listen').disabled = !card || !speech && !sharedReview;
  $('study-reveal').disabled = !card;
  $('study-familiar').disabled = !card || reverse && !study.revealed;
  $('study-familiar').textContent = card && state.familiar[study.list.id]?.includes(wordKey(card.word)) ? 'Mark as unfamiliar' : 'Mark as familiar';
@@ -540,12 +550,15 @@ function outputPack(list, records) {
 }
 
 async function saveVocabulary(list, records, metadata) {
+ const owner = state;
  const store = await getStore();
+ if (state !== owner || !owner.lists.includes(list)) throw Error('This workspace changed. Sign in again to continue.');
  const before = list.vocabKey, beforeBackend = list.vocabBackend;
  const next = 'list:' + list.id + ':' + newListId();
  await store.put(next, records);
+ if (state !== owner || !owner.lists.includes(list)) { await store.remove(next).catch(()=>{}); throw Error('This workspace changed. Sign in again to continue.'); }
  const snapshot = {...list};
- Object.assign(list, metadata, {vocabKey: next, vocabBackend: store.kind, updatedAt: now()});
+ Object.assign(list, metadata, {vocabKey: next, vocabBackend: store.kind, audioStatus:null, updatedAt: now()});
  if (!save()) {
   for (const key of Object.keys(list)) delete list[key];
   Object.assign(list, snapshot);
@@ -554,6 +567,8 @@ async function saveVocabulary(list, records, metadata) {
  }
  if (before) getStore(beforeBackend).then(oldStore => oldStore.remove(before)).catch(() => {});
  renderSetup();
+ if (ai.role === 'teacher' && ai.token && !restoringTeacherSets) await autosaveTeacherSet(list);
+ if (state !== owner) throw Error('This workspace changed. Sign in again to continue.');
 }
 
 function previewPack(pack) {
@@ -565,6 +580,7 @@ function previewPack(pack) {
 }
 
 async function importPack(pack, origin) {
+ const owner = state;
  let list = findPackList(pack.id, origin);
  const fresh = !list;
  const before = list && structuredClone({progress: state.progress[list.id], learning: state.learning[list.id],
@@ -575,6 +591,7 @@ async function importPack(pack, origin) {
   list = {id: newListId(), name: pack.name, words, defs: dictionary(), updatedAt: now()};
  } else {
   const current = outputPack(list, await loadVocabulary(list));
+  if (state !== owner) throw Error('The workspace changed. Import cancelled.');
   const plan = Vocabulary.planPackUpdate(current, pack);
   if (plan.action === 'older' || plan.action === 'unchanged') {
    if (origin && !list.sharedOrigin) { list.sharedOrigin = origin; save(); }
@@ -602,6 +619,7 @@ async function importPack(pack, origin) {
  try {
   await saveVocabulary(list, pack.words, {name: pack.name, words, packId: pack.id, packVersion: pack.version, ...(origin ? {sharedOrigin: origin} : {})});
  } catch (error) {
+  if (state !== owner) throw error;
   if (fresh) { state.lists = state.lists.filter(row => row !== list); delete state.settings.selected[list.id]; }
   else for (const [target, key] of [[state.progress, 'progress'], [state.learning, 'learning'], [state.familiar, 'familiar'], [state.settings.selected, 'selection']]) {
    if (before[key] === undefined) delete target[list.id];
@@ -614,14 +632,18 @@ async function importPack(pack, origin) {
 }
 
 async function exportFullBackup() {
+ const owner = state, token = ai.token, snapshot = structuredClone(state), historyStore = getStore('indexedDB');
  const packs = [];
- for (const list of state.lists) if (list.vocabKey) packs.push({listId: list.id, records: await loadVocabulary(list)});
- const archived = await getStore('indexedDB').then(async store => {
-  const entries = await Promise.all(state.learningHistory.filter(row => row.report.status === 'finished')
+ for (const list of snapshot.lists) if (list.vocabKey) {
+  if (state !== owner || ai.token !== token) return;
+  packs.push({listId: list.id, records: await loadVocabulary(list)});
+ }
+ const archived = await historyStore.then(async store => {
+  const entries = await Promise.all(snapshot.learningHistory.filter(row => row.report.status === 'finished')
    .map(row => store.get('history:' + row.listId + ':' + row.id)));
   return entries.filter(Boolean);
  }).catch(() => []);
- const snapshot = {...state};
+ if (state !== owner || ai.token !== token) return;
  delete snapshot.learningCheckpoint;
  const contents = JSON.stringify({kind: 'spellingcoach-backup', v: 1, state: snapshot, packs, questionHistory: archived,
   theme: themePreference.value});
@@ -630,6 +652,7 @@ async function exportFullBackup() {
 }
 
 async function restoreFullBackup(backup) {
+ const old = state, token = ai.token;
  if (backup.v !== 1 || backup.state?.v !== 2 || !Array.isArray(backup.state.lists) || !Array.isArray(backup.packs)) {
   throw Error('This full backup format is unsupported.');
  }
@@ -658,24 +681,27 @@ async function restoreFullBackup(backup) {
  }
  if (!confirm('Replace all lists, settings, and progress in this browser with this full backup?')) return 'Restore cancelled.';
  const store = staged.size ? await getStore() : null;
- const old = state, stagedKeys = [];
+ const stagedKeys = [];
  try {
   for (const list of restored.lists) if (staged.has(list.id)) {
+   if (state !== old || ai.token !== token) throw Error('The workspace changed. Restore cancelled.');
    list.vocabKey = 'list:' + list.id + ':' + newListId();
    list.vocabBackend = store.kind;
    stagedKeys.push(list.vocabKey);
    await store.put(list.vocabKey, staged.get(list.id));
   }
+  if (state !== old || ai.token !== token) throw Error('The workspace changed. Restore cancelled.');
   state = restored;
   if (!save()) throw Error('Browser storage could not restore the backup.');
  } catch (error) {
-  state = old;
+  if (ai.token === token && state === restored) state = old;
   if (store) for (const key of stagedKeys) await store.remove(key).catch(() => {});
   throw error;
  }
  if (Array.isArray(backup.questionHistory)) {
   await getStore('indexedDB').then(async historyStore => {
    for (const entry of backup.questionHistory.slice(-100)) {
+    if (state !== restored || ai.token !== token) return;
     if (restored.lists.some(list => list.id === entry?.listId) && Number.isSafeInteger(entry.sessionId) &&
         Array.isArray(entry.questions) && entry.questions.length <= 3200) {
      await historyStore.put('history:' + entry.listId + ':' + entry.sessionId, entry);
@@ -683,6 +709,7 @@ async function restoreFullBackup(backup) {
    }
   }).catch(() => {});
  }
+ if (state !== restored || ai.token !== token) return 'Restore stopped because the workspace changed.';
  for (const list of old.lists) removeVocabulary(list);
  themePreference.set(backup.theme);
  renderTheme();
@@ -751,6 +778,7 @@ function renderEditFields() {
 }
 
 async function changeVocabulary(next, preferred) {
+ const owner = state;
  const list = editorList, before = editorRecords;
  const oldLearning = structuredClone(state.learning[list.id] || {});
  const oldFamiliar = (state.familiar[list.id] || []).slice();
@@ -766,10 +794,10 @@ async function changeVocabulary(next, preferred) {
  try {
   await saveVocabulary(list, next, {packVersion: (list.packVersion || 0) + 1});
  } catch (error) {
-  state.learning[list.id] = oldLearning;
-  state.familiar[list.id] = oldFamiliar;
+  if (state === owner) { state.learning[list.id] = oldLearning; state.familiar[list.id] = oldFamiliar; }
   throw error;
  }
+ if (state !== owner) return;
  editorRecords = next;
  undoVocabulary = before;
  renderVocabularyEditor(preferred);
@@ -842,7 +870,7 @@ function initCoach() {
  };
  $('study-listen').onclick = () => {
   const card = studyCards()[studyState.index];
-  if (card) speak(studyState.revealed ? card.audio : card.frontAudio);
+  if (card) playStudyRecordings(card);
  };
  $('study-reveal').onclick = () => { studyState.revealed = !studyState.revealed; renderStudy(); };
  for (const [id, delta] of [['study-prev', -1], ['study-next', 1]]) $(id).onclick = () => {
@@ -872,7 +900,9 @@ function initCoach() {
    } else {
     list.orderReceipt = {receipt, words: values.slice()};
     if (ordered.some((word, index) => word !== list.words[index])) list.packVersion = (list.packVersion || 1) + 1;
-    list.words = ordered; list.updatedAt = now(); save(); renderSetup(); status('Saved the new word order.');
+    list.words = ordered; list.audioStatus = null; list.updatedAt = now(); save(); renderSetup();
+    if (ai.role === 'teacher' && ai.token) await autosaveTeacherSet(list);
+    status('Saved the new word order.');
    }
    $('shuffle-dialog').close();
   } catch (error) { $('shuffle-error').textContent = error.message; }
@@ -937,10 +967,12 @@ function initCoach() {
  $('export-json').onclick = () => exportFullBackup().catch(error => { $('backup-status').textContent = error.message; });
  $('import-json').onclick = () => $('json-file').click();
  $('json-file').onchange = async event => {
+  const owner = state, token = ai.token;
   const file = event.target.files[0]; event.target.value = '';
   if (!file) return;
   try {
    const data = await readImport(file);
+   if (state !== owner || ai.token !== token) return;
    if (data.kind === 'spellingcoach-pack') {
     $('tools-dialog').close(); previewPack(data);
    } else if (data.kind === 'spellingcoach-backup') {

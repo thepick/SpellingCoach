@@ -1,0 +1,298 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+
+function harness(options={}) {
+ const elements = new Map();
+ const context = vm.createContext({console, URL, URLSearchParams, setTimeout, clearTimeout,
+  localStorage:{setItem(){},getItem(){return null;},removeItem(){}},
+  $:id => {if (!elements.has(id)) elements.set(id,{textContent:'',value:'',hidden:false,checked:false}); return elements.get(id);},
+  entryPage:options.entryPage || 'teacher', location:options.location || {origin:'https://example.test'},
+  document:{body:{dataset:{entry:options.entryPage || 'teacher'}}},
+ });
+ vm.runInContext(fs.readFileSync('src/teacher.js','utf8'), context);
+ return {context,run:code => vm.runInContext(code,context),elements};
+}
+
+test('local teacher and practice pages use their local service; offline retains the published service',()=>{
+ for (const hostname of ['localhost','127.0.0.1']) {
+  const location={hostname,origin:'http://'+hostname+':8765'};
+  assert.equal(harness({location}).run('ONLINE_CONFIG'),location.origin);
+  assert.equal(harness({location,entryPage:'student'}).run('ONLINE_CONFIG'),location.origin);
+  assert.equal(harness({location,entryPage:'offline'}).run('ONLINE_CONFIG'),'https://wordlab.mtomlinson.ca');
+ }
+});
+
+test('teacher storage identity is stable and generation recovery is isolated', () => {
+ const h = harness();
+ h.run("ai.teacher={id:'teacher-a'}; ai.root='https://example.test'");
+ assert.equal(h.run('teacherStorageKey()'),'spell.teacher:https%3A%2F%2Fexample.test:teacher-a');
+ const first = h.run('generationStorageKey()');
+ h.run("ai.teacher={id:'teacher-b'}");
+ assert.notEqual(h.run('generationStorageKey()'),first);
+});
+
+test('key settings omit empty credentials and send removal only explicitly', () => {
+ const h = harness();
+ h.elements.set('teacher-groq-key',{value:''}); h.elements.set('teacher-openrouter-key',{value:' sk-local '});
+ h.elements.set('teacher-delete-groq',{checked:false}); h.elements.set('teacher-delete-openrouter',{checked:false});
+ h.elements.set('teacher-paid-text',{checked:false}); h.elements.set('teacher-alternate-audio',{checked:false});
+ const body = JSON.parse(h.run('JSON.stringify(teacherKeyChanges())'));
+ assert.equal(Object.hasOwn(body,'groq'),false);
+ assert.equal(body.openrouter,'sk-local');
+ h.elements.get('teacher-delete-groq').checked = true;
+ assert.equal(h.run('teacherKeyChanges().groq'),null);
+});
+
+test('public study routing requires the full-example manifest entry', () => {
+ const context = vm.createContext({URL, location:{origin:'https://student.test'},
+  sharedReview:{pack:{id:'set',version:3,words:[{word:'solid'}]},origin:'https://service.test',audio:new Set(['e0'])},
+  findPackList:()=>({id:'local'}), Dictation:{publishedClip:()=>null},
+  Learning:{practiceAudioPrompts:()=>[{key:'e0',skill:'study',text:'A solid holds its shape.'},{key:'v0',skill:'vocabulary',text:'A blank holds its shape.'}]}});
+ vm.runInContext(fs.readFileSync('src/dictation-ui.js','utf8'),context);
+ assert.equal(vm.runInContext("sharedAudioPath('local','solid','study','A solid holds its shape.')",context),'https://service.test/api/packs/set/audio/3/e0');
+ assert.equal(vm.runInContext("sharedAudioPath('local','solid','missing-word','A solid holds its shape.')",context),null);
+});
+
+function savingHarness() {
+ const h = harness();
+ h.run(`state={lists:[]}; let savedCount=0; let calls=[];
+  renderPrivateAudio=()=>{}; watchPrivateAudio=()=>{};
+  save=()=>{savedCount++;}; status=()=>{};
+  loadVocabulary=async list=>list.rows;
+  outputPack=(list,rows)=>({id:list.id,version:list.packVersion || 1,words:rows});
+  ai.token='token-a'; ai.root='https://example.test'; ai.role='teacher';
+  let list={id:'set-a',packVersion:1,updatedAt:'first',rows:[{word:'solid',vocabulary:null}]}; state.lists.push(list);`);
+ return h;
+}
+
+test('private autosaves serialize revisions and keep the final recording status',async()=>{
+ const h=savingHarness();
+ h.run(`let release; let expectations=[];
+  service=async(path,options)=>{
+   expectations.push(options.body.expectedVersion);
+   calls.push(options.body.pack);
+   if(calls.length===1) await new Promise(resolve=>release=resolve);
+   return {pack:options.body.pack,audioStatus:{ready:0,total:1,pending:true,version:options.body.pack.version}};
+  };
+  let firstSave=autosaveTeacherSet(list);`);
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(h.run('calls.length'),1);
+ h.run("list.packVersion=2; list.updatedAt='second'; list.rows=[{word:'liquid',vocabulary:null}]; let secondSave=autosaveTeacherSet(list); release();");
+ await h.run('Promise.all([firstSave,secondSave])');
+ assert.deepEqual(JSON.parse(h.run('JSON.stringify(calls.map(pack=>pack.version))')),[1,2]);
+ assert.equal(h.run('list.audioStatus.version'),2);
+ assert.equal(h.run('teacherSaves.size'),0);
+ assert.deepEqual(JSON.parse(h.run('JSON.stringify(expectations)')),[0,1]);
+});
+
+test('an old account response cannot save or expose recording status after switching',async()=>{
+ const h=savingHarness();
+ h.run(`let release;
+  service=async(path,options)=>{await new Promise(resolve=>release=resolve);return {pack:options.body.pack,audioStatus:{ready:1,total:1}};};
+  let pendingSave=autosaveTeacherSet(list);`);
+ await new Promise(resolve=>setImmediate(resolve));
+ h.run("ai.token='token-b'; state={lists:[]}; release();");
+ await h.run('pendingSave');
+ assert.equal(h.run('savedCount'),0);
+ assert.equal(h.run('list.audioStatus'),undefined);
+});
+
+test('revision conflicts surface an explicit export and reload recovery',async()=>{
+ const h=savingHarness();
+ h.run("service=async()=>{const error=Error('Conflict');error.status=409;throw error;}");
+ await assert.rejects(h.run('autosaveTeacherSet(list)'),/Export your local changes, then reload/);
+ assert.match(h.elements.get('teacher-private-audio-status').textContent,/another tab or browser/);
+ h.run("service=async()=>{throw Error('Must not send another request')}");
+ await assert.rejects(h.run('autosaveTeacherSet(list)'),/version conflict/);
+});
+
+test('automatic draft application preserves approved words and avoids identical revision bumps',async()=>{
+ const h=savingHarness();
+ h.run(`wordKey=word=>word; Vocabulary={validateRecord:(word,value)=>value}; refreshTeacher=()=>{};
+  list.rows=[{word:'solid',vocabulary:{status:'approved',definition:'Keep this.'}},{word:'liquid',vocabulary:null}];
+  ai.listId=list.id;ai.job={words:[{word:'solid',vocabulary:{status:'draft',definition:'Ignore this.'}},{word:'liquid',vocabulary:{status:'draft',definition:'New definition.'}}]};
+  saveVocabulary=async(target,rows,metadata)=>{target.rows=rows;Object.assign(target,metadata);savedCount++;};`);
+ await h.run('applyTeacherDrafts()');
+ assert.equal(h.run('list.rows[0].vocabulary.definition'),'Keep this.');
+ assert.equal(h.run('list.rows[1].vocabulary.status'),'draft');
+ assert.equal(h.run('list.packVersion'),2);
+ h.run('ai.reviewDrafts=0');
+ await h.run('applyTeacherDrafts()');
+ assert.equal(h.run('savedCount'),1);
+});
+
+test('store handles retain their captured teacher namespace across account changes',async()=>{
+ const context=vm.createContext({Vocabulary:{wordKey:word=>word,openStore:async()=>({kind:'indexedDB',get:async key=>key})},
+  studentPreview:false,KEY:'spell.teacher:a',structuredClone});
+ vm.runInContext(fs.readFileSync('src/coach.js','utf8'),context);
+ const old=await vm.runInContext("getStore('indexedDB')",context);
+ context.KEY='spell.teacher:b';
+ const current=await vm.runInContext("getStore('indexedDB')",context);
+ assert.equal(await old.get('list:x'),'spell.teacher:a:list:x');
+ assert.equal(await current.get('list:x'),'spell.teacher:b:list:x');
+});
+
+test('spelling can share after word audio is ready while vocabulary waits for its clips',()=>{
+ const h=harness();
+ h.context.SharedReview={sharingContent:()=>({ready:true,words:[{word:'solid'}],approved:['solid'],drafts:[],missing:[]})};
+ h.run(`ai.teacher={id:'teacher-a',isAdmin:false}; ai.token='token'; ai.config={dictationEnabled:true};
+  sharing={list:{id:'local',words:['solid'],audioStatus:{recordings:[{key:'0-s',status:'ready'},{key:'0-e0',status:'pending'}]}},records:[{word:'solid'}]};`);
+ h.elements.set('shared-mode',{value:'spelling'});
+ h.run('renderSharing()');
+ assert.equal(h.elements.get('ai-publish').disabled,false);
+ h.elements.get('shared-mode').value='mixed';
+ h.run('renderSharing()');
+ assert.equal(h.elements.get('ai-publish').disabled,true);
+ assert.match(h.elements.get('ai-publish-readiness').textContent,/missing recordings/);
+ h.run("sharing.list.audioStatus.recordings[1].status='ready';renderSharing()");
+ assert.equal(h.elements.get('ai-publish').disabled,false);
+});
+
+test('creating or selecting the first teacher set enables its direct vocabulary action',()=>{
+ const h=harness();
+ h.run("ai.role='teacher';ai.config={generationEnabled:true};renderPrivateAudio=()=>{};watchPrivateAudio=()=>{};updateTeacherSelection(null,null)");
+ assert.equal(h.elements.get('teacher-open-drafting').disabled,true);
+ h.run("updateTeacherSelection({id:'first',words:['solid']},null)");
+ assert.equal(h.elements.get('teacher-open-drafting').disabled,false);
+ h.run("updateTeacherSelection(null,null)");
+ assert.equal(h.elements.get('teacher-open-drafting').disabled,true);
+ h.run("ai.config.generationEnabled=false;updateTeacherSelection({id:'first',words:['solid']},null)");
+ assert.equal(h.elements.get('teacher-open-drafting').disabled,true);
+});
+
+function startBuiltPage(entry='teacher') {
+ const file=entry==='student'?'practice/index.html':entry==='offline'?'WordLab v0.2.0.html':'index.html';
+ const html=fs.readFileSync(file,'utf8'), elements=new Map();
+ const node=()=>({value:'',hidden:true,checked:false,dataset:{},style:{},children:[],
+  addEventListener(){},removeEventListener(){},setAttribute(){},removeAttribute(){},setCustomValidity(){},
+  append(...children){this.children.push(...children);},replaceChildren(...children){this.children=children;},add(child){this.children.push(child);},
+  closest(){return node();},querySelector(){return node();},querySelectorAll(){return [];},
+  close(){this.open=false;},showModal(){this.open=true;},focus(){this.focused=true;},reset(){},
+ });
+ for(const match of html.matchAll(/\bid="([^"]+)"/g)) elements.set(match[1],node());
+ elements.get('teacher-login-kind').value='teacher';
+ const document={body:{dataset:{entry}},documentElement:{dataset:{}},getElementById:id=>elements.get(id)||null,
+  querySelectorAll:()=>[],querySelector:()=>null,addEventListener(){},createElement:()=>node()};
+ const context=vm.createContext({document,URL,URLSearchParams,console,structuredClone,AbortSignal,
+  location:{hostname:'127.0.0.1',origin:'http://127.0.0.1:8765',href:'http://127.0.0.1:8765/',search:'',hash:'',pathname:'/'},
+  localStorage:{getItem:()=>null,setItem(){},removeItem(){}},
+  window:{matchMedia:()=>({matches:false,addEventListener(){}}),addEventListener(){}},
+  Option:function(text,value){return {text,value};},setTimeout:()=>0,clearTimeout(){},
+  fetch:()=>{throw Error('Startup must not request an external service.');},
+ });
+ for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) vm.runInContext(match[1],context);
+ return {context,elements};
+}
+
+test('actual built teacher script starts with real module ordering and a local sign-in form',async()=>{
+ const page=startBuiltPage();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(page.elements.get('teacher-signin-screen').hidden,false);
+ assert.equal(page.elements.get('teacher-url').value,'http://127.0.0.1:8765');
+ assert.equal(page.elements.get('teacher-username').focused,true);
+ assert.equal(page.elements.get('teacher-secret').value,'');
+});
+
+test('deleting a saved teacher set waits for its pending save and the server deletion',async()=>{
+ const h=savingHarness();
+ h.run("let releaseSave;let waiting=new Promise(resolve=>releaseSave=resolve);teacherSaves.set(list.id,waiting);service=async(path,options)=>calls.push({path,method:options.method});let deletion=deleteTeacherSet(list)");
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(h.run('calls.length'),0);
+ h.run('releaseSave()'); await h.run('deletion');
+ assert.deepEqual(JSON.parse(h.run('JSON.stringify(calls)')),[{path:'/teacher/sets/set-a',method:'DELETE'}]);
+ h.run("service=async()=>{throw Error('Cannot delete now')}");
+ await assert.rejects(h.run('deleteTeacherSet(list)'),/Cannot delete now/);
+});
+
+test('completed recovered jobs apply missing drafts and preserve newer edited drafts',async()=>{
+ const h=savingHarness();
+ h.run(`wordKey=word=>word;Vocabulary={validateRecord:(word,value)=>value};refreshTeacher=()=>{};applyJob=job=>ai.job=job;
+  list.rows=[{word:'solid',vocabulary:{status:'draft',definition:'My newer edit.'}},{word:'liquid',vocabulary:null}];
+  service=async()=>({id:'completed',status:'complete',words:[{word:'solid',vocabulary:{status:'draft',definition:'Older AI result.'}},{word:'liquid',vocabulary:{status:'draft',definition:'Recovered result.'}}]});
+  saveVocabulary=async(target,rows,metadata)=>{target.rows=rows;Object.assign(target,metadata);savedCount++;};`);
+ await h.run("restoreTeacherGeneration({root:ai.root,role:'teacher',id:'completed',listId:list.id})");
+ assert.equal(h.run('list.rows[0].vocabulary.definition'),'My newer edit.');
+ assert.equal(h.run('list.rows[1].vocabulary.definition'),'Recovered result.');
+ assert.equal(h.run('savedCount'),1);
+});
+
+test('owner migration recovers the active checkpoint before saving the new namespace',async()=>{
+ const h=savingHarness();
+ h.run(`KEY='spell.teacher:operator';ai.teacher={id:'operator',isAdmin:true};
+  let checkpoint={listId:'legacy',session:{status:'active'}};
+  let migrated={lists:[],learningCheckpoint:{key:'session:legacy',backend:'indexedDB'},learningSession:null};
+  localStorage.getItem=key=>key==='spell.state'?'{}':null;loadState=()=>({lists:[]});clean=()=>migrated;
+  Vocabulary={openStore:async()=>({get:async()=>checkpoint})};Learning={sessionOK:()=>true};
+  getStore=async()=>({put:async()=>{}});save=()=>{if(!state.learningSession)throw Error('checkpoint lost');};`);
+ await h.run('loadTeacherWorkspace()');
+ assert.equal(h.run('state.learningSession.listId'),'legacy');
+});
+
+test('actual built owner login opens a signed-in workspace without module ordering errors',async()=>{
+ const page=startBuiltPage(), calls=[];
+ const profile={teacher:{id:'operator',name:'Owner',username:'owner',isAdmin:true},config:{},keys:{groq:false,openrouter:false},settings:{allowPaidText:false,allowAlternateAudio:false}};
+ page.context.fetch=async(url,options)=>{
+  calls.push(url);
+  const result=url.endsWith('/admin/access')?{...profile,token:'fixture-token'}:url.endsWith('/teacher/profile')?profile:{sets:[]};
+  return {ok:true,headers:{get:()=> 'application/json'},json:async()=>result};
+ };
+ page.elements.get('teacher-login-kind').value='owner';
+ page.elements.get('teacher-secret').value='fixture-password';
+ await page.elements.get('teacher-connect').onsubmit({preventDefault(){},submitter:{id:'teacher-login'}});
+ assert.equal(page.elements.get('teacher-workspace-actions').hidden,false);
+ assert.equal(page.elements.get('teacher-open-invitations').hidden,false);
+ assert.equal(page.elements.get('teacher-operations').hidden,false);
+ assert.deepEqual(calls.map(url=>new URL(url).pathname),['/api/admin/access','/api/teacher/profile','/api/teacher/sets']);
+ assert.ok(calls.every(url=>url.startsWith('http://127.0.0.1:8765/')));
+});
+
+test('a stale audio poll cannot restore recordings from an older edited manifest',async()=>{
+ const h=harness();
+ h.run(`let list={id:'set',updatedAt:'first',packVersion:1};ai.token='token-a';let poll;let release;selectedList=()=>list;setTimeout=callback=>{poll=callback;return 1;};
+  list.audioStatus={pending:true};service=async()=>{await new Promise(resolve=>release=resolve);return {pack:{version:1},audioStatus:{ready:1,total:1}};};
+  watchPrivateAudio();let pendingPoll=poll();list.updatedAt='edited';list.packVersion=2;list.audioStatus=null;release();`);
+ await h.run('pendingPoll');
+ assert.equal(h.run('list.audioStatus'),null);
+});
+
+test('an unrevealed reverse study card never plays the answer recording',async()=>{
+ const elements=new Map([['study-reverse',{checked:true}],['study-audio-status',{textContent:''}]]);
+ const context=vm.createContext({URL,studyState:{list:{id:'x'},revealed:false},sharedReview:{preparedAudio:true},
+  $:id=>elements.get(id),speech:false,played:0,spoken:[],
+  speak:text=>context.spoken.push(text)});
+ vm.runInContext(fs.readFileSync('src/dictation-ui.js','utf8'),context);
+ vm.runInContext('sharedAudioPath=()=>"answer.wav";playPublishedRecording=async()=>{played++}',context);
+ await vm.runInContext('playStudyRecordings({word:"solid",audio:"solid",frontAudio:"A material that holds its shape."})',context);
+ assert.equal(context.played,0);
+ assert.match(elements.get('study-audio-status').textContent,/unavailable/);
+ context.sharedReview={preparedAudio:false};
+ await vm.runInContext('playStudyRecordings({word:"solid",audio:"solid",frontAudio:"A material that holds its shape."})',context);
+ assert.deepEqual(context.spoken,['A material that holds its shape.']);
+});
+
+test('implicit restore preserves conflicted local edits and continues restoring other sets',async()=>{
+ const h=savingHarness();
+ h.run(`list.packVersion=2;list.remoteVersion=1;list.remoteConflict=true;list.rows=[{word:'my local edit'}];
+  let imported=[];Vocabulary={validatePack:pack=>pack};findPackList=id=>state.lists.find(item=>item.id===id);
+  service=async()=>({sets:[{pack:{id:list.id,version:3,words:[{word:'server copy'}]}},{pack:{id:'other',version:1,words:[]}}]});
+  importPack=async pack=>{imported.push(pack.id);state.lists.push({id:pack.id,packVersion:pack.version});};
+  renderSetup=()=>{};selectedList=()=>list;`);
+ await h.run('restoreTeacherSets()');
+ assert.equal(h.run('list.rows[0].word'),'my local edit');
+ assert.equal(h.run('list.remoteConflict'),true);
+ assert.deepEqual(JSON.parse(h.run('JSON.stringify(imported)')),['other']);
+ assert.equal(h.run("state.lists.find(item=>item.id==='other').remoteVersion"),1);
+});
+
+test('same-version divergent restores mark the conflict and continue instead of dropping later sets',async()=>{
+ const h=savingHarness();
+ h.run(`list.remoteVersion=1;let imported=[];Vocabulary={validatePack:pack=>pack};findPackList=id=>state.lists.find(item=>item.id===id);
+  service=async()=>({sets:[{pack:{id:list.id,version:1}},{pack:{id:'other',version:1}}]});
+  importPack=async pack=>{if(pack.id===list.id)throw Error('This pack version conflicts');imported.push(pack.id);state.lists.push({id:pack.id,packVersion:pack.version});};
+  renderSetup=()=>{};selectedList=()=>list;`);
+ await h.run('restoreTeacherSets()');
+ assert.equal(h.run('list.remoteConflict'),true);
+ assert.deepEqual(JSON.parse(h.run('JSON.stringify(imported)')),['other']);
+});
