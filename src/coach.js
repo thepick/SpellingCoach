@@ -109,13 +109,18 @@ async function beginCoach() {
   return;
  }
  if (options.mode === 'spelling' && options.type === 'practice') {
-  start(records.map(row => row.word), list);
+  await start(records.map(row => row.word), list);
   return;
  }
  const preview = Learning.createSession(records, options, learningProgress(list));
- if (options.type === 'test' && preview.questions.some(question => question.type === 'dictation') && !speech) {
-  status('Audio is unavailable. A spelling test requires speech synthesis.');
-  return;
+ if (options.type === 'test' && !speech) {
+  const prompts = preview.questions.filter(question => question.type === 'dictation');
+  const recordings = await Promise.all(prompts.map(question =>
+   readRecording(list.id, question.word, preview.records[question.recordIndex]?.vocabulary)));
+  if (recordings.some(recording => !recording)) {
+   status('Add a recording for each dictation word or enable browser speech before starting the test.');
+   return;
+  }
  }
  try {
   const receiptFile = $('test-order').files[0];
@@ -156,13 +161,18 @@ function playQuestion(initial, slow) {
    'Audio is unavailable. Pause or end this session to keep your place.' : 'Audio is unavailable. You can read the question and continue.';
   $('learning-audio-error').hidden = false;
  };
- speak(message, slow ? state.settings.rate * .65 : state.settings.rate, failed, () => {
+ const ready = () => {
   if (audioQuestion !== question) return;
   audioReady = true;
   $('learning-audio-error').hidden = true;
   $('learning-submit').disabled = false;
   $('learning-skip').disabled = false;
- });
+ };
+ const rate = slow ? state.settings.rate * .65 : state.settings.rate;
+ if (question.type === 'dictation') {
+  const owner = entry.dueLists?.[wordKey(question.word)] || entry.listId;
+  dictate(owner, message, session.records[question.recordIndex]?.vocabulary, rate, failed, ready);
+ } else speak(message, rate, failed, ready);
 }
 
 function renderLearning(play) {
@@ -178,10 +188,11 @@ function renderLearning(play) {
  $('learning-count').textContent = 'Question ' + (session.index + 1) + (test ? ' of ' + session.questions.length : '');
  $('learning-prompt').textContent = question.type === 'dictation' ? 'Listen to the word, then type it.' : question.prompt;
  $('learning-audio-actions').hidden = !session.settings.audioReplay || !!result;
- $('learning-audio').disabled = !speech;
- $('learning-slow').disabled = !speech;
- $('learning-audio-error').hidden = speech;
- if (!speech) $('learning-audio-error').textContent = 'Audio is unavailable.';
+ const audioAvailable = speech || question.type === 'dictation';
+ $('learning-audio').disabled = !audioAvailable;
+ $('learning-slow').disabled = !audioAvailable;
+ $('learning-audio-error').hidden = audioAvailable;
+ if (!audioAvailable) $('learning-audio-error').textContent = 'Audio is unavailable.';
  $('learning-answer').hidden = !!result && !correction;
  const choices = question.choices || [], bank = question.bank || [];
  $('learning-choices').replaceChildren();
@@ -661,6 +672,7 @@ function renderEditFields() {
  $('vocab-cloze').value = (v?.clozeQuestions || []).map(question => question.sentence).join('\n');
  $('vocab-explanations').value = (v?.clozeQuestions || []).map(question => question.explanation).join('\n');
  $('vocab-regenerate').disabled = !v || ai.role !== 'teacher';
+ renderRecordingControls();
 }
 
 async function changeVocabulary(next, preferred) {
@@ -858,6 +870,7 @@ function initCoach() {
  };
  $('offline-download').hidden = location.protocol === 'file:';
  initTeacher();
+ initDictation();
 }
 
 function openShuffle(mode) {

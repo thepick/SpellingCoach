@@ -1,0 +1,32 @@
+const Dictation = (() => {
+ const MAX_WAV_BYTES = 1024 * 1024;
+
+ function recordingKey(listId, word, vocabulary) {
+  const target = String(word).normalize('NFC').trim().replace(/[’‘]/g, "'").replace(/\s+/g, ' ').toLowerCase();
+  return 'dictation:' + JSON.stringify([listId, target, vocabulary?.senseId || '',
+   vocabulary?.partOfSpeech || '', vocabulary?.definition || '']);
+ }
+
+ function validateRecording(bytes) {
+  if (bytes.byteLength > MAX_WAV_BYTES) throw Error('Choose a WAV file up to 1 MB.');
+  const wav = new DataView(bytes);
+  const invalid = () => { throw Error('Choose a complete PCM WAV recording.'); };
+  if (wav.byteLength < 44 || wav.getUint32(0) !== 0x52494646 ||
+      wav.getUint32(8) !== 0x57415645 || wav.getUint32(4, true) + 8 !== wav.byteLength) invalid();
+  let format = false;
+  let audio = false;
+  for (let offset = 12; offset + 8 <= wav.byteLength;) {
+   const chunk = wav.getUint32(offset);
+   const size  = wav.getUint32(offset + 4, true);
+   const next = offset + 8 + size + (size % 2);
+   if (next > wav.byteLength) invalid();
+   if (chunk === 0x666d7420) format = size >= 16 && wav.getUint16(offset + 8, true) === 1;
+   if (chunk === 0x64617461) audio = size > 0;
+   offset = next;
+  }
+  if (!format || !audio) invalid();
+ }
+
+ return { recordingKey, validateRecording, MAX_WAV_BYTES };
+})();
+if (typeof module === 'object' && module.exports) module.exports = Dictation;

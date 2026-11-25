@@ -17,6 +17,8 @@ The **Theme** menu defaults to **System** and follows device appearance changes.
 
 Use **Try the sample list** for a Grade 5 vocabulary draft. Its definitions use selected senses because the source passage was unavailable. Review them against the intended text before using the pack for a test.
 
+To use a saved pronunciation, open **Vocabulary content**, choose the word, and add a PCM WAV file under **Dictation recording**. Recordings are tied to the word and its saved meaning in that list. WordLab uses the recording for dictation and falls back to browser speech. Recordings stay on this device, so keep the WAV files for transfer or reuse.
+
 Use **Tools → Export full backup** before clearing browser data or moving to a different web address or offline file. Browser storage is tied to the address or file. Import the backup in WordLab to carry over your lists and progress. The app accepts older list-only JSON files, new vocabulary packs, and full backups. The first upgrade keeps a copy of the original spelling state in the browser under `spell.state.v1.backup`.
 
 To shuffle a saved word list, flashcards, or a test, use a completed RANDOM.ORG permutation receipt with each position from 1 through the number of items. A test can run in its prepared order without a receipt. The app maps the numbers to content on the device.

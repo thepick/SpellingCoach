@@ -43,7 +43,7 @@ let storageOK=true,state=SELFTEST?blank():loadState(),listId=(state.session||sta
 function save(){return SELFTEST || storageOK && saveState();}
 function warning(){$('storage-warning').hidden=storageOK;if(storageIssue)$('storage-warning').textContent=storageIssue;}
 function status(t){$('setup-status').textContent=t;}
-function show(id){document.querySelectorAll('.screen').forEach(x=>x.hidden=true);$(id).hidden=false;}
+function show(id){stopRecording();document.querySelectorAll('.screen').forEach(x=>x.hidden=true);$(id).hidden=false;}
 function selectedList(){return state.lists.find(x=>x.id===listId)||null;}
 function selectedGroup(words,selection){
  const chosen=new Set(selection);
@@ -64,10 +64,13 @@ function next(s){
  if(s.words.every(w=>s.perWord[w].mastered)){s.current='';s.phase='done';return false;}
  s.round++;buildRound(s);if(!s.queue.length){s.current='';s.phase='done';return false;}takeNext(s);return true;
 }
-function start(ws,list){
- if(!ws.length||!list)return;const defs=dictionary();for(const w of ws)defs[w]=(list.defs&&list.defs[w])||'';
+async function start(ws,list){
+ if(!ws.length||!list)return;
+ const records=await loadVocabulary(list).catch(()=>[]);
+ if(state.session||state.learningSession)return;
+ const meanings=dictionary();for(const {word,vocabulary} of records)if(vocabulary)meanings[word]={senseId:vocabulary.senseId,partOfSpeech:vocabulary.partOfSpeech,definition:vocabulary.definition};const defs=dictionary();for(const w of ws)defs[w]=(list.defs&&list.defs[w])||'';
  const perWord=dictionary();for(const w of ws){const old=state.progress[list.id]?.words?.[w]||{};perWord[w]={streak:0,misses:Number(old.misses)||0,lastSeen:Number(old.lastSeen)||null,initialDone:false,initialCorrect:false,missed:false,mastered:false,retypeMisses:0};}
- state.session={v:1,listId:list.id,listName:list.name,words:[...ws],defs,startedAt:now(),round:1,roundMembers:[],queue:[],current:'',currentType:'initial',phase:'prompt',perWord,log:[],missed:[],firstCorrect:0,initialCount:0,retypeMisses:0};
+ state.session={v:1,listId:list.id,listName:list.name,words:[...ws],defs,meanings,startedAt:now(),round:1,roundMembers:[],queue:[],current:'',currentType:'initial',phase:'prompt',perWord,log:[],missed:[],firstCorrect:0,initialCount:0,retypeMisses:0};
  buildRound(state.session);next(state.session);save();renderPractice(true);
 }
 function submit(s,text){
@@ -113,12 +116,20 @@ function speak(value,rate,onError,onStart){if(!speech){if(onError)onError();retu
 function refreshVoices(){if(!speech)return;voices=speechSynthesis.getVoices().filter(v=>/^en(?:-|_)/i.test(v.lang));const sel=$('voice-select'),old=state.settings.voiceURI;sel.innerHTML='<option value="">System default</option>';voices.forEach(v=>sel.add(new Option(v.name+' ('+v.lang+')',v.voiceURI)));sel.value=old;}
 function renderTiles(s){const host=$('tiles');host.innerHTML='';s.words.forEach(w=>{const p=s.perWord[w],el=document.createElement('span');el.className='tile'+(p.mastered?' mastered':p.streak===1?' familiar':'');el.setAttribute('aria-label',p.mastered?'Mastered':p.streak===1?'One correct':'Not mastered');el.title=p.mastered?'Mastered':p.streak===1?'One correct':'Not mastered';host.append(el);});}
 function feedback(msg,kind,d){const box=$('feedback');box.className='feedback'+(kind?' '+kind:'');box.innerHTML='';if(msg){const t=document.createElement('div');t.textContent=msg;box.append(t);}if(d){const x=document.createElement('div');x.className='diff';x.innerHTML=textDiff(d);box.append(x);}}
+function playPracticeRecording(rate){
+ const s=state.session;if(!s)return;
+ dictate(s.listId,s.current,s.meanings?.[s.current],rate);
+}
 function renderPractice(play){
  const s=state.session;if(!s)return;finished=false;show('practice-screen');$('list-name-practice').textContent=s.listName;$('round-text').textContent='Round '+s.round;
  const done=s.words.filter(w=>s.perWord[w].mastered).length;$('progress-text').textContent=done+' / '+s.words.length+' mastered';$('progress-fill').style.width=(100*done/s.words.length)+'%';$('mastery-progress').setAttribute('aria-valuemax',s.words.length);$('mastery-progress').setAttribute('aria-valuenow',done);renderTiles(s);
- $('definition').textContent=s.defs[s.current]||'';$('visual-word').className=speech?'sr':'visual-prompt';$('visual-word').textContent=speech?'':'Prompt: '+s.current;$('replay-button').hidden=!speech;$('slow-replay').hidden=!speech;$('answer-input').value='';$('answer-input').disabled=!['prompt','retype'].includes(s.phase);$('dont-know').hidden=s.phase==='retype';$('submit-answer').textContent=s.phase==='retype'?'Type it correctly':'Check spelling';$('submit-answer').disabled=!['prompt','retype'].includes(s.phase);
+ $('definition').textContent=s.defs[s.current]||'';$('visual-word').className='sr';$('visual-word').textContent='';$('replay-button').hidden=false;$('slow-replay').hidden=false;
+ if(!speech){const word=s.current;readRecording(s.listId,word,s.meanings?.[word]).then(clip=>{
+  if(clip||state.session!==s||s.current!==word||$('practice-screen').hidden)return;
+  $('visual-word').className='visual-prompt';$('visual-word').textContent='Prompt: '+word;$('replay-button').hidden=true;$('slow-replay').hidden=true;
+ });}$('answer-input').value='';$('answer-input').disabled=!['prompt','retype'].includes(s.phase);$('dont-know').hidden=s.phase==='retype';$('submit-answer').textContent=s.phase==='retype'?'Type it correctly':'Check spelling';$('submit-answer').disabled=!['prompt','retype'].includes(s.phase);
  if(s.phase==='retype')feedback('Type the word correctly to continue.','bad',s.feedbackDiff||diff('',s.current));else if(s.phase==='feedback'){const last=s.log[s.log.length-1];if(last&&last.ok)feedback(s.perWord[s.current]?.mastered?'Mastered: two correct answers in a row.':'Correct. One more correct answer will master this word.','good');else if(last)feedback('Compare your answer with the correct spelling.','bad',diff(last.typed,s.current));}else feedback('','');
- if(play&&s.phase==='prompt')speak(s.current,state.settings.rate);if(['prompt','retype'].includes(s.phase))setTimeout(()=>$('answer-input').focus(),35);
+ if(play&&s.phase==='prompt')playPracticeRecording(state.settings.rate);if(['prompt','retype'].includes(s.phase))setTimeout(()=>$('answer-input').focus(),35);
  if(s.phase==='feedback'){clearTimeout(timer);const last=s.log[s.log.length-1],delay=last&&last.ok?state.settings.autoAdvanceMs:state.settings.feedbackMs;timer=setTimeout(advance,delay);}
 }
 function advance(){const s=state.session;if(!s||s.phase!=='feedback')return;if(s.words.every(w=>s.perWord[w].mastered)){s.current='';s.phase='done';finish(true);return;}next(s);save();renderPractice(true);}
@@ -290,9 +301,9 @@ $('speech-rate').oninput=()=>{$('rate-label').textContent=Number($('speech-rate'
 $('start-session').onclick=beginCoach;
 $('answer-form').onsubmit=e=>{e.preventDefault();const s=state.session;if(!s)return;const wasRetype=s.phase==='retype',r=wasRetype?retype(s,$('answer-input').value):submit(s,$('answer-input').value);if(!r)return;$('answer-input').value='';if(wasRetype&&!r.ok){renderPractice(false);$('answer-input').focus();}else renderPractice(s.phase==='prompt'&&r.ok);};
 $('dont-know').onclick=()=>{$('answer-input').value='';$('answer-form').requestSubmit();};
-$('replay-button').onclick=()=>state.session&&speak(state.session.current,state.settings.rate);
-$('slow-replay').onclick=()=>state.session&&speak(state.session.current,state.settings.rate*.6);
-$('pause-button').onclick=()=>{const s=state.session;if(!s)return;clearTimeout(timer);s.resumePhase=s.phase;s.phase='paused';save();$('pause-overlay').hidden=false;$('resume-practice').focus();};
+$('replay-button').onclick=()=>playPracticeRecording(state.settings.rate);
+$('slow-replay').onclick=()=>playPracticeRecording(state.settings.rate*.6);
+$('pause-button').onclick=()=>{const s=state.session;if(!s)return;clearTimeout(timer);stopRecording();s.resumePhase=s.phase;s.phase='paused';save();$('pause-overlay').hidden=false;$('resume-practice').focus();};
 $('resume-practice').onclick=()=>{const s=state.session;if(!s)return;$('pause-overlay').hidden=true;s.phase=s.resumePhase||'prompt';delete s.resumePhase;save();renderPractice(s.phase==='prompt');};
 $('end-session').onclick=()=>{$('pause-overlay').hidden=true;end();};
 $('back-setup').onclick=()=>{$('pause-overlay').hidden=true;backToSetup();};
@@ -307,8 +318,8 @@ $('copy-missed').onclick=()=>{const s=state.session;if(!s)return;const r=s.summa
 document.addEventListener('keydown',e=>{
  if(e.key==='Escape'){if(!$('pin-overlay').hidden){$('pin-overlay').hidden=true;if(state.session&&!state.session.summary)$('pause-overlay').hidden=false;return;}if(!$('pause-overlay').hidden)return;if(!$('practice-screen').hidden){e.preventDefault();$('pause-button').click();}else if(!$('learning-screen').hidden){e.preventDefault();pauseLearning();}return;}
  if(e.altKey||e.ctrlKey||e.metaKey||e.shiftKey||/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName||''))return;
- if(!$('practice-screen').hidden&&e.key.toLowerCase()==='r')speak(state.session?.current,state.settings.rate);
- if(!$('practice-screen').hidden&&e.key.toLowerCase()==='s')speak(state.session?.current,state.settings.rate*.6);
+ if(!$('practice-screen').hidden&&e.key.toLowerCase()==='r')playPracticeRecording(state.settings.rate);
+ if(!$('practice-screen').hidden&&e.key.toLowerCase()==='s')playPracticeRecording(state.settings.rate*.6);
 });
 if(speech){speechSynthesis.addEventListener('voiceschanged',refreshVoices);setTimeout(refreshVoices,400);setTimeout(refreshVoices,1200);}
 state.settings.roundSize=clamp(state.settings.roundSize,1,20,7);state.settings.retypeOnMiss=state.settings.retypeOnMiss!==false;
