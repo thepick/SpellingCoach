@@ -60,6 +60,10 @@ select, input, textarea { max-width: 100%; }
 body:has(dialog.tools-dialog[open]) { overflow: hidden; }
 
 :is(#shared-ready, #practice-complete-screen) { width: min(100%, 33rem); margin: clamp(3rem, 12vh, 8rem) auto 0; text-align: center; padding: clamp(1.5rem, 6vw, 2.75rem); }
+#teacher-signin-screen { width: min(100%, 29rem); margin: clamp(2rem, 10vh, 6rem) auto 0; padding: clamp(1.5rem, 5vw, 2.5rem); }
+#teacher-signin-screen .subhead { margin-top: .65rem; }
+#teacher-signin-status:empty, #teacher-dialog .tools-panel > .status:empty { display: none; }
+#teacher-signin-screen #teacher-login { width: 100%; }
 :is(#shared-ready, #practice-complete-screen) .subhead { margin: .7rem 0 1.35rem; }
 #practice-complete-list { margin: 0 0 .55rem; }
 #practice-complete-title:focus { outline: none; }

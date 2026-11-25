@@ -110,6 +110,7 @@ function checkpointActive(entry, checkpoint, text) {
 }
 
 function saveState() {
+ if (studentPreview) return true;
  const entry = state.learningSession;
  if (!entry) {
   delete state.learningCheckpoint;

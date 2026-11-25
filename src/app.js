@@ -2,6 +2,8 @@
 'use strict';
 // BUILD:MODULES
 const SELFTEST = new URLSearchParams(location.search).has('selftest');
+const entryPage = document.body.dataset.entry || 'offline';
+const studentPreview = entryPage === 'student' && new URLSearchParams(location.search).get('preview') === '1';
 const VERSION='0.2.0',KEY='spell.state',D={roundSize:7,retypeOnMiss:true,autoAdvanceMs:600,feedbackMs:1800,voiceURI:'',rate:.85,pin:'',allowVariants:false};
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),now=()=>new Date().toISOString();
 const norm=s=>String(s??'').trim().replace(/\s+/g,' ').replace(/[’‘]/g,"'");
@@ -39,7 +41,7 @@ function clean(raw){
  if(sessionOK(raw.session)){s.session=raw.session;s.session.defs=dictionary(raw.session.defs);s.session.perWord=dictionary(raw.session.perWord);}
  return restoreLearningFields(s,raw);
 }
-let storageOK=true,state=SELFTEST?blank():loadState(),listId=(state.session||state.learningSession||state.learningCheckpoint||{}).listId||(state.lists[0]||{}).id||'',voices=[],speech=!!(window.speechSynthesis&&window.SpeechSynthesisUtterance),timer=0;
+let storageOK=true,state=SELFTEST||studentPreview?blank():loadState(),listId=(state.session||state.learningSession||state.learningCheckpoint||{}).listId||(state.lists[0]||{}).id||'',voices=[],speech=!!(window.speechSynthesis&&window.SpeechSynthesisUtterance),timer=0;
 function save(){return SELFTEST || storageOK && saveState();}
 function warning(){$('storage-warning').hidden=storageOK;if(storageIssue)$('storage-warning').textContent=storageIssue;}
 function status(t){$('setup-status').textContent=t;}
@@ -94,7 +96,7 @@ function textDiff(d){return'<div>'+d.x.map(x=>'<span class="'+x.k+'">'+esc(x.c)+
 function renderSetup(){
  const sel=$('list-select');sel.innerHTML='';
  if(!state.lists.length){sel.add(new Option('No saved lists',''));listId='';}else{state.lists.forEach(l=>sel.add(new Option(l.name,l.id)));if(!state.lists.some(l=>l.id===listId))listId=state.lists[0].id;sel.value=listId;}
- const l=selectedList();$('setup-intro').textContent=state.lists.length?'Choose a word list and select the words you want to practice.':'Create a list to get started. Give it a name and add one word or phrase per line.';$('list-actions-help').hidden=!!l;
+ const l=selectedList();$('setup-intro').textContent=state.lists.length?(entryPage==='teacher'?'Choose a set to edit its content or share it with students.':'Choose a word list and select the words you want to practice.'):'Create a list to get started. Give it a name and add one word or phrase per line.';$('list-actions-help').hidden=!!l;
  ['edit-list','delete-list','reset-progress','shuffle-words','select-all','select-none','select-next-group'].forEach(id=>$(id).disabled=!l);
  const host=$('word-chips');host.innerHTML='';
  if(l){const chosen=new Set(selectedWords());l.words.forEach(w=>{const label=document.createElement('label');label.className='chip';const cb=document.createElement('input');cb.type='checkbox';cb.checked=chosen.has(w);cb.setAttribute('aria-label','Include '+w);cb.onchange=()=>{const a=selectedWords();state.settings.selected[l.id]=l.words.filter(x=>x===w?cb.checked:a.includes(x));save();countSelected();};const span=document.createElement('span');span.textContent=w;label.append(cb,span);host.append(label);});}
@@ -153,7 +155,7 @@ function copy(text){if(navigator.clipboard?.writeText)return navigator.clipboard
 function fallbackCopy(text){const t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';(document.querySelector('dialog[open]')||document.body).append(t);t.select();let ok=false;try{ok=document.execCommand('copy');}catch(e){}t.remove();return ok;}
 function download(file,text,type){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=file;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function practiceMissed(){const s=state.session;if(!s)return;const r=s.summary||summary(s);if(!Array.isArray(r.missed)||!r.missed.length)return;const l={id:s.listId,name:s.listName,words:s.words,defs:s.defs};state.session=null;save();start(r.missed,l);}
-function finishToSetup(){const checkpoint=state.learningCheckpoint;if(state.session&&!state.session.summary)finish(false);state.session=null;state.learningSession=null;save();if(checkpoint)getStore(checkpoint.backend).then(store=>store.remove(checkpoint.key)).catch(()=>{});renderSetup();if(sharedReview)renderSharedReady();else show('setup-screen');}
+function finishToSetup(){const checkpoint=state.learningCheckpoint;if(state.session&&!state.session.summary)finish(false);state.session=null;state.learningSession=null;save();if(checkpoint)getStore(checkpoint.backend).then(store=>store.remove(checkpoint.key)).catch(()=>{});renderSetup();if(sharedReview)renderSharedReady();else showLanding();}
 function backToSetup(){if(state.settings.pin){$('pin-check').value='';$('pin-error').textContent='';$('pin-overlay').hidden=false;$('pin-check').focus();}else finishToSetup();}
 function validBackup(x){if(!x||x.v!==1||!Array.isArray(x.lists)||!x.lists.every(listOK))throw Error('Choose a WordLab backup with a valid lists array.');return x.lists.map(l=>({id:l.id,name:l.name,words:wordsUnique(l.words),defs:dictionary(l.defs),updatedAt:now()}));}
 function runTests(){

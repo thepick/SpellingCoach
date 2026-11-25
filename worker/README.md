@@ -21,6 +21,8 @@ For local login testing, define distinct dummy values of at least 32 characters 
 
 ## Production setup
 
+The `wrangler.wordlab.jsonc` configuration connects the WordLab website and API to the same custom domain. Use `node scripts/build.cjs --stage` from the repository root before deploying it. Run the deployment and secret commands below from `worker/` with `--config wrangler.wordlab.jsonc` for that combined deployment. The default Wrangler configuration runs the API separately.
+
 1. Choose a Cloudflare Workers Free account and the approved Worker name. The SQLite migration in wrangler.jsonc creates the vocabulary coordinator. Keep its class name and singleton name stable to retain published packs and job data.
 2. Create a dedicated Groq Free organization or project for WordLab. Use distinct development and production keys. Confirm the plan, keep it out of any organization with paid usage enabled, and enable Zero Data Retention where available. Groq uses the same inference endpoint across plans, so the operator's account confirmation is required before the project flag is enabled. [Groq rate limits](https://console.groq.com/docs/rate-limits), [Groq data controls](https://console.groq.com/docs/your-data), [Cloudflare Durable Object pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/)
 3. Deploy the baseline Worker with AI_ENABLED, STUDENT_AI_ENABLED and both provider confirmation flags set to false. Set ADMIN_AUTH_SECRET and SESSION_SIGNING_SECRET to separate securely generated values of at least 32 characters using Worker secrets. Upload the dedicated GROQ_API_KEY as a Worker secret when the free account is verified. For example, from this directory:

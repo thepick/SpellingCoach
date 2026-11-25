@@ -1,10 +1,18 @@
 const vocabularyStores = new Map();
+const previewRecords = new Map();
+const previewStore = {
+ kind: 'localStorage',
+ async get(key) { return structuredClone(previewRecords.get(key)); },
+ async put(key, value) { previewRecords.set(key, structuredClone(value)); },
+ async remove(key) { previewRecords.delete(key); }
+};
 let vocabCache = {key: '', records: null};
 let pendingPack = null;
 let undoVocabulary = null;
 const wordKey = Vocabulary.wordKey;
 const recordKey = list => list.vocabKey || 'list:' + list.id;
 function getStore(backend) {
+ if (studentPreview) return Promise.resolve(previewStore);
  if (!vocabularyStores.has(backend)) {
   vocabularyStores.set(backend, Vocabulary.openStore(globalThis, backend).catch(error => {
    vocabularyStores.delete(backend);

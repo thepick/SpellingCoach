@@ -164,13 +164,23 @@ async function openSharedReview() {
   $('shared-title').textContent = 'This set could not open';
   $('shared-instruction').textContent = 'Check your connection or ask your teacher for a new link.';
   if (error.status === 401 || error.status === 403 || error.status === 404) {
-   $('shared-ready-status').textContent = 'If the set uses a class code, sign in from the WordLab home page.';
+   $('shared-ready-status').textContent = entryPage === 'offline' ? 'If the set uses a class code, sign in from Tools.' : 'Ask your teacher for a public practice link.';
   }
   $('shared-title').focus();
  }
 }
 
 function showLanding() {
+ if (entryPage === 'teacher') { showTeacherEntry(); return; }
+ if (entryPage === 'student') {
+  $('shared-title').textContent = 'Open a practice set';
+  $('shared-instruction').textContent = 'Use the practice link your teacher gave you.';
+  $('shared-ready-status').textContent = '';
+  $('shared-start').hidden = true;
+  show('shared-ready');
+  $('shared-title').focus();
+  return;
+ }
  if (state.learningSession) pauseLearning();
  else if (state.learningCheckpoint) recoverCheckpoint();
  else show(state.session ? 'resume-screen' : 'setup-screen');

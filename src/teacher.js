@@ -1,8 +1,11 @@
 const CLASS_RECOVERY = 'class-generation-recovery';
 const GENERATION_KEY = 'spell.generation.v1';
-const ONLINE_CONFIG = 'https://api.wordlab.mtomlinson.ca';
+const ONLINE_CONFIG = 'https://wordlab.mtomlinson.ca';
 let ai = {root: '', token: '', role: '', config: {}, job: null, listId: '', published: '', generation: 0};
-const teacherStatus = message => { $('teacher-status').textContent = message; };
+function teacherStatus(message) {
+ $('teacher-status').textContent = message;
+ $('teacher-signin-status').textContent = message;
+}
 
 function serviceOrigin(value) {
  const url = new URL(value);
@@ -64,6 +67,7 @@ function refreshTeacher() {
  $('ai-apply').disabled = !ai.job?.words.length;
  $('ai-retry-words').disabled = active || !ai.job?.failedWords.length;
  $('ai-share').disabled = !ai.published;
+ $('ai-preview').disabled = !ai.published;
  $('ai-qr').disabled = !ai.published;
  $('ai-stop').textContent = ai.config.generationEnabled ? 'Disable generation' : 'Enable generation';
  if (ai.job) {
@@ -125,12 +129,39 @@ function aiSettings() {
 }
 
 function publicPackLink(id) {
- const site = new URL(location.protocol === 'file:' ? 'https://wordlab.mtomlinson.ca/' : location.href);
- site.search = ''; site.hash = '';
+ const site = new URL('practice/', entryPage === 'offline' ? 'https://wordlab.mtomlinson.ca/' : location.href);
  const args = new URLSearchParams({pack: id, service: ai.root, mode: $('shared-mode').value});
  if (!$('shared-hints').checked) args.set('hints', 'off');
  site.hash = args.toString();
  return site.href;
+}
+
+function showTeacherEntry() {
+ if (ai.role === 'teacher' && ai.token) {
+  $('setup-title').textContent = 'Teacher workspace';
+  $('setup-practice-settings').hidden = true;
+  $('reset-progress').hidden = true;
+  $('open-report').hidden = true;
+  $('teacher-workspace-actions').hidden = false;
+  $('teacher-workspace-logout').hidden = false;
+  $('setup-word-selection-title').textContent = 'Select words for generation';
+  $('setup-word-selection-help').textContent = 'Generate content for selected words. Publishing shares the whole set.';
+  renderSetup();
+  show('setup-screen');
+  $('setup-title').focus();
+  return;
+ }
+ const form = $('teacher-connect');
+ $('teacher-signin-slot').append(form);
+ $('teacher-url').value = ONLINE_CONFIG;
+ $('teacher-url-field').hidden = true;
+ $('teacher-secret-label').textContent = 'Teacher password';
+ $('teacher-secret').autocomplete = 'current-password';
+ $('class-login').hidden = true;
+ $('teacher-login').textContent = 'Sign in';
+ refreshTeacher();
+ show('teacher-signin-screen');
+ $('teacher-secret').focus();
 }
 
 function initTeacher() {
@@ -141,6 +172,8 @@ function initTeacher() {
   refreshTeacher();
   $('teacher-dialog').showModal();
  };
+ $('teacher-open-publishing').onclick = () => $('open-teacher').click();
+ $('teacher-workspace-logout').onclick = () => $('teacher-logout').click();
  $('teacher-close').onclick = () => $('teacher-dialog').close();
  $('teacher-connect').onsubmit = teacherAction(async event => {
   if (ai.token) return;
@@ -172,7 +205,8 @@ function initTeacher() {
    } catch (error) { teacherStatus('Previous job could not be reopened. ' + error.message); }
   }
   const shared = new URLSearchParams(location.hash.slice(1));
-  if (shared.has('pack') && serviceOrigin(shared.get('service') || ONLINE_CONFIG) === root) {
+  if (entryPage === 'teacher' && !shared.has('pack')) showTeacherEntry();
+  else if (shared.has('pack') && serviceOrigin(shared.get('service') || ONLINE_CONFIG) === root) {
    $('teacher-dialog').close();
    await openSharedReview();
   }
@@ -183,6 +217,10 @@ function initTeacher() {
   $('ai-context').value = ''; $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
   $('ai-class-status').replaceChildren(); $('ai-usage-result').textContent = '';
   teacherStatus('Signed out.'); refreshTeacher();
+  if (entryPage === 'teacher') {
+   $('teacher-dialog').close();
+   showTeacherEntry();
+  }
  };
  $('ai-generate').onclick = teacherAction(async () => {
   const list = selectedList();
@@ -244,12 +282,19 @@ function initTeacher() {
   const {pack: published} = await service('/admin/publish', {method: 'POST',
    body: {pack, visibility: 'public', ...($('ai-publish-cache').checked ? {cacheSettings: {...aiSettings(), context: ''}} : {})}, requestId: newListId()});
   ai.published = publicPackLink(published.id);
+  $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
   refreshTeacher();
   teacherStatus('Pack published. Copy the link or show the QR code.');
  });
  $('ai-share').onclick = teacherAction(async () => {
   teacherStatus(await copy(ai.published) ? 'Student link copied.' : ai.published);
  });
+ $('ai-preview').onclick = () => {
+  if (!ai.published) return;
+  const url = new URL(ai.published);
+  url.searchParams.set('preview', '1');
+  window.open(url.href, '_blank', 'noopener');
+ };
  $('ai-qr').onclick = teacherAction(async () => {
   const box = $('ai-qr-result');
   const image = document.createElement('img');

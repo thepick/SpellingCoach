@@ -11,3 +11,8 @@ assert.equal(manifest.short_name, 'WordLab');
 assert.equal(fs.readFileSync('CNAME', 'utf8').trim(), 'wordlab.mtomlinson.ca');
 assert.ok(html.includes('<title>WordLab v0.2.0</title>'));
 assert.ok(fs.existsSync('WordLab v0.2.0.html'));
+assert.match(html, /<body data-entry="teacher">/);
+assert.match(html, /id="teacher-signin-screen"/);
+assert.match(html, /id="ai-preview"/);
+assert.match(fs.readFileSync('practice/index.html', 'utf8'), /<body data-entry="student">/);
+assert.match(fs.readFileSync('WordLab v0.2.0.html', 'utf8'), /<body data-entry="offline">/);

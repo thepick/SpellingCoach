@@ -1,0 +1,20 @@
+{
+  "name": "wordlab",
+  "main": "index.mjs",
+  "compatibility_date": "2026-08-22",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "wordlab.mtomlinson.ca", "custom_domain": true }],
+  "assets": { "directory": ".wrangler/site", "run_worker_first": ["/api/*"] },
+  "vars": {
+    "ALLOWED_ORIGINS": "https://wordlab.mtomlinson.ca",
+    "AI_ENABLED": "false",
+    "STUDENT_AI_ENABLED": "false",
+    "GROQ_FREE_TIER_CONFIRMED": "false",
+    "OPENROUTER_FREE_TIER_CONFIRMED": "false"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "VOCABULARY", "class_name": "VocabularyCoordinator" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["VocabularyCoordinator"] }]
+}

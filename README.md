@@ -19,7 +19,7 @@ Use **Try the sample list** for a Grade 5 vocabulary draft. Its definitions use 
 
 To use Troy for dictation, sign in as a teacher through **Tools → Online generation and sharing**. Then open **Vocabulary content**, choose a word, enter a sentence that uses its exact form, and choose **Generate and attach Troy audio**. Listen to the result before the lesson. You can also attach your own PCM WAV file. Recordings are tied to the word and its saved meaning in that list. WordLab uses the recording for dictation and falls back to browser speech. Recordings stay on this device, so keep the WAV files for transfer or reuse.
 
-When you publish a vocabulary pack, choose the practice mode for its student link. The link opens a Ready screen with the set name, a short instruction, and **Start practice**. WordLab shows **Continue practice** for an unfinished practice on the same device.
+Sign in at the WordLab home page to create and edit sets. Open **Generate and share** to choose a practice mode and whether to allow hints, then publish. **Preview as student** opens the assignment in a new tab with temporary practice progress. Copy the student link to share the set. Public links open the Ready screen directly and show **Continue practice** when that browser has an unfinished session.
 
 Use **Tools → Export full backup** before clearing browser data or moving to a different web address or offline file. Browser storage is tied to the address or file. Import the backup in WordLab to carry over your lists and progress. The app accepts older list-only JSON files, new vocabulary packs, and full backups. The first upgrade keeps a copy of the original spelling state in the browser under `spell.state.v1.backup`.
 
@@ -47,4 +47,4 @@ Student generation ships disabled. Enable it only after the provider and school 
 
 ## Website cutover
 
-When the release is ready, set the GitHub Pages custom domain to `wordlab.mtomlinson.ca`, then add a Cloudflare DNS-only CNAME for `wordlab` pointing to `thepick.github.io`. Verify HTTPS and migrate saved browser data using a full backup. [GitHub Pages custom-domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
+The WordLab configuration hosts the teacher page, `/practice/`, and `/api/` on one Cloudflare Workers custom domain. Stage the static files from the repository root with `node scripts/build.cjs --stage`, then use `worker/wrangler.wordlab.jsonc` when deploying and configuring Worker secrets. The separate Spelling Coach site can keep its existing hosting. Saved browser data can move across domains through a full backup. [Cloudflare Workers custom domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/)

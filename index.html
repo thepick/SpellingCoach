@@ -102,6 +102,10 @@ select, input, textarea { max-width: 100%; }
 body:has(dialog.tools-dialog[open]) { overflow: hidden; }
 
 :is(#shared-ready, #practice-complete-screen) { width: min(100%, 33rem); margin: clamp(3rem, 12vh, 8rem) auto 0; text-align: center; padding: clamp(1.5rem, 6vw, 2.75rem); }
+#teacher-signin-screen { width: min(100%, 29rem); margin: clamp(2rem, 10vh, 6rem) auto 0; padding: clamp(1.5rem, 5vw, 2.5rem); }
+#teacher-signin-screen .subhead { margin-top: .65rem; }
+#teacher-signin-status:empty, #teacher-dialog .tools-panel > .status:empty { display: none; }
+#teacher-signin-screen #teacher-login { width: 100%; }
 :is(#shared-ready, #practice-complete-screen) .subhead { margin: .7rem 0 1.35rem; }
 #practice-complete-list { margin: 0 0 .55rem; }
 #practice-complete-title:focus { outline: none; }
@@ -109,21 +113,26 @@ body:has(dialog.tools-dialog[open]) { overflow: hidden; }
 :is(#shared-start, #practice-complete-done) { width: 100%; max-width: 20rem; min-height: 52px; font-size: 1.08rem; }
 .app:has(:is(#shared-ready, #practice-complete-screen):not([hidden])) .topbar:not(:has(#storage-warning:not([hidden]))) { display: none; }
 
-</style></head><body>
+</style></head><body data-entry="teacher">
 <div class="app"><header class="topbar"><div class="brand"><img class="brand-icon" src="data:image/x-icon;base64,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" width="32" height="32" alt=""><span>WordLab <span class="version">v0.2.0</span></span></div><label class="theme-control" for="theme-select"><span>Theme</span><select id="theme-select"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label><div id="storage-warning" class="notice" hidden role="status">Your progress will not be saved in this browser.</div></header><main>
+<section id="teacher-signin-screen" class="screen panel" hidden aria-labelledby="teacher-signin-title">
+ <h1 id="teacher-signin-title" tabindex="-1">Teacher sign-in</h1>
+ <p class="subhead">Sign in to create, preview, and share practice sets.</p>
+ <div id="teacher-signin-slot"></div><p id="teacher-signin-status" class="status" role="status"></p>
+</section>
 <section id="shared-ready" class="screen panel" hidden aria-labelledby="shared-title"><h1 id="shared-title" tabindex="-1"></h1><p id="shared-instruction" class="subhead"></p><button type="button" id="shared-start">Start practice</button><p id="shared-ready-status" class="status" role="status"></p></section>
 <section id="practice-complete-screen" class="screen panel" hidden aria-labelledby="practice-complete-title">
  <p id="practice-complete-list" class="hint"></p><h1 id="practice-complete-title" tabindex="-1">Practice complete</h1>
  <p id="practice-complete-message" class="subhead"></p><button type="button" id="practice-complete-done">Done</button>
 </section>
 <section id="resume-screen" class="screen resume panel" hidden><h1>Continue your session?</h1><p class="subhead">An unfinished session is saved in this browser.</p><div class="actions"><button id="resume-button">Resume session</button><button id="end-saved-button" class="secondary">End session</button></div></section>
-<section id="setup-screen" class="screen panel" hidden><div class="row between setup-heading"><div><h1>Spelling &amp; vocabulary</h1><p id="setup-intro" class="subhead">Create a list to get started. Give it a name and add one word or phrase per line.</p></div><button id="open-tools" class="secondary">Tools</button></div><div id="setup-status" class="status" role="status" aria-live="polite"></div>
+<section id="setup-screen" class="screen panel" hidden><div class="row between setup-heading"><div><h1 id="setup-title" tabindex="-1">Spelling &amp; vocabulary</h1><p id="setup-intro" class="subhead">Create a list to get started. Give it a name and add one word or phrase per line.</p></div><div class="actions"><button id="open-tools" class="secondary">Tools</button><button id="teacher-workspace-logout" type="button" class="ghost" hidden>Sign out</button></div></div><div id="setup-status" class="status" role="status" aria-live="polite"></div>
 <div class="grid"><div class="stack"><div><label for="list-select">Word list</label><select id="list-select"></select></div><div class="actions"><button id="new-list">Create a word list</button><button id="edit-list" class="secondary small">Edit list</button><button id="delete-list" class="danger small">Delete</button><button id="reset-progress" class="ghost small">Reset progress</button></div><div class="actions"><button id="sample-pack" type="button" class="ghost small">Try the sample list</button><button id="open-vocabulary" type="button" class="secondary small" disabled>Vocabulary content</button><button id="open-report" type="button" class="ghost small" disabled>Learning progress</button></div><p id="list-actions-help" class="hint">Create or import a list first. List actions become available afterward.</p>
 
 </div>
-<div class="stack"><div><div class="row between"><h2>Select practice words</h2><span id="selection-count" class="hint"></span></div><p class="hint">Choose the words for this session. You can select a smaller group for focused review.</p><div class="actions" style="margin-bottom:9px"><button id="select-all" class="ghost small">All words</button><button id="select-none" class="ghost small">Clear selection</button><button id="select-next-group" class="ghost small" aria-describedby="group-status">Select first 20</button><button id="shuffle-words" class="secondary small" title="Save a random order for this list and future practice sessions">Shuffle word order</button></div><p id="group-status" class="hint" role="status" aria-live="polite"></p><div id="word-chips" class="chips" aria-label="Select practice words"></div></div>
+<div class="stack"><div><div class="row between"><h2 id="setup-word-selection-title">Select practice words</h2><span id="selection-count" class="hint"></span></div><p id="setup-word-selection-help" class="hint">Choose the words for this session. You can select a smaller group for focused review.</p><div class="actions" style="margin-bottom:9px"><button id="select-all" class="ghost small">All words</button><button id="select-none" class="ghost small">Clear selection</button><button id="select-next-group" class="ghost small" aria-describedby="group-status">Select first 20</button><button id="shuffle-words" class="secondary small" title="Save a random order for this list and future practice sessions">Shuffle word order</button></div><p id="group-status" class="hint" role="status" aria-live="polite"></p><div id="word-chips" class="chips" aria-label="Select practice words"></div></div>
 </div></div>
-<div class="section">
+<div id="setup-practice-settings" class="section">
 <div class="settings learning-settings">
 <div><label for="learning-mode">Learning mode</label><select id="learning-mode"><option value="spelling">Spelling</option><option value="vocabulary">Vocabulary</option><option value="mixed">Mixed practice</option><option value="study">Flashcards</option></select></div>
 <div id="difficulty-setting"><label for="learning-difficulty">Difficulty</label><select id="learning-difficulty"><option value="adaptive">Adaptive</option><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
@@ -136,7 +145,8 @@ body:has(dialog.tools-dialog[open]) { overflow: hidden; }
 <label id="test-order-setting">Optional randomized order (RANDOM.ORG receipt)<input type="file" id="test-order" accept=".json,application/json"></label>
 </div><p id="test-preview" class="hint" role="status"></p></fieldset>
 <p id="mode-help" class="hint" role="status"></p>
-<div class="row between"><span class="hint">Lists and results stay in this browser.</span><button id="start-session" disabled>Begin practice</button></div></div></section>
+<div class="row between"><span class="hint">Lists and results stay in this browser.</span><button id="start-session" disabled>Begin practice</button></div></div>
+<div id="teacher-workspace-actions" class="section actions" hidden><button type="button" id="teacher-open-publishing">Generate and share</button></div></section>
 <dialog id="tools-dialog" class="tools-dialog" aria-labelledby="tools-title"><div class="tools-panel"><div class="row between tools-heading"><div><h1 id="tools-title">Tools</h1><p class="subhead">Manage backups and practice preferences.</p></div><button id="close-tools" class="ghost" aria-label="Close tools">Close</button></div><section class="tool-section"><h2>Backup and restore</h2><p class="hint">Create a saved copy of your word lists before clearing browser data.</p><div class="actions"><button id="export-json" class="secondary">Export full backup (JSON)</button><button id="import-json" class="secondary">Import JSON or vocabulary pack</button></div><input id="json-file" type="file" accept=".json,application/json" hidden><p id="backup-status" class="status" role="status"></p></section><section class="tool-section"><h2>Teacher tools</h2><div class="actions"><button id="open-teacher" class="ghost">Online generation and sharing</button><a id="offline-download" href="WordLab%20v0.2.0.html" download>Download offline app</a></div></section><section class="tool-section"><h2>Practice settings</h2><div class="settings"><div><label for="round-size">Words in each review round</label><input id="round-size" type="number" min="1" max="20"><div class="hint">The number of different words in one round.</div></div><div><label for="auto-advance">Correct-answer delay (milliseconds)</label><input id="auto-advance" type="number" min="0" max="5000" step="100"><div class="hint">Time to read feedback before the next word.</div></div><div><label for="feedback-delay">Incorrect-answer display time (milliseconds)</label><input id="feedback-delay" type="number" min="300" max="10000" step="100"><div class="hint">How long the correction stays visible.</div></div><div><label for="voice-select">English voice</label><select id="voice-select"><option value="">System default</option></select></div><div><label for="speech-rate">Speech rate <span id="rate-label">0.85</span></label><input id="speech-rate" type="range" min="0.5" max="1.2" step="0.05"><div class="hint">A lower rate speaks more slowly.</div></div><div><label for="pin-entry">Parent access PIN (optional)</label><input id="pin-entry" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4 digits"></div></div><div class="row between" style="margin-top:14px"><label class="checkline"><input id="retype-toggle" type="checkbox"><span>Require a correct second attempt after an error</span></label><label class="checkline"><input id="allow-variants" type="checkbox"> Allow teacher-approved spelling variants in vocabulary and tests</label><button id="preview-voice" class="ghost small">Preview voice</button></div><p class="hint">This helps learners study each correction before continuing. Voice quality and offline availability depend on the installed browser or system voice.</p></section><div class="row between"><span class="hint">Settings save automatically.</span><button id="done-tools">Done</button></div></div></dialog><dialog id="create-list-dialog" class="tools-dialog create-list-dialog" aria-labelledby="create-list-title"><form id="create-list-form" class="tools-panel create-list-form"><div class="tools-heading"><h1 id="create-list-title">Create a word list</h1><p id="create-list-intro" class="subhead">Give your list a name, then add or import the words to practice.</p></div><div class="stack"><div><label for="create-list-name">List name</label><input id="create-list-name" type="text" maxlength="80" autocomplete="off" placeholder="For example, Week 3 spelling" required autofocus></div><div><label for="create-list-words">Spelling words</label><textarea id="create-list-words" spellcheck="false" placeholder="because&#10;different&#10;important" aria-describedby="create-list-help" required></textarea><div id="create-list-help" class="hint">Enter up to 200 words or phrases, one per line. Repeated words are removed.</div></div></div><div class="actions"><button id="import-csv" type="button" class="secondary">Import CSV</button><button id="split-list" type="button" class="secondary" hidden>Split into lists</button><button id="copy-list" type="button" class="ghost">Copy as CSV</button></div><p class="hint">CSV: words on separate lines or separated by commas. No headings needed.</p><input id="csv-file" type="file" accept=".csv,text/csv" hidden><div id="list-editor-status" class="status" role="status" aria-live="polite"></div><div class="row between"><button id="cancel-create-list" type="button" class="ghost">Cancel</button><button id="save-list-draft" type="submit">Create this list</button></div></form></dialog>
 <section id="practice-screen" class="screen practice panel" hidden><div class="practice-head"><div><div id="list-name-practice" class="hint"></div><h1>Listen, then spell</h1></div><button id="pause-button" class="ghost">Pause practice <span class="kbd">Esc</span></button></div><div class="row between"><span id="progress-text"></span><span id="round-text"></span></div><div id="mastery-progress" class="progressline" role="progressbar" aria-label="Words mastered" aria-valuemin="0"><div id="progress-fill" class="progressfill"></div></div><div id="tiles" class="tiles" aria-label="Word progress"></div>
 <div class="prompt"><div class="actions" style="justify-content:center"><button id="replay-button" class="secondary">Replay word <span class="kbd">R</span></button><button id="slow-replay" class="ghost">Replay slowly <span class="kbd">S</span></button></div><div id="definition" class="definition"></div><div id="visual-word" class="sr" aria-live="polite"></div><form id="answer-form"><div id="spelling-correction" class="correction" hidden><span>Correct answer</span><strong></strong><span>Type it to continue.</span><p class="correction-detail" hidden></p></div><label class="sr" for="answer-input">Type the word you hear</label><input id="answer-input" class="word-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"><div class="hint">Type the word and press Enter to submit your answer.</div><div class="actions" style="justify-content:center;margin-top:10px"><button id="dont-know" type="button" class="ghost">I’m not sure</button><button id="submit-answer" type="submit">Submit answer</button></div></form></div><div id="feedback" class="feedback" aria-live="polite"></div></section>
@@ -190,7 +200,7 @@ body:has(dialog.tools-dialog[open]) { overflow: hidden; }
 </div></dialog>
 <dialog id="teacher-dialog" class="tools-dialog" aria-labelledby="teacher-title"><div class="tools-panel stack">
  <div class="row between"><h1 id="teacher-title">Online vocabulary tools</h1><button type="button" id="teacher-close" class="ghost">Close</button></div>
- <form id="teacher-connect" class="stack"><div><label for="teacher-url">WordLab service URL</label><input type="url" id="teacher-url" placeholder="https://api.wordlab.mtomlinson.ca" required></div><div><label for="teacher-secret">Teacher secret or class access code</label><input id="teacher-secret" type="password" autocomplete="off"></div><div class="actions"><button type="submit" id="teacher-login">Teacher sign-in</button><button type="submit" id="class-login" class="secondary">Use class code</button><button type="button" id="teacher-logout" class="ghost" hidden>Sign out</button></div></form>
+ <form id="teacher-connect" class="stack"><div id="teacher-url-field"><label for="teacher-url">WordLab service URL</label><input type="url" id="teacher-url" placeholder="https://api.wordlab.mtomlinson.ca" required></div><div><label id="teacher-secret-label" for="teacher-secret">Teacher secret or class access code</label><input id="teacher-secret" type="password" autocomplete="off"></div><div class="actions"><button type="submit" id="teacher-login">Teacher sign-in</button><button type="submit" id="class-login" class="secondary">Use class code</button><button type="button" id="teacher-logout" class="ghost" hidden>Sign out</button></div></form>
  <p id="teacher-status" class="status" role="status"></p>
  <div id="teacher-job" class="tool-section" hidden>
   <h2>Generation</h2><p id="teacher-selection" class="hint"></p>
@@ -202,7 +212,7 @@ body:has(dialog.tools-dialog[open]) { overflow: hidden; }
  <div id="teacher-admin" class="tool-section stack" hidden>
   <h2>Publishing and usage</h2><div><label for="shared-mode">Practice from the student link</label><select id="shared-mode"><option value="mixed">Mixed practice</option><option value="spelling">Spelling</option><option value="vocabulary">Vocabulary</option></select></div>
   <label class="checkline"><input id="shared-hints" type="checkbox" checked> Allow hints in Mixed and Vocabulary practice</label>
-  <div class="actions"><button type="button" id="ai-publish">Publish approved pack</button><button type="button" id="ai-share" class="secondary" disabled>Copy student link</button><button type="button" id="ai-qr" class="ghost" disabled>Show classroom QR code</button><button type="button" id="ai-usage" class="ghost">Refresh usage</button><button type="button" id="ai-stop" class="danger">Disable generation</button></div>
+  <div class="actions"><button type="button" id="ai-publish">Publish approved pack</button><button type="button" id="ai-preview" class="secondary" disabled>Preview as student</button><button type="button" id="ai-share" class="secondary" disabled>Copy student link</button><button type="button" id="ai-qr" class="ghost" disabled>Show classroom QR code</button><button type="button" id="ai-usage" class="ghost">Refresh usage</button><button type="button" id="ai-stop" class="danger">Disable generation</button></div>
   <label class="checkline"><input id="ai-publish-cache" type="checkbox"> Reuse this pack’s approved content in generation</label><div id="ai-qr-result" hidden></div><p id="ai-usage-result" class="hint" role="status"></p>
   <details><summary>Recent generation jobs</summary><ol id="ai-job-history"></ol></details><details><summary>Class access codes</summary><div class="stack"><button type="button" id="ai-classes" class="ghost">Refresh class list</button><ul id="ai-class-status"></ul><div class="settings"><div><label for="ai-class-id">Class ID</label><input id="ai-class-id" maxlength="40"></div><div><label for="ai-class-name">Name</label><input id="ai-class-name" maxlength="80"></div><div><label for="ai-class-limit">Daily word allowance</label><input id="ai-class-limit" type="number" min="1" value="200"></div><div><label for="ai-class-expiry">Expires on</label><input id="ai-class-expiry" type="date"></div></div><div class="actions"><button type="button" id="ai-class-save" class="secondary">Save class</button><button type="button" id="ai-class-rotate" class="ghost">Rotate code</button><button type="button" id="ai-class-revoke" class="ghost">Revoke access</button></div></div></details>
  </div>
@@ -3560,6 +3570,7 @@ function checkpointActive(entry, checkpoint, text) {
 }
 
 function saveState() {
+ if (studentPreview) return true;
  const entry = state.learningSession;
  if (!entry) {
   delete state.learningCheckpoint;
@@ -3641,12 +3652,20 @@ const Dictation = (() => {
 if (typeof module === 'object' && module.exports) module.exports = Dictation;
 
 const vocabularyStores = new Map();
+const previewRecords = new Map();
+const previewStore = {
+ kind: 'localStorage',
+ async get(key) { return structuredClone(previewRecords.get(key)); },
+ async put(key, value) { previewRecords.set(key, structuredClone(value)); },
+ async remove(key) { previewRecords.delete(key); }
+};
 let vocabCache = {key: '', records: null};
 let pendingPack = null;
 let undoVocabulary = null;
 const wordKey = Vocabulary.wordKey;
 const recordKey = list => list.vocabKey || 'list:' + list.id;
 function getStore(backend) {
+ if (studentPreview) return Promise.resolve(previewStore);
  if (!vocabularyStores.has(backend)) {
   vocabularyStores.set(backend, Vocabulary.openStore(globalThis, backend).catch(error => {
    vocabularyStores.delete(backend);
@@ -4742,9 +4761,12 @@ function initDictation() {
 
 const CLASS_RECOVERY = 'class-generation-recovery';
 const GENERATION_KEY = 'spell.generation.v1';
-const ONLINE_CONFIG = 'https://api.wordlab.mtomlinson.ca';
+const ONLINE_CONFIG = 'https://wordlab.mtomlinson.ca';
 let ai = {root: '', token: '', role: '', config: {}, job: null, listId: '', published: '', generation: 0};
-const teacherStatus = message => { $('teacher-status').textContent = message; };
+function teacherStatus(message) {
+ $('teacher-status').textContent = message;
+ $('teacher-signin-status').textContent = message;
+}
 
 function serviceOrigin(value) {
  const url = new URL(value);
@@ -4806,6 +4828,7 @@ function refreshTeacher() {
  $('ai-apply').disabled = !ai.job?.words.length;
  $('ai-retry-words').disabled = active || !ai.job?.failedWords.length;
  $('ai-share').disabled = !ai.published;
+ $('ai-preview').disabled = !ai.published;
  $('ai-qr').disabled = !ai.published;
  $('ai-stop').textContent = ai.config.generationEnabled ? 'Disable generation' : 'Enable generation';
  if (ai.job) {
@@ -4867,12 +4890,39 @@ function aiSettings() {
 }
 
 function publicPackLink(id) {
- const site = new URL(location.protocol === 'file:' ? 'https://wordlab.mtomlinson.ca/' : location.href);
- site.search = ''; site.hash = '';
+ const site = new URL('practice/', entryPage === 'offline' ? 'https://wordlab.mtomlinson.ca/' : location.href);
  const args = new URLSearchParams({pack: id, service: ai.root, mode: $('shared-mode').value});
  if (!$('shared-hints').checked) args.set('hints', 'off');
  site.hash = args.toString();
  return site.href;
+}
+
+function showTeacherEntry() {
+ if (ai.role === 'teacher' && ai.token) {
+  $('setup-title').textContent = 'Teacher workspace';
+  $('setup-practice-settings').hidden = true;
+  $('reset-progress').hidden = true;
+  $('open-report').hidden = true;
+  $('teacher-workspace-actions').hidden = false;
+  $('teacher-workspace-logout').hidden = false;
+  $('setup-word-selection-title').textContent = 'Select words for generation';
+  $('setup-word-selection-help').textContent = 'Generate content for selected words. Publishing shares the whole set.';
+  renderSetup();
+  show('setup-screen');
+  $('setup-title').focus();
+  return;
+ }
+ const form = $('teacher-connect');
+ $('teacher-signin-slot').append(form);
+ $('teacher-url').value = ONLINE_CONFIG;
+ $('teacher-url-field').hidden = true;
+ $('teacher-secret-label').textContent = 'Teacher password';
+ $('teacher-secret').autocomplete = 'current-password';
+ $('class-login').hidden = true;
+ $('teacher-login').textContent = 'Sign in';
+ refreshTeacher();
+ show('teacher-signin-screen');
+ $('teacher-secret').focus();
 }
 
 function initTeacher() {
@@ -4883,6 +4933,8 @@ function initTeacher() {
   refreshTeacher();
   $('teacher-dialog').showModal();
  };
+ $('teacher-open-publishing').onclick = () => $('open-teacher').click();
+ $('teacher-workspace-logout').onclick = () => $('teacher-logout').click();
  $('teacher-close').onclick = () => $('teacher-dialog').close();
  $('teacher-connect').onsubmit = teacherAction(async event => {
   if (ai.token) return;
@@ -4914,7 +4966,8 @@ function initTeacher() {
    } catch (error) { teacherStatus('Previous job could not be reopened. ' + error.message); }
   }
   const shared = new URLSearchParams(location.hash.slice(1));
-  if (shared.has('pack') && serviceOrigin(shared.get('service') || ONLINE_CONFIG) === root) {
+  if (entryPage === 'teacher' && !shared.has('pack')) showTeacherEntry();
+  else if (shared.has('pack') && serviceOrigin(shared.get('service') || ONLINE_CONFIG) === root) {
    $('teacher-dialog').close();
    await openSharedReview();
   }
@@ -4925,6 +4978,10 @@ function initTeacher() {
   $('ai-context').value = ''; $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
   $('ai-class-status').replaceChildren(); $('ai-usage-result').textContent = '';
   teacherStatus('Signed out.'); refreshTeacher();
+  if (entryPage === 'teacher') {
+   $('teacher-dialog').close();
+   showTeacherEntry();
+  }
  };
  $('ai-generate').onclick = teacherAction(async () => {
   const list = selectedList();
@@ -4986,12 +5043,19 @@ function initTeacher() {
   const {pack: published} = await service('/admin/publish', {method: 'POST',
    body: {pack, visibility: 'public', ...($('ai-publish-cache').checked ? {cacheSettings: {...aiSettings(), context: ''}} : {})}, requestId: newListId()});
   ai.published = publicPackLink(published.id);
+  $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
   refreshTeacher();
   teacherStatus('Pack published. Copy the link or show the QR code.');
  });
  $('ai-share').onclick = teacherAction(async () => {
   teacherStatus(await copy(ai.published) ? 'Student link copied.' : ai.published);
  });
+ $('ai-preview').onclick = () => {
+  if (!ai.published) return;
+  const url = new URL(ai.published);
+  url.searchParams.set('preview', '1');
+  window.open(url.href, '_blank', 'noopener');
+ };
  $('ai-qr').onclick = teacherAction(async () => {
   const box = $('ai-qr-result');
   const image = document.createElement('img');
@@ -5219,13 +5283,23 @@ async function openSharedReview() {
   $('shared-title').textContent = 'This set could not open';
   $('shared-instruction').textContent = 'Check your connection or ask your teacher for a new link.';
   if (error.status === 401 || error.status === 403 || error.status === 404) {
-   $('shared-ready-status').textContent = 'If the set uses a class code, sign in from the WordLab home page.';
+   $('shared-ready-status').textContent = entryPage === 'offline' ? 'If the set uses a class code, sign in from Tools.' : 'Ask your teacher for a public practice link.';
   }
   $('shared-title').focus();
  }
 }
 
 function showLanding() {
+ if (entryPage === 'teacher') { showTeacherEntry(); return; }
+ if (entryPage === 'student') {
+  $('shared-title').textContent = 'Open a practice set';
+  $('shared-instruction').textContent = 'Use the practice link your teacher gave you.';
+  $('shared-ready-status').textContent = '';
+  $('shared-start').hidden = true;
+  show('shared-ready');
+  $('shared-title').focus();
+  return;
+ }
  if (state.learningSession) pauseLearning();
  else if (state.learningCheckpoint) recoverCheckpoint();
  else show(state.session ? 'resume-screen' : 'setup-screen');
@@ -5237,6 +5311,8 @@ function initSharedReview() {
 }
 
 const SELFTEST = new URLSearchParams(location.search).has('selftest');
+const entryPage = document.body.dataset.entry || 'offline';
+const studentPreview = entryPage === 'student' && new URLSearchParams(location.search).get('preview') === '1';
 const VERSION='0.2.0',KEY='spell.state',D={roundSize:7,retypeOnMiss:true,autoAdvanceMs:600,feedbackMs:1800,voiceURI:'',rate:.85,pin:'',allowVariants:false};
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),now=()=>new Date().toISOString();
 const norm=s=>String(s??'').trim().replace(/\s+/g,' ').replace(/[’‘]/g,"'");
@@ -5274,7 +5350,7 @@ function clean(raw){
  if(sessionOK(raw.session)){s.session=raw.session;s.session.defs=dictionary(raw.session.defs);s.session.perWord=dictionary(raw.session.perWord);}
  return restoreLearningFields(s,raw);
 }
-let storageOK=true,state=SELFTEST?blank():loadState(),listId=(state.session||state.learningSession||state.learningCheckpoint||{}).listId||(state.lists[0]||{}).id||'',voices=[],speech=!!(window.speechSynthesis&&window.SpeechSynthesisUtterance),timer=0;
+let storageOK=true,state=SELFTEST||studentPreview?blank():loadState(),listId=(state.session||state.learningSession||state.learningCheckpoint||{}).listId||(state.lists[0]||{}).id||'',voices=[],speech=!!(window.speechSynthesis&&window.SpeechSynthesisUtterance),timer=0;
 function save(){return SELFTEST || storageOK && saveState();}
 function warning(){$('storage-warning').hidden=storageOK;if(storageIssue)$('storage-warning').textContent=storageIssue;}
 function status(t){$('setup-status').textContent=t;}
@@ -5329,7 +5405,7 @@ function textDiff(d){return'<div>'+d.x.map(x=>'<span class="'+x.k+'">'+esc(x.c)+
 function renderSetup(){
  const sel=$('list-select');sel.innerHTML='';
  if(!state.lists.length){sel.add(new Option('No saved lists',''));listId='';}else{state.lists.forEach(l=>sel.add(new Option(l.name,l.id)));if(!state.lists.some(l=>l.id===listId))listId=state.lists[0].id;sel.value=listId;}
- const l=selectedList();$('setup-intro').textContent=state.lists.length?'Choose a word list and select the words you want to practice.':'Create a list to get started. Give it a name and add one word or phrase per line.';$('list-actions-help').hidden=!!l;
+ const l=selectedList();$('setup-intro').textContent=state.lists.length?(entryPage==='teacher'?'Choose a set to edit its content or share it with students.':'Choose a word list and select the words you want to practice.'):'Create a list to get started. Give it a name and add one word or phrase per line.';$('list-actions-help').hidden=!!l;
  ['edit-list','delete-list','reset-progress','shuffle-words','select-all','select-none','select-next-group'].forEach(id=>$(id).disabled=!l);
  const host=$('word-chips');host.innerHTML='';
  if(l){const chosen=new Set(selectedWords());l.words.forEach(w=>{const label=document.createElement('label');label.className='chip';const cb=document.createElement('input');cb.type='checkbox';cb.checked=chosen.has(w);cb.setAttribute('aria-label','Include '+w);cb.onchange=()=>{const a=selectedWords();state.settings.selected[l.id]=l.words.filter(x=>x===w?cb.checked:a.includes(x));save();countSelected();};const span=document.createElement('span');span.textContent=w;label.append(cb,span);host.append(label);});}
@@ -5388,7 +5464,7 @@ function copy(text){if(navigator.clipboard?.writeText)return navigator.clipboard
 function fallbackCopy(text){const t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';(document.querySelector('dialog[open]')||document.body).append(t);t.select();let ok=false;try{ok=document.execCommand('copy');}catch(e){}t.remove();return ok;}
 function download(file,text,type){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=file;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function practiceMissed(){const s=state.session;if(!s)return;const r=s.summary||summary(s);if(!Array.isArray(r.missed)||!r.missed.length)return;const l={id:s.listId,name:s.listName,words:s.words,defs:s.defs};state.session=null;save();start(r.missed,l);}
-function finishToSetup(){const checkpoint=state.learningCheckpoint;if(state.session&&!state.session.summary)finish(false);state.session=null;state.learningSession=null;save();if(checkpoint)getStore(checkpoint.backend).then(store=>store.remove(checkpoint.key)).catch(()=>{});renderSetup();if(sharedReview)renderSharedReady();else show('setup-screen');}
+function finishToSetup(){const checkpoint=state.learningCheckpoint;if(state.session&&!state.session.summary)finish(false);state.session=null;state.learningSession=null;save();if(checkpoint)getStore(checkpoint.backend).then(store=>store.remove(checkpoint.key)).catch(()=>{});renderSetup();if(sharedReview)renderSharedReady();else showLanding();}
 function backToSetup(){if(state.settings.pin){$('pin-check').value='';$('pin-error').textContent='';$('pin-overlay').hidden=false;$('pin-check').focus();}else finishToSetup();}
 function validBackup(x){if(!x||x.v!==1||!Array.isArray(x.lists)||!x.lists.every(listOK))throw Error('Choose a WordLab backup with a valid lists array.');return x.lists.map(l=>({id:l.id,name:l.name,words:wordsUnique(l.words),defs:dictionary(l.defs),updatedAt:now()}));}
 function runTests(){
