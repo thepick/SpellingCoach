@@ -336,6 +336,13 @@ $('copy-missed').onclick=()=>{const s=state.session;if(!s)return;const r=s.summa
 document.addEventListener('keydown',e=>{
  if(e.key==='Escape'){if(!$('pin-overlay').hidden){$('pin-overlay').hidden=true;if(state.session&&!state.session.summary)$('pause-overlay').hidden=false;return;}if(!$('pause-overlay').hidden)return;if(!$('practice-screen').hidden){e.preventDefault();$('pause-button').click();}else if(!$('learning-screen').hidden){e.preventDefault();pauseLearning();}return;}
  if(e.altKey||e.ctrlKey||e.metaKey||e.shiftKey||/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName||''))return;
+ const next=$('learning-next');
+ if(e.key==='Enter'&&!e.isComposing&&!e.defaultPrevented&&!$('learning-screen').hidden&&!next.hidden&&!next.disabled&&
+    (e.target===next||!e.target?.closest?.('button, a[href], [contenteditable], summary'))){
+  e.preventDefault();
+  if(!e.repeat)next.click();
+  return;
+ }
  if(!$('practice-screen').hidden&&e.key.toLowerCase()==='r')playPracticeRecording(state.settings.rate);
  if(!$('practice-screen').hidden&&e.key.toLowerCase()==='s')playPracticeRecording(state.settings.rate*.6,true);
 });

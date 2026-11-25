@@ -258,9 +258,22 @@ function renderLearning(play, corrected = false) {
  box.className = 'feedback' + (result ? result.correct ? ' good' : ' bad' : '');
  if (result) {
   const message = {'other-word': 'That is a different word.', 'word-form': 'Check the word form.', 'likely-spelling': 'Check the spelling.'};
-  box.textContent = (result.correct ? (result.assisted ? 'Correct with help. You’ll try this word again.' : 'Correct.') :
-   (message[result.kind] || 'Incorrect.') + ' Answer: ' + result.answer + '.') +
-   (result.explanation ? ' ' + result.explanation : '');
+  box.textContent = result.correct ? (result.assisted ? 'Correct with help. You’ll try this word again.' : 'Correct.') :
+   message[result.kind] || 'Incorrect.';
+  if (!result.correct) {
+   const answer = document.createElement('strong');
+   answer.textContent = result.answer;
+   const label = document.createElement('div');
+   label.className = 'feedback-answer';
+   label.append('Correct answer', answer);
+   box.append(label);
+  }
+  if (result.explanation) {
+   const detail = document.createElement('p');
+   detail.className = 'correction-detail';
+   detail.textContent = result.explanation;
+   box.append(detail);
+  }
  }
  const next = $('learning-next');
  const advance = result && !correction && (result.correct || corrected ||
