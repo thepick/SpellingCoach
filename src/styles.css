@@ -106,3 +106,15 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 #teacher-account input[type=checkbox] { flex: none; }
 
 #teacher-account, #teacher-grade-defaults, #teacher-private-audio { border-top: 0; margin-top: 0; padding-top: 0; }
+
+.mastery-meter { margin: 1.15rem 0 1.4rem; }
+.mastery-meta, .mastery-foot { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; }
+.mastery-count { font-weight: 600; }
+.mastery-percent { color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
+.mastery-meter .progressline { height: 8px; margin: .65rem 0 .55rem; }
+.mastery-meter .progressfill { width: 0; transition: width 220ms ease-out; border-radius: inherit; }
+.mastery-meter.is-complete .progressfill { background: var(--good); }
+.mastery-foot { margin: 0; color: var(--muted); font-size: .85rem; line-height: 1.5; }
+.mastery-foot #round-text { flex: none; }
+#study-shuffle-status:empty { display: none; }
+@media (prefers-reduced-motion: reduce) { .mastery-meter .progressfill { transition: none; } }

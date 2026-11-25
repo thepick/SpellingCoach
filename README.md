@@ -31,7 +31,9 @@ In Mixed practice, mastering a word requires two correct dictations, one correct
 
 Use **Tools → Export full backup** before clearing browser data or moving to a different web address or offline file. Browser storage is tied to the address or file. Import the backup in WordLab to carry over your lists and progress. The app accepts older list-only JSON files, new vocabulary packs, and full backups. The first upgrade keeps a copy of the original spelling state in the browser under `spell.state.v1.backup`.
 
-To shuffle a saved word list, flashcards, or a test, use a completed RANDOM.ORG permutation receipt with each position from 1 through the number of items. A test can run in its prepared order without a receipt. The app maps the numbers to content on the device.
+Choose **Shuffle word order** or **Shuffle cards** to shuffle immediately on your device, including offline. **Undo shuffle** restores the previous order. Shuffling preserves the selected words, vocabulary, recordings and progress; saved teacher sets sync the new order privately. A randomized test can still import an optional completed RANDOM.ORG permutation receipt; tests otherwise use their prepared order.
+
+Practice pages show how many words are fully mastered, with a progress bar that reaches 100% only when every word meets the session’s mastery requirements. Pausing and resuming preserves that progress. Published recordings download completely before playing; Replay reuses the most recent completed clip, and navigation cancels unfinished playback.
 
 ## Build and verify
 

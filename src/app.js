@@ -99,6 +99,8 @@ function renderSetup(){
  if(!state.lists.length){sel.add(new Option('No saved lists',''));listId='';}else{state.lists.forEach(l=>sel.add(new Option(l.name,l.id)));if(!state.lists.some(l=>l.id===listId))listId=state.lists[0].id;sel.value=listId;}
  const l=selectedList();$('setup-intro').textContent=state.lists.length?(entryPage==='teacher'?'Choose a set, check its words and vocabulary, then share it with students.':'Choose a word list and select the words you want to practice.'):'Create a list to get started. Give it a name and add one word or phrase per line.';$('list-actions-help').hidden=!!l;
  ['edit-list','delete-list','reset-progress','shuffle-words','select-all','select-none','select-next-group'].forEach(id=>$(id).disabled=!l);
+ $('shuffle-words').disabled=!l||l.words.length<2||!!l.remoteConflict;
+ $('shuffle-undo').hidden=!canUndoShuffle('list');
  const host=$('word-chips');host.innerHTML='';
  if(l){const chosen=new Set(selectedWords());l.words.forEach(w=>{const label=document.createElement('label');label.className='chip';const cb=document.createElement('input');cb.type='checkbox';cb.checked=chosen.has(w);cb.setAttribute('aria-label','Include '+w);cb.onchange=()=>{const a=selectedWords();state.settings.selected[l.id]=l.words.filter(x=>x===w?cb.checked:a.includes(x));save();countSelected();};const span=document.createElement('span');span.textContent=w;label.append(cb,span);host.append(label);});}
  else host.innerHTML='<span class="hint">Create or import a list to begin.</span>';
@@ -138,7 +140,7 @@ function playPracticeRecording(rate, slow = false){
 }
 function renderPractice(play){
  const s=state.session;if(!s)return;finished=false;show('practice-screen');$('list-name-practice').textContent=s.listName;$('round-text').textContent='Round '+s.round;
- const done=s.words.filter(w=>s.perWord[w].mastered).length;$('progress-text').textContent=done+' / '+s.words.length+' mastered';$('progress-fill').style.width=(100*done/s.words.length)+'%';$('mastery-progress').setAttribute('aria-valuemax',s.words.length);$('mastery-progress').setAttribute('aria-valuenow',done);renderTiles(s);
+ const done=s.words.filter(w=>s.perWord[w].mastered).length;renderMasteryProgress('spelling-mastery',done,s.words.length);renderTiles(s);
  $('definition').textContent=s.defs[s.current]||'';$('visual-word').className='sr';$('visual-word').textContent='';$('replay-button').hidden=false;$('slow-replay').hidden=false;
  if(!speech&&!sharedAudioPath(s.listId,s.current,'dictation',s.current)){const word=s.current;readRecording(s.listId,word,s.meanings?.[word]).then(clip=>{
   if(clip||state.session!==s||s.current!==word||$('practice-screen').hidden)return;

@@ -163,6 +163,21 @@ function beginLearning(list, records, options, dueLists) {
  renderLearning(true);
 }
 
+function renderMasteryProgress(id, mastered, total) {
+ const meter = $(id), bar = meter.querySelector('[role="progressbar"]');
+ const fraction = total ? mastered/total : 0;
+ const percent = total > 0 && mastered === total ? 100 : Math.min(99,Math.round(100*fraction));
+ const label = mastered + ' of ' + total + ' ' + (total === 1 ? 'word' : 'words') + ' mastered';
+ const count = meter.querySelector('.mastery-count');
+ if (count.textContent !== label) count.textContent = label;
+ meter.querySelector('.mastery-percent').textContent = percent + '%';
+ meter.querySelector('.progressfill').style.width = 100*fraction + '%';
+ meter.classList.toggle('is-complete', total > 0 && mastered === total);
+ bar.setAttribute('aria-valuemax', total);
+ bar.setAttribute('aria-valuenow', mastered);
+ bar.setAttribute('aria-valuetext', label + ' · ' + percent + '%');
+}
+
 let audioReady = false;
 let audioQuestion = null;
 let lastHint = null;
@@ -214,12 +229,14 @@ function renderLearning(play, corrected = false) {
  show('learning-screen');
  $('learning-label').textContent = entry.listName + ' · ' + (test ? 'Test' : 'Practice');
  $('learning-title').textContent = titleForType[question.type];
- let progress = 'Question ' + (session.index + 1) + (test ? ' of ' + session.questions.length : '');
- if (!test && session.mode === 'mixed') {
-  const {mastered, total} = Learning.practiceWordProgress(session);
-  progress = mastered + ' of ' + total + ' ' + (total === 1 ? 'word' : 'words') + ' mastered';
- }
+ $('learning-count').hidden = !test;
+ const progress = 'Question ' + (session.index + 1) + ' of ' + session.questions.length;
  if ($('learning-count').textContent !== progress) $('learning-count').textContent = progress;
+ $('learning-mastery').hidden = test;
+ if (!test) {
+  const {mastered, total} = Learning.practiceWordProgress(session);
+  renderMasteryProgress('learning-mastery', mastered, total);
+ }
  $('learning-prompt').textContent = question.type === 'dictation' ? 'Listen to the word, then type it.' : question.prompt;
  $('learning-audio-actions').hidden = !session.settings.audioReplay || !!result;
  const recordedPrompt = sharedAudioPath(entry.listId, question.word, question.type, Learning.audio(question));
@@ -542,6 +559,7 @@ function renderStudy() {
  $('study-prev').disabled = study.index < 1;
  $('study-next').disabled = study.index + 1 >= cards.length;
  $('study-shuffle').disabled = study.rows.length < 2;
+ $('study-shuffle-undo').hidden = !canUndoShuffle('study');
 }
 
 function outputPack(list, records) {
@@ -884,29 +902,8 @@ function initCoach() {
   studyState.revealed = false; save(); renderStudy();
  };
  $('study-shuffle').onclick = () => openShuffle('study');
- $('shuffle-close').onclick = () => $('shuffle-dialog').close();
- $('shuffle-form').onsubmit = async event => {
-  event.preventDefault();
-  const list = selectedList(), mode = $('shuffle-dialog').dataset.mode;
-  if (!list) return;
-  const values = mode === 'study' ? studyState.rows : list.words;
-  try {
-   const receipt = await readImport($('shuffle-file').files[0]);
-   const positions = orderFromReceipt(receipt, values.length);
-   const ordered = positions.map(position => values[position]);
-   if (mode === 'study') {
-    state.studyReceipt = {receipt, words: values.map(row => row.word), listId: list.id};
-    studyState.rows = ordered; studyState.index = 0; studyState.revealed = false; save(); renderStudy();
-   } else {
-    list.orderReceipt = {receipt, words: values.slice()};
-    if (ordered.some((word, index) => word !== list.words[index])) list.packVersion = (list.packVersion || 1) + 1;
-    list.words = ordered; list.audioStatus = null; list.updatedAt = now(); save(); renderSetup();
-    if (ai.role === 'teacher' && ai.token) await autosaveTeacherSet(list);
-    status('Saved the new word order.');
-   }
-   $('shuffle-dialog').close();
-  } catch (error) { $('shuffle-error').textContent = error.message; }
- };
+ $('shuffle-undo').onclick = () => undoWordShuffle('list');
+ $('study-shuffle-undo').onclick = () => undoWordShuffle('study');
  $('vocab-close').onclick = () => $('vocab-dialog').close();
  for (const id of ['vocab-search', 'vocab-filter']) $(id).oninput = () => { editorPage = 0; renderVocabularyEditor(); };
  $('vocab-prev').onclick = () => { editorPage--; renderVocabularyEditor(); };
@@ -991,14 +988,70 @@ function initCoach() {
  initSharedReview();
 }
 
-function openShuffle(mode) {
- const values = mode === 'study' ? studyState.rows : selectedList()?.words || [];
- if (values.length < 2) return;
- $('shuffle-help').textContent = 'Import a random permutation containing the positions 1 through ' + values.length + '. The app maps numbers to words locally.';
- $('shuffle-error').textContent = '';
- $('shuffle-form').reset();
- $('shuffle-dialog').dataset.mode = mode;
- $('shuffle-dialog').showModal();
+let shuffleUndo = null;
+function canUndoShuffle(mode) {
+ const study = mode === 'study', snapshot = study ? studyState?.shuffleUndo : shuffleUndo;
+ const list = study ? studyState?.list : selectedList(), values = study ? studyState?.rows : list?.words;
+ return !!snapshot && snapshot.workspace === state && snapshot.list === list && (study ? snapshot.study === studyState : list.packVersion === snapshot.version) &&
+  values?.length === snapshot.after.length && values.every((value,index) => value === snapshot.after[index]);
+}
+
+async function saveWordOrder(list, words, receipt) {
+ const selection = state.settings.selected[list.id];
+ list.words = words;
+ if (Array.isArray(selection)) state.settings.selected[list.id] = words.filter(word => selection.includes(word));
+ if (receipt) list.orderReceipt = receipt; else delete list.orderReceipt;
+ list.packVersion = (list.packVersion || 1)+1;
+ list.audioStatus = null; list.updatedAt = now(); save(); renderSetup();
+ await autosaveTeacherSet(list);
+}
+
+async function openShuffle(mode) {
+ const workspace = state, study = mode === 'study', list = study ? studyState?.list : selectedList();
+ const values = study ? studyState?.rows : list?.words;
+ if (!list || !values || values.length < 2) return;
+ try {
+  if (!study && list.remoteConflict) throw Error('Reload saved sets before changing this set’s order.');
+  const ordered = shuffledCopy(values);
+  if (ordered.every((value,index) => value === values[index])) {
+   if (study) $('study-shuffle-status').textContent = 'Shuffled. The order happened to stay the same.';
+   else status('Shuffled. The order happened to stay the same.');
+   return;
+  }
+  const snapshot = {workspace,list,before:values.slice(),after:ordered,receipt:list.orderReceipt,version:(list.packVersion || 1)+1};
+  if (study) {
+   snapshot.study = studyState; studyState.shuffleUndo = snapshot;
+   studyState.rows = ordered; studyState.index = 0; studyState.revealed = false;
+   delete state.studyReceipt; save(); renderStudy();
+   $('study-shuffle-status').textContent = 'Cards shuffled.';
+  } else {
+   shuffleUndo = snapshot;
+   await saveWordOrder(list,ordered);
+   if (workspace === state && selectedList() === list) status('Word order shuffled.');
+  }
+ } catch (error) {
+  if (workspace !== state) return;
+  if (study) $('study-shuffle-status').textContent = error.message; else status(error.message);
+ }
+}
+
+async function undoWordShuffle(mode) {
+ if (!canUndoShuffle(mode)) return;
+ const workspace = state, study = mode === 'study', snapshot = study ? studyState.shuffleUndo : shuffleUndo;
+ try {
+  if (study) {
+   studyState.rows = snapshot.before; studyState.index = 0; studyState.revealed = false;
+   delete studyState.shuffleUndo; save(); renderStudy(); $('study-shuffle').focus();
+   $('study-shuffle-status').textContent = 'Previous card order restored.';
+  } else {
+   if (snapshot.list.remoteConflict) throw Error('Reload saved sets before changing this set’s order.');
+   shuffleUndo = null;
+   const saved = saveWordOrder(snapshot.list,snapshot.before,snapshot.receipt);
+   $('shuffle-words').focus();
+   await saved;
+   if (workspace === state && selectedList() === snapshot.list) status('Previous word order restored.');
+  }
+ } catch (error) { if (workspace === state) status(error.message); }
 }
 
 function recordLegacySpelling(listId, word, correct) {
