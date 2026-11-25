@@ -215,6 +215,18 @@ const Learning = (() => {
     return skill.mastered && skill.streak >= 2;
   }
 
+  function practiceWordProgress(session) {
+    const pending = new Set(session.queue);
+    const question = current(session), feedback = session.feedback;
+    if (question && (!feedback?.correct || feedback.assisted || feedback.correctionRequired)) pending.add(question.taskId);
+    const words = new Map();
+    for (const task of session.tasks) {
+      const word = task.recordIndex;
+      words.set(word, words.get(word) !== false && !pending.has(task.id) && taskMastered(session, task));
+    }
+    return {mastered: [...words.values()].filter(Boolean).length, total: words.size};
+  }
+
   function practiceMastered(session) {
     return session.settings.masteryPractice === true && session.type === 'practice' &&
       session.status === 'finished' && session.index === session.questions.length &&
@@ -586,7 +598,7 @@ const Learning = (() => {
     }), order);
   }
 
-  return {createSession, current, evaluate, audio, hint, lastHint, submit, skip, correct, advance, finish, resume, sessionOK, report, mastery, practiceMastered, flashcards};
+  return {createSession, current, evaluate, audio, hint, lastHint, submit, skip, correct, advance, finish, resume, sessionOK, report, mastery, practiceMastered, practiceWordProgress, flashcards};
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Learning;

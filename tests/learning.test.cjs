@@ -138,6 +138,27 @@ test('shared mastery practice survives the normal retry limit and requires indep
   assert.equal(L.practiceMastered(ended), false);
 });
 
+test('mixed mastery counts each word when all its assigned skills are mastered', () => {
+  const mixed = L.createSession([records[0], 'solid'], {mode: 'mixed', difficulty: 'adaptive', masteryPractice: true});
+  assert.deepEqual(L.practiceWordProgress(mixed), {mastered: 0, total: 2});
+  let sawSpellingWithoutVocabulary = false;
+  for (let attempt = 0; attempt < 30 && L.current(mixed); attempt++) {
+    L.submit(mixed, L.current(mixed).answer);
+    const {mastered, total} = L.practiceWordProgress(mixed);
+    const solid = mixed.progress.solid.spelling.mastered;
+    const both = mixed.progress.wistfully.spelling.mastered && mixed.progress.wistfully.vocabulary.mastered;
+    if (mixed.progress.wistfully.spelling.mastered && !both) sawSpellingWithoutVocabulary = true;
+    assert.deepEqual({mastered, total}, {mastered: Number(solid) + Number(both), total: 2});
+    L.advance(mixed);
+  }
+  assert(sawSpellingWithoutVocabulary);
+  assert.equal(L.practiceMastered(mixed), true);
+  const restored = JSON.parse(JSON.stringify(mixed));
+  assert.deepEqual(L.practiceWordProgress(restored), {mastered: 2, total: 2});
+  const review = L.createSession(mixed.records, mixed.settings, mixed.progress);
+  assert.deepEqual(L.practiceWordProgress(review), {mastered: 0, total: 2});
+});
+
 test('speech masks case, whitespace and apostrophe variants of a hidden answer', () => {
   const question = {type: 'definition-recall', answer: "Mary Jane's", prompt: 'One of MARY   JANE’S things.'};
   assert.equal(L.audio(question), 'One of blank things.');

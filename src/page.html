@@ -75,7 +75,7 @@ const themePreference = (() => {
 <section id="summary-screen" class="screen panel" hidden><div class="row between"><div><div id="summary-list" class="hint"></div><h1 id="summary-title">Practice summary</h1></div><button id="summary-setup" class="ghost">Return to setup</button></div><div id="summary-stats" class="summary-stat"></div><div class="grid section"><div><h2>Words for more practice</h2><div id="missed-empty" class="hint">No words need additional review from this session.</div><ol id="missed-list" class="missed"></ol><div class="actions"><button id="practice-missed" disabled>Practice these words</button><button id="copy-missed" class="secondary" disabled>Copy review words</button></div></div><div><h2>Recent practice sessions</h2><ol id="history-list" class="history"></ol></div></div></section>
 <section id="learning-screen" class="screen practice panel" hidden>
  <div class="practice-head"><div><div id="learning-label" class="hint"></div><h1 id="learning-title" tabindex="-1"></h1></div><div class="actions"><button id="learning-pause" type="button" class="ghost small">Pause</button><button id="learning-end" type="button" class="ghost small">End session</button></div></div>
- <p id="learning-count" class="hint"></p><p id="learning-prompt" class="lesson-prompt"></p>
+ <p id="learning-count" class="hint" aria-live="polite"></p><p id="learning-prompt" class="lesson-prompt"></p>
  <div id="learning-audio-actions" class="actions"><button id="learning-audio" type="button" class="secondary small">Listen</button><button id="learning-slow" type="button" class="ghost small">Listen slowly</button></div>
  <p id="learning-audio-error" class="notice" role="alert" hidden></p>
  <form id="learning-answer" class="stack">

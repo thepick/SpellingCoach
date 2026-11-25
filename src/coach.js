@@ -196,7 +196,12 @@ function renderLearning(play, corrected = false) {
  show('learning-screen');
  $('learning-label').textContent = entry.listName + ' · ' + (test ? 'Test' : 'Practice');
  $('learning-title').textContent = titleForType[question.type];
- $('learning-count').textContent = 'Question ' + (session.index + 1) + (test ? ' of ' + session.questions.length : '');
+ let progress = 'Question ' + (session.index + 1) + (test ? ' of ' + session.questions.length : '');
+ if (!test && session.mode === 'mixed') {
+  const {mastered, total} = Learning.practiceWordProgress(session);
+  progress = mastered + ' of ' + total + ' ' + (total === 1 ? 'word' : 'words') + ' mastered';
+ }
+ if ($('learning-count').textContent !== progress) $('learning-count').textContent = progress;
  $('learning-prompt').textContent = question.type === 'dictation' ? 'Listen to the word, then type it.' : question.prompt;
  $('learning-audio-actions').hidden = !session.settings.audioReplay || !!result;
  const audioAvailable = speech || question.type === 'dictation';

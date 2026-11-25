@@ -133,7 +133,7 @@ body:has(dialog.tools-dialog[open]) { overflow: hidden; }
 <section id="summary-screen" class="screen panel" hidden><div class="row between"><div><div id="summary-list" class="hint"></div><h1 id="summary-title">Practice summary</h1></div><button id="summary-setup" class="ghost">Return to setup</button></div><div id="summary-stats" class="summary-stat"></div><div class="grid section"><div><h2>Words for more practice</h2><div id="missed-empty" class="hint">No words need additional review from this session.</div><ol id="missed-list" class="missed"></ol><div class="actions"><button id="practice-missed" disabled>Practice these words</button><button id="copy-missed" class="secondary" disabled>Copy review words</button></div></div><div><h2>Recent practice sessions</h2><ol id="history-list" class="history"></ol></div></div></section>
 <section id="learning-screen" class="screen practice panel" hidden>
  <div class="practice-head"><div><div id="learning-label" class="hint"></div><h1 id="learning-title" tabindex="-1"></h1></div><div class="actions"><button id="learning-pause" type="button" class="ghost small">Pause</button><button id="learning-end" type="button" class="ghost small">End session</button></div></div>
- <p id="learning-count" class="hint"></p><p id="learning-prompt" class="lesson-prompt"></p>
+ <p id="learning-count" class="hint" aria-live="polite"></p><p id="learning-prompt" class="lesson-prompt"></p>
  <div id="learning-audio-actions" class="actions"><button id="learning-audio" type="button" class="secondary small">Listen</button><button id="learning-slow" type="button" class="ghost small">Listen slowly</button></div>
  <p id="learning-audio-error" class="notice" role="alert" hidden></p>
  <form id="learning-answer" class="stack">
@@ -3048,6 +3048,18 @@ const Learning = (() => {
     return skill.mastered && skill.streak >= 2;
   }
 
+  function practiceWordProgress(session) {
+    const pending = new Set(session.queue);
+    const question = current(session), feedback = session.feedback;
+    if (question && (!feedback?.correct || feedback.assisted || feedback.correctionRequired)) pending.add(question.taskId);
+    const words = new Map();
+    for (const task of session.tasks) {
+      const word = task.recordIndex;
+      words.set(word, words.get(word) !== false && !pending.has(task.id) && taskMastered(session, task));
+    }
+    return {mastered: [...words.values()].filter(Boolean).length, total: words.size};
+  }
+
   function practiceMastered(session) {
     return session.settings.masteryPractice === true && session.type === 'practice' &&
       session.status === 'finished' && session.index === session.questions.length &&
@@ -3419,7 +3431,7 @@ const Learning = (() => {
     }), order);
   }
 
-  return {createSession, current, evaluate, audio, hint, lastHint, submit, skip, correct, advance, finish, resume, sessionOK, report, mastery, practiceMastered, flashcards};
+  return {createSession, current, evaluate, audio, hint, lastHint, submit, skip, correct, advance, finish, resume, sessionOK, report, mastery, practiceMastered, practiceWordProgress, flashcards};
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Learning;
@@ -3814,7 +3826,12 @@ function renderLearning(play, corrected = false) {
  show('learning-screen');
  $('learning-label').textContent = entry.listName + ' · ' + (test ? 'Test' : 'Practice');
  $('learning-title').textContent = titleForType[question.type];
- $('learning-count').textContent = 'Question ' + (session.index + 1) + (test ? ' of ' + session.questions.length : '');
+ let progress = 'Question ' + (session.index + 1) + (test ? ' of ' + session.questions.length : '');
+ if (!test && session.mode === 'mixed') {
+  const {mastered, total} = Learning.practiceWordProgress(session);
+  progress = mastered + ' of ' + total + ' ' + (total === 1 ? 'word' : 'words') + ' mastered';
+ }
+ if ($('learning-count').textContent !== progress) $('learning-count').textContent = progress;
  $('learning-prompt').textContent = question.type === 'dictation' ? 'Listen to the word, then type it.' : question.prompt;
  $('learning-audio-actions').hidden = !session.settings.audioReplay || !!result;
  const audioAvailable = speech || question.type === 'dictation';
