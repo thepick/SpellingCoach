@@ -5,7 +5,7 @@ function stopRecording() {
  dictationRequest++;
  if (dictationPlayer) {
   dictationPlayer.audio.pause();
-  URL.revokeObjectURL(dictationPlayer.url);
+  if (dictationPlayer.url.startsWith('blob:')) URL.revokeObjectURL(dictationPlayer.url);
   dictationPlayer = null;
  }
 }
@@ -18,13 +18,31 @@ function readRecording(listId, word, vocabulary) {
 async function playRecording(recording, rate, request, onStart) {
  if (request !== dictationRequest) return;
  if (speech) speechSynthesis.cancel();
- const url = URL.createObjectURL(recording);
+ const url = typeof recording === 'string' ? recording : URL.createObjectURL(recording);
  const audio = new Audio(url);
  dictationPlayer = {audio, url};
  audio.playbackRate = rate;
  if (onStart) audio.onplaying = () => { if (request === dictationRequest) onStart(); };
  audio.onended = () => { if (request === dictationRequest) stopRecording(); };
  await audio.play();
+}
+
+function sharedAudioPath(listId, word, type, spoken) {
+ const review = sharedReview;
+ if (review?.origin !== location.origin || findPackList(review.pack.id, review.origin)?.id !== listId) return null;
+ return Dictation.publishedClip(review.pack, word, type, spoken);
+}
+
+async function playPublishedRecording(path, slow, fallback, onStart) {
+ stopRecording();
+ const request = dictationRequest;
+ try {
+  await playRecording(path, slow ? .75 : 1, request, onStart);
+ } catch {
+  if (request !== dictationRequest) return;
+  stopRecording();
+  fallback();
+ }
 }
 
 async function dictate(listId, word, vocabulary, rate, onError, onStart) {

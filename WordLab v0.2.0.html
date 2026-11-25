@@ -3615,6 +3615,21 @@ function archiveQuestions(entry) {
 
 const Dictation = (() => {
  const MAX_WAV_BYTES = 1024 * 1024;
+ const demoPrompts = {
+  solid: ['An ice cube is a blank.', 'A form of matter that keeps its own shape.'],
+  liquid: ['When you pour milk into a glass, the blank takes the shape of the glass.', 'A form of matter that flows and takes the shape of its container.'],
+  gas: ['The helium blank spreads out inside the balloon.', 'A form of matter that spreads out to fill its container.'],
+  melt: ['Leave an ice cube in the sun and it will blank.', 'To change from a solid to a liquid.']
+ };
+
+ function publishedClip(pack, word, type, spoken) {
+  if (pack?.id !== 'matter-mixed-troy' || pack.version !== 1 || !Object.hasOwn(demoPrompts, word)) return null;
+  const [cloze, definition] = demoPrompts[word];
+  const folder = type === 'dictation' && spoken === word ? 'words' :
+   type === 'definition-recall' && spoken === definition ? 'definitions' :
+    ['sentence-choice', 'missing-word', 'word-bank'].includes(type) && spoken === cloze ? 'cloze' : '';
+  return folder ? '/demo-audio/matter-mixed-troy/' + folder + '/' + word + '.wav' : null;
+ }
 
  const pronunciationWord = value => String(value).normalize('NFC').trim().replace(/[’‘]/g, "'").replace(/\s+/g, ' ').toLowerCase();
 
@@ -3650,7 +3665,7 @@ const Dictation = (() => {
   if (!format || !audio) invalid();
  }
 
- return { containsTarget, recordingKey, validateRecording, MAX_WAV_BYTES };
+ return { containsTarget, recordingKey, validateRecording, publishedClip, MAX_WAV_BYTES };
 })();
 if (typeof module === 'object' && module.exports) module.exports = Dictation;
 
@@ -3842,10 +3857,13 @@ function playQuestion(initial, slow) {
   $('learning-skip').disabled = false;
  };
  const rate = slow ? state.settings.rate * .65 : state.settings.rate;
- if (question.type === 'dictation') {
-  const owner = entry.dueLists?.[wordKey(question.word)] || entry.listId;
-  dictate(owner, message, session.records[question.recordIndex]?.vocabulary, rate, failed, ready);
- } else speak(message, rate, failed, ready);
+ const owner = entry.dueLists?.[wordKey(question.word)] || entry.listId;
+ const fallback = question.type === 'dictation' ?
+  () => dictate(owner, message, session.records[question.recordIndex]?.vocabulary, rate, failed, ready) :
+  () => speak(message, rate, failed, ready);
+ const clip = sharedAudioPath(owner, question.word, question.type, Learning.audio(question));
+ if (clip) playPublishedRecording(clip, slow, fallback, ready);
+ else fallback();
 }
 
 function renderLearning(play, corrected = false) {
@@ -3869,7 +3887,8 @@ function renderLearning(play, corrected = false) {
  if ($('learning-count').textContent !== progress) $('learning-count').textContent = progress;
  $('learning-prompt').textContent = question.type === 'dictation' ? 'Listen to the word, then type it.' : question.prompt;
  $('learning-audio-actions').hidden = !session.settings.audioReplay || !!result;
- const audioAvailable = speech || question.type === 'dictation';
+ const audioAvailable = speech || question.type === 'dictation' ||
+  sharedAudioPath(entry.listId, question.word, question.type, Learning.audio(question));
  $('learning-audio').disabled = !audioAvailable;
  $('learning-slow').disabled = !audioAvailable;
  $('learning-audio-error').hidden = audioAvailable;
@@ -4630,7 +4649,7 @@ function stopRecording() {
  dictationRequest++;
  if (dictationPlayer) {
   dictationPlayer.audio.pause();
-  URL.revokeObjectURL(dictationPlayer.url);
+  if (dictationPlayer.url.startsWith('blob:')) URL.revokeObjectURL(dictationPlayer.url);
   dictationPlayer = null;
  }
 }
@@ -4643,13 +4662,31 @@ function readRecording(listId, word, vocabulary) {
 async function playRecording(recording, rate, request, onStart) {
  if (request !== dictationRequest) return;
  if (speech) speechSynthesis.cancel();
- const url = URL.createObjectURL(recording);
+ const url = typeof recording === 'string' ? recording : URL.createObjectURL(recording);
  const audio = new Audio(url);
  dictationPlayer = {audio, url};
  audio.playbackRate = rate;
  if (onStart) audio.onplaying = () => { if (request === dictationRequest) onStart(); };
  audio.onended = () => { if (request === dictationRequest) stopRecording(); };
  await audio.play();
+}
+
+function sharedAudioPath(listId, word, type, spoken) {
+ const review = sharedReview;
+ if (review?.origin !== location.origin || findPackList(review.pack.id, review.origin)?.id !== listId) return null;
+ return Dictation.publishedClip(review.pack, word, type, spoken);
+}
+
+async function playPublishedRecording(path, slow, fallback, onStart) {
+ stopRecording();
+ const request = dictationRequest;
+ try {
+  await playRecording(path, slow ? .75 : 1, request, onStart);
+ } catch {
+  if (request !== dictationRequest) return;
+  stopRecording();
+  fallback();
+ }
 }
 
 async function dictate(listId, word, vocabulary, rate, onError, onStart) {
@@ -5586,16 +5623,18 @@ function renderCorrection(id, inputId, answer, explanation = '') {
  detail.hidden = !explanation;
  input.setAttribute('aria-describedby', id);
 }
-function playPracticeRecording(rate){
+function playPracticeRecording(rate, slow = false){
  const s=state.session;if(!s)return;
  if(s.phase==='prompt')$('answer-input').focus();
- dictate(s.listId,s.current,s.meanings?.[s.current],rate);
+ const clip=sharedAudioPath(s.listId,s.current,'dictation',s.current);
+ const fallback=()=>dictate(s.listId,s.current,s.meanings?.[s.current],rate);
+ if(clip)playPublishedRecording(clip,slow,fallback);else fallback();
 }
 function renderPractice(play){
  const s=state.session;if(!s)return;finished=false;show('practice-screen');$('list-name-practice').textContent=s.listName;$('round-text').textContent='Round '+s.round;
  const done=s.words.filter(w=>s.perWord[w].mastered).length;$('progress-text').textContent=done+' / '+s.words.length+' mastered';$('progress-fill').style.width=(100*done/s.words.length)+'%';$('mastery-progress').setAttribute('aria-valuemax',s.words.length);$('mastery-progress').setAttribute('aria-valuenow',done);renderTiles(s);
  $('definition').textContent=s.defs[s.current]||'';$('visual-word').className='sr';$('visual-word').textContent='';$('replay-button').hidden=false;$('slow-replay').hidden=false;
- if(!speech){const word=s.current;readRecording(s.listId,word,s.meanings?.[word]).then(clip=>{
+ if(!speech&&!sharedAudioPath(s.listId,s.current,'dictation',s.current)){const word=s.current;readRecording(s.listId,word,s.meanings?.[word]).then(clip=>{
   if(clip||state.session!==s||s.current!==word||$('practice-screen').hidden)return;
   $('visual-word').className='visual-prompt';$('visual-word').textContent='Prompt: '+word;$('replay-button').hidden=true;$('slow-replay').hidden=true;
  });}$('answer-input').value='';$('answer-input').disabled=!['prompt','retype'].includes(s.phase);$('dont-know').hidden=s.phase==='retype';$('submit-answer').textContent=s.phase==='retype'?'Type it correctly':'Check spelling';$('submit-answer').disabled=!['prompt','retype'].includes(s.phase);
@@ -5775,7 +5814,7 @@ $('start-session').onclick=beginCoach;
 $('answer-form').onsubmit=e=>{e.preventDefault();const s=state.session;if(!s)return;const wasRetype=s.phase==='retype',r=wasRetype?retype(s,$('answer-input').value):submit(s,$('answer-input').value);if(!r)return;$('answer-input').value='';if(wasRetype&&!r.ok){renderPractice(false);$('answer-input').focus();}else renderPractice(s.phase==='prompt'&&r.ok);};
 $('dont-know').onclick=()=>{$('answer-input').value='';$('answer-form').requestSubmit();};
 $('replay-button').onclick=()=>playPracticeRecording(state.settings.rate);
-$('slow-replay').onclick=()=>playPracticeRecording(state.settings.rate*.6);
+$('slow-replay').onclick=()=>playPracticeRecording(state.settings.rate*.6,true);
 $('pause-button').onclick=()=>{const s=state.session;if(!s)return;clearTimeout(timer);stopRecording();s.resumePhase=s.phase;s.phase='paused';save();$('pause-overlay').hidden=false;$('resume-practice').focus();};
 $('resume-practice').onclick=()=>{const s=state.session;if(!s)return;$('pause-overlay').hidden=true;s.phase=s.resumePhase||'prompt';delete s.resumePhase;save();renderPractice(s.phase==='prompt');};
 $('end-session').onclick=()=>{$('pause-overlay').hidden=true;end();};
@@ -5793,7 +5832,7 @@ document.addEventListener('keydown',e=>{
  if(e.key==='Escape'){if(!$('pin-overlay').hidden){$('pin-overlay').hidden=true;if(state.session&&!state.session.summary)$('pause-overlay').hidden=false;return;}if(!$('pause-overlay').hidden)return;if(!$('practice-screen').hidden){e.preventDefault();$('pause-button').click();}else if(!$('learning-screen').hidden){e.preventDefault();pauseLearning();}return;}
  if(e.altKey||e.ctrlKey||e.metaKey||e.shiftKey||/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName||''))return;
  if(!$('practice-screen').hidden&&e.key.toLowerCase()==='r')playPracticeRecording(state.settings.rate);
- if(!$('practice-screen').hidden&&e.key.toLowerCase()==='s')playPracticeRecording(state.settings.rate*.6);
+ if(!$('practice-screen').hidden&&e.key.toLowerCase()==='s')playPracticeRecording(state.settings.rate*.6,true);
 });
 if(speech){speechSynthesis.addEventListener('voiceschanged',refreshVoices);setTimeout(refreshVoices,400);setTimeout(refreshVoices,1200);}
 state.settings.roundSize=clamp(state.settings.roundSize,1,20,7);state.settings.retypeOnMiss=state.settings.retypeOnMiss!==false;

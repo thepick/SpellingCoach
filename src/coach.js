@@ -186,10 +186,13 @@ function playQuestion(initial, slow) {
   $('learning-skip').disabled = false;
  };
  const rate = slow ? state.settings.rate * .65 : state.settings.rate;
- if (question.type === 'dictation') {
-  const owner = entry.dueLists?.[wordKey(question.word)] || entry.listId;
-  dictate(owner, message, session.records[question.recordIndex]?.vocabulary, rate, failed, ready);
- } else speak(message, rate, failed, ready);
+ const owner = entry.dueLists?.[wordKey(question.word)] || entry.listId;
+ const fallback = question.type === 'dictation' ?
+  () => dictate(owner, message, session.records[question.recordIndex]?.vocabulary, rate, failed, ready) :
+  () => speak(message, rate, failed, ready);
+ const clip = sharedAudioPath(owner, question.word, question.type, Learning.audio(question));
+ if (clip) playPublishedRecording(clip, slow, fallback, ready);
+ else fallback();
 }
 
 function renderLearning(play, corrected = false) {
@@ -213,7 +216,8 @@ function renderLearning(play, corrected = false) {
  if ($('learning-count').textContent !== progress) $('learning-count').textContent = progress;
  $('learning-prompt').textContent = question.type === 'dictation' ? 'Listen to the word, then type it.' : question.prompt;
  $('learning-audio-actions').hidden = !session.settings.audioReplay || !!result;
- const audioAvailable = speech || question.type === 'dictation';
+ const audioAvailable = speech || question.type === 'dictation' ||
+  sharedAudioPath(entry.listId, question.word, question.type, Learning.audio(question));
  $('learning-audio').disabled = !audioAvailable;
  $('learning-slow').disabled = !audioAvailable;
  $('learning-audio-error').hidden = audioAvailable;

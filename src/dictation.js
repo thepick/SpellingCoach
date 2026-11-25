@@ -1,5 +1,20 @@
 const Dictation = (() => {
  const MAX_WAV_BYTES = 1024 * 1024;
+ const demoPrompts = {
+  solid: ['An ice cube is a blank.', 'A form of matter that keeps its own shape.'],
+  liquid: ['When you pour milk into a glass, the blank takes the shape of the glass.', 'A form of matter that flows and takes the shape of its container.'],
+  gas: ['The helium blank spreads out inside the balloon.', 'A form of matter that spreads out to fill its container.'],
+  melt: ['Leave an ice cube in the sun and it will blank.', 'To change from a solid to a liquid.']
+ };
+
+ function publishedClip(pack, word, type, spoken) {
+  if (pack?.id !== 'matter-mixed-troy' || pack.version !== 1 || !Object.hasOwn(demoPrompts, word)) return null;
+  const [cloze, definition] = demoPrompts[word];
+  const folder = type === 'dictation' && spoken === word ? 'words' :
+   type === 'definition-recall' && spoken === definition ? 'definitions' :
+    ['sentence-choice', 'missing-word', 'word-bank'].includes(type) && spoken === cloze ? 'cloze' : '';
+  return folder ? '/demo-audio/matter-mixed-troy/' + folder + '/' + word + '.wav' : null;
+ }
 
  const pronunciationWord = value => String(value).normalize('NFC').trim().replace(/[’‘]/g, "'").replace(/\s+/g, ' ').toLowerCase();
 
@@ -35,6 +50,6 @@ const Dictation = (() => {
   if (!format || !audio) invalid();
  }
 
- return { containsTarget, recordingKey, validateRecording, MAX_WAV_BYTES };
+ return { containsTarget, recordingKey, validateRecording, publishedClip, MAX_WAV_BYTES };
 })();
 if (typeof module === 'object' && module.exports) module.exports = Dictation;

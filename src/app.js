@@ -128,16 +128,18 @@ function renderCorrection(id, inputId, answer, explanation = '') {
  detail.hidden = !explanation;
  input.setAttribute('aria-describedby', id);
 }
-function playPracticeRecording(rate){
+function playPracticeRecording(rate, slow = false){
  const s=state.session;if(!s)return;
  if(s.phase==='prompt')$('answer-input').focus();
- dictate(s.listId,s.current,s.meanings?.[s.current],rate);
+ const clip=sharedAudioPath(s.listId,s.current,'dictation',s.current);
+ const fallback=()=>dictate(s.listId,s.current,s.meanings?.[s.current],rate);
+ if(clip)playPublishedRecording(clip,slow,fallback);else fallback();
 }
 function renderPractice(play){
  const s=state.session;if(!s)return;finished=false;show('practice-screen');$('list-name-practice').textContent=s.listName;$('round-text').textContent='Round '+s.round;
  const done=s.words.filter(w=>s.perWord[w].mastered).length;$('progress-text').textContent=done+' / '+s.words.length+' mastered';$('progress-fill').style.width=(100*done/s.words.length)+'%';$('mastery-progress').setAttribute('aria-valuemax',s.words.length);$('mastery-progress').setAttribute('aria-valuenow',done);renderTiles(s);
  $('definition').textContent=s.defs[s.current]||'';$('visual-word').className='sr';$('visual-word').textContent='';$('replay-button').hidden=false;$('slow-replay').hidden=false;
- if(!speech){const word=s.current;readRecording(s.listId,word,s.meanings?.[word]).then(clip=>{
+ if(!speech&&!sharedAudioPath(s.listId,s.current,'dictation',s.current)){const word=s.current;readRecording(s.listId,word,s.meanings?.[word]).then(clip=>{
   if(clip||state.session!==s||s.current!==word||$('practice-screen').hidden)return;
   $('visual-word').className='visual-prompt';$('visual-word').textContent='Prompt: '+word;$('replay-button').hidden=true;$('slow-replay').hidden=true;
  });}$('answer-input').value='';$('answer-input').disabled=!['prompt','retype'].includes(s.phase);$('dont-know').hidden=s.phase==='retype';$('submit-answer').textContent=s.phase==='retype'?'Type it correctly':'Check spelling';$('submit-answer').disabled=!['prompt','retype'].includes(s.phase);
@@ -317,7 +319,7 @@ $('start-session').onclick=beginCoach;
 $('answer-form').onsubmit=e=>{e.preventDefault();const s=state.session;if(!s)return;const wasRetype=s.phase==='retype',r=wasRetype?retype(s,$('answer-input').value):submit(s,$('answer-input').value);if(!r)return;$('answer-input').value='';if(wasRetype&&!r.ok){renderPractice(false);$('answer-input').focus();}else renderPractice(s.phase==='prompt'&&r.ok);};
 $('dont-know').onclick=()=>{$('answer-input').value='';$('answer-form').requestSubmit();};
 $('replay-button').onclick=()=>playPracticeRecording(state.settings.rate);
-$('slow-replay').onclick=()=>playPracticeRecording(state.settings.rate*.6);
+$('slow-replay').onclick=()=>playPracticeRecording(state.settings.rate*.6,true);
 $('pause-button').onclick=()=>{const s=state.session;if(!s)return;clearTimeout(timer);stopRecording();s.resumePhase=s.phase;s.phase='paused';save();$('pause-overlay').hidden=false;$('resume-practice').focus();};
 $('resume-practice').onclick=()=>{const s=state.session;if(!s)return;$('pause-overlay').hidden=true;s.phase=s.resumePhase||'prompt';delete s.resumePhase;save();renderPractice(s.phase==='prompt');};
 $('end-session').onclick=()=>{$('pause-overlay').hidden=true;end();};
@@ -335,7 +337,7 @@ document.addEventListener('keydown',e=>{
  if(e.key==='Escape'){if(!$('pin-overlay').hidden){$('pin-overlay').hidden=true;if(state.session&&!state.session.summary)$('pause-overlay').hidden=false;return;}if(!$('pause-overlay').hidden)return;if(!$('practice-screen').hidden){e.preventDefault();$('pause-button').click();}else if(!$('learning-screen').hidden){e.preventDefault();pauseLearning();}return;}
  if(e.altKey||e.ctrlKey||e.metaKey||e.shiftKey||/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName||''))return;
  if(!$('practice-screen').hidden&&e.key.toLowerCase()==='r')playPracticeRecording(state.settings.rate);
- if(!$('practice-screen').hidden&&e.key.toLowerCase()==='s')playPracticeRecording(state.settings.rate*.6);
+ if(!$('practice-screen').hidden&&e.key.toLowerCase()==='s')playPracticeRecording(state.settings.rate*.6,true);
 });
 if(speech){speechSynthesis.addEventListener('voiceschanged',refreshVoices);setTimeout(refreshVoices,400);setTimeout(refreshVoices,1200);}
 state.settings.roundSize=clamp(state.settings.roundSize,1,20,7);state.settings.retypeOnMiss=state.settings.retypeOnMiss!==false;

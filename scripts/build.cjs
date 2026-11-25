@@ -34,4 +34,5 @@ if (process.argv.includes('--stage')) {
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.copyFileSync(path.join(root, file), target);
   }
+  fs.cpSync(path.join(root, 'demo-audio'), path.join(stage, 'demo-audio'), {recursive: true});
 }
