@@ -285,10 +285,20 @@ const Learning = (() => {
     if (question && (!feedback?.correct || feedback.assisted || feedback.correctionRequired)) pending.add(question.taskId);
     const words = new Map();
     for (const task of session.tasks) {
-      const word = task.recordIndex;
-      words.set(word, words.get(word) !== false && !pending.has(task.id) && taskMastered(session, task));
+      const word = words.get(task.recordIndex) || {mastered:true, credit:0, skills:0};
+      const mastered = !pending.has(task.id) && taskMastered(session, task);
+      const streak = Math.min(2, Math.max(0, task.streak || 0));
+      const credit = session.settings.phasedVocabulary
+        ? task.skill === 'spelling' ? streak/2 : task.bankPassed ? (1+streak)/3 : 0
+        : Number(mastered);
+      word.mastered = word.mastered && mastered;
+      word.credit += credit;
+      word.skills++;
+      words.set(task.recordIndex, word);
     }
-    return {mastered: [...words.values()].filter(Boolean).length, total: words.size};
+    const rows = [...words.values()];
+    return {mastered: rows.filter(word => word.mastered).length, total: words.size,
+      progress: rows.length ? rows.reduce((sum, word) => sum + word.credit/word.skills, 0)/rows.length : 0};
   }
 
   function practiceMastered(session) {

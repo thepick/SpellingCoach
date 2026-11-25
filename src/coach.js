@@ -163,19 +163,83 @@ function beginLearning(list, records, options, dueLists) {
  renderLearning(true);
 }
 
-function renderMasteryProgress(id, mastered, total) {
+let stopMasteryCelebration = () => {};
+function celebrateMastery(session) {
+ if (session.celebrationShown) return;
+ session.celebrationShown = true;
+ save();
+ stopMasteryCelebration();
+ const motion = matchMedia('(prefers-reduced-motion: reduce)');
+ if (motion.matches || document.hidden) return;
+ const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
+ if (!ctx) return;
+ canvas.className = 'mastery-confetti';
+ canvas.setAttribute('aria-hidden', 'true');
+ const width = innerWidth, height = innerHeight, scale = Math.min(devicePixelRatio || 1, 2);
+ canvas.width = width*scale; canvas.height = height*scale;
+ ctx.setTransform(scale, 0, 0, scale, 0, 0);
+ document.body.append(canvas);
+ const colors = ['#26ccff','#a25afd','#ff5e7e','#88ff5a','#fcff42','#ffa62d','#ff36ff'];
+ const particles = [], started = performance.now();
+ let frame, previous = started, nextBurst = started, stopped = false;
+ function stop() {
+  if (stopped) return;
+  stopped = true;
+  cancelAnimationFrame(frame); canvas.remove();
+  document.removeEventListener('visibilitychange', onVisibility);
+  window.removeEventListener('pagehide', stop);
+  window.removeEventListener('resize', stop);
+  stopMasteryCelebration = () => {};
+ }
+ function onVisibility() { if (document.hidden) stop(); }
+ stopMasteryCelebration = stop;
+ document.addEventListener('visibilitychange', onVisibility);
+ window.addEventListener('pagehide', stop);
+ window.addEventListener('resize', stop);
+ function burst() {
+  for (const side of [0,1]) for (let i=0;i<36;i++) {
+   const angle = ((side ? 125 : 55) + (Math.random()-.5)*68)*Math.PI/180;
+   const speed = 14 + Math.random()*12;
+   particles.push({x:width*(side ? .94 : .06),y:height*.82,
+    vx:Math.cos(angle)*speed,vy:-Math.sin(angle)*speed,
+    rotation:Math.random()*Math.PI,spin:(Math.random()-.5)*.35,
+    color:colors[i%colors.length],age:0});
+  }
+ }
+ function draw(time) {
+  if (motion.matches || document.hidden) { stop(); return; }
+  const step = Math.min(50, time-previous)/(1000/60); previous = time;
+  if (time-started < 1800 && time >= nextBurst) { burst(); nextBurst = time+260; }
+  ctx.clearRect(0,0,width,height);
+  for (let i=particles.length-1;i>=0;i--) {
+   const p=particles[i]; p.age+=step;
+   if (p.age>=95) { particles.splice(i,1); continue; }
+   p.x+=p.vx*step; p.y+=p.vy*step; p.vy+=.5*step;
+   p.vx*=Math.pow(.98,step); p.rotation+=p.spin*step;
+   ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rotation);
+   ctx.fillStyle=p.color; ctx.globalAlpha=Math.min(1,(95-p.age)/25);
+   ctx.fillRect(-4,-2,8,4); ctx.restore();
+  }
+  if (time-started>=3600 || time-started>=1800 && !particles.length) stop();
+  else frame=requestAnimationFrame(draw);
+ }
+ frame=requestAnimationFrame(draw);
+}
+
+function renderMasteryProgress(id, mastered, total, progress = total ? mastered/total : 0) {
  const meter = $(id), bar = meter.querySelector('[role="progressbar"]');
- const fraction = total ? mastered/total : 0;
- const percent = total > 0 && mastered === total ? 100 : Math.min(99,Math.round(100*fraction));
- const label = mastered + ' of ' + total + ' ' + (total === 1 ? 'word' : 'words') + ' mastered';
+ const complete = total > 0 && mastered === total;
+ const fraction = complete ? 1 : Math.min(.99, Math.max(0, progress));
+ const percent = complete ? 100 : Math.min(99,Math.round(100*fraction));
+ const label = mastered + ' of ' + total + ' ' + (total === 1 ? 'word' : 'words') + ' fully mastered';
  const count = meter.querySelector('.mastery-count');
  if (count.textContent !== label) count.textContent = label;
  meter.querySelector('.mastery-percent').textContent = percent + '%';
  meter.querySelector('.progressfill').style.width = 100*fraction + '%';
- meter.classList.toggle('is-complete', total > 0 && mastered === total);
- bar.setAttribute('aria-valuemax', total);
- bar.setAttribute('aria-valuenow', mastered);
- bar.setAttribute('aria-valuetext', label + ' · ' + percent + '%');
+ meter.classList.toggle('is-complete', complete);
+ bar.setAttribute('aria-valuemax', 100);
+ bar.setAttribute('aria-valuenow', percent);
+ bar.setAttribute('aria-valuetext', percent + '% progress toward mastery. ' + label);
 }
 
 let audioReady = false;
@@ -234,8 +298,8 @@ function renderLearning(play, corrected = false) {
  if ($('learning-count').textContent !== progress) $('learning-count').textContent = progress;
  $('learning-mastery').hidden = test;
  if (!test) {
-  const {mastered, total} = Learning.practiceWordProgress(session);
-  renderMasteryProgress('learning-mastery', mastered, total);
+  const {mastered, total, progress} = Learning.practiceWordProgress(session);
+  renderMasteryProgress('learning-mastery', mastered, total, progress);
  }
  $('learning-prompt').textContent = question.type === 'dictation' ? 'Listen to the word, then type it.' : question.prompt;
  $('learning-audio-actions').hidden = !session.settings.audioReplay || !!result;
@@ -314,7 +378,9 @@ function renderLearning(play, corrected = false) {
 function advanceLearning() {
  const entry = learningEntry();
  if (!entry) return;
+ const wasActive = entry.session.status === 'active';
  Learning.advance(entry.session); save(); renderLearning(true);
+ if (wasActive && Learning.practiceMastered(entry.session)) celebrateMastery(entry.session);
 }
 
 function advanceAfterFeedback(entry, delay) {

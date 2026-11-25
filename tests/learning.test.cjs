@@ -149,7 +149,7 @@ test('shared mastery practice survives the normal retry limit and requires indep
 
 test('mixed mastery counts each word when all its assigned skills are mastered', () => {
   const mixed = L.createSession([records[0], 'solid'], {mode: 'mixed', difficulty: 'adaptive', masteryPractice: true});
-  assert.deepEqual(L.practiceWordProgress(mixed), {mastered: 0, total: 2});
+  assert.deepEqual(L.practiceWordProgress(mixed), {mastered: 0, total: 2, progress: 0});
   let sawSpellingWithoutVocabulary = false;
   for (let attempt = 0; attempt < 30 && L.current(mixed); attempt++) {
     L.submit(mixed, L.current(mixed).answer);
@@ -163,9 +163,50 @@ test('mixed mastery counts each word when all its assigned skills are mastered',
   assert(sawSpellingWithoutVocabulary);
   assert.equal(L.practiceMastered(mixed), true);
   const restored = JSON.parse(JSON.stringify(mixed));
-  assert.deepEqual(L.practiceWordProgress(restored), {mastered: 2, total: 2});
+  assert.deepEqual(L.practiceWordProgress(restored), {mastered: 2, total: 2, progress: 1});
   const review = L.createSession(mixed.records, mixed.settings, mixed.progress);
-  assert.deepEqual(L.practiceWordProgress(review), {mastered: 0, total: 2});
+  assert.deepEqual(L.practiceWordProgress(review), {mastered: 0, total: 2, progress: 0});
+});
+
+test('partial vocabulary progress follows bank and independent recalls, resets and correction retyping', () => {
+  const s = L.createSession(records.slice(0,1), {mode:'vocabulary', phasedVocabulary:true});
+  const progress = expected => {
+    const before = JSON.stringify(s), actual = L.practiceWordProgress(s);
+    assert.ok(Math.abs(actual.progress-expected)<1e-12, `${actual.progress} != ${expected}`);
+    assert.equal(JSON.stringify(s), before);
+    assert.deepEqual(L.practiceWordProgress(JSON.parse(before)), actual);
+    assert.equal(actual.mastered, expected===1?1:0);
+  };
+  const answer = () => { L.submit(s,L.current(s).answer); L.advance(s); };
+  progress(0);
+  L.hint(s); answer(); progress(0);
+  answer(); progress(1/3);
+  answer(); progress(2/3);
+  L.hint(s); answer(); progress(1/3);
+  answer(); progress(2/3);
+  const correct = L.current(s).answer;
+  while (!L.hint(s).revealed) {}
+  L.submit(s,'wrong'); progress(1/3);
+  assert.equal(L.correct(s,correct),true); progress(1/3);
+  L.advance(s); answer(); progress(2/3); answer(); progress(1);
+  const fresh = L.createSession(s.records,s.settings,s.progress);
+  assert.equal(L.practiceWordProgress(fresh).progress,0);
+});
+
+test('mixed progress averages skills within each word and gives each word equal weight', () => {
+  const s = L.createSession(records.slice(0,1), {mode:'mixed', phasedVocabulary:true});
+  for(const expected of [1/4,5/12,2/3,5/6,1]) {
+    L.submit(s,L.current(s).answer);
+    const actual=L.practiceWordProgress(s);
+    assert.ok(Math.abs(actual.progress-expected)<1e-12);
+    assert.equal(actual.mastered,expected===1?1:0);
+    L.advance(s);
+  }
+  const unequal = L.createSession([records[0],'solid'],{mode:'mixed',phasedVocabulary:true});
+  L.submit(unequal,L.current(unequal).answer);
+  assert.equal(L.practiceWordProgress(unequal).progress,1/8);
+  L.advance(unequal); L.submit(unequal,L.current(unequal).answer);
+  assert.equal(L.practiceWordProgress(unequal).progress,3/8);
 });
 
 test('phased vocabulary uses one bank turn and two independent recalls, with hints resetting the current phase', () => {

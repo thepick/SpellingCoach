@@ -571,6 +571,7 @@ function refreshTeacher() {
   $('open-teacher').textContent = toolsTitle;
  }
  $('teacher-logout').hidden = !signedIn;
+ $('teacher-workspace-logout').hidden = !signedIn;
  $('teacher-url').disabled = signedIn;
  $('teacher-secret').disabled = signedIn;
  $('teacher-login').disabled = signedIn;

@@ -108,8 +108,9 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 #teacher-account, #teacher-grade-defaults, #teacher-private-audio { border-top: 0; margin-top: 0; padding-top: 0; }
 
 .mastery-meter { margin: 1.15rem 0 1.4rem; }
+.mastery-confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; }
 .mastery-meta, .mastery-foot { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; }
-.mastery-count { font-weight: 600; }
+.mastery-label { font-weight: 600; }
 .mastery-percent { color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
 .mastery-meter .progressline { height: 8px; margin: .65rem 0 .55rem; }
 .mastery-meter .progressfill { width: 0; transition: width 220ms ease-out; border-radius: inherit; }
@@ -119,7 +120,7 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 #study-shuffle-status:empty { display: none; }
 @media (prefers-reduced-motion: reduce) { .mastery-meter .progressfill { transition: none; } }
 
-#teacher-dialog[data-view="setup"] #teacher-logout { display: none; }
+#teacher-dialog #teacher-logout { display: none; }
 #teacher-dialog[data-view="setup"] .tools-panel { padding: 28px; gap: 24px; }
 #teacher-account { gap: 20px; }
 #teacher-keys-form { gap: 24px; }

@@ -46,7 +46,7 @@ let storageOK=true,state=SELFTEST||studentPreview?blank():loadState(),listId=(st
 function save(){return SELFTEST || storageOK && saveState();}
 function warning(){$('storage-warning').hidden=storageOK;if(storageIssue)$('storage-warning').textContent=storageIssue;}
 function status(t){$('setup-status').textContent=t;}
-function show(id){stopRecording();document.querySelectorAll('.screen').forEach(x=>x.hidden=true);$(id).hidden=false;}
+function show(id){stopMasteryCelebration();stopRecording();document.querySelectorAll('.screen').forEach(x=>x.hidden=true);$(id).hidden=false;}
 function selectedList(){return state.lists.find(x=>x.id===listId)||null;}
 function selectedGroup(words,selection){
  const chosen=new Set(selection);
@@ -140,7 +140,9 @@ function playPracticeRecording(rate, slow = false){
 }
 function renderPractice(play){
  const s=state.session;if(!s)return;finished=false;show('practice-screen');$('list-name-practice').textContent=s.listName;$('round-text').textContent='Round '+s.round;
- const done=s.words.filter(w=>s.perWord[w].mastered).length;renderMasteryProgress('spelling-mastery',done,s.words.length);renderTiles(s);
+ const done=s.words.filter(w=>s.perWord[w].mastered).length;
+ const progress=s.words.reduce((sum,w)=>sum+(s.perWord[w].mastered?1:Math.min(2,Math.max(0,s.perWord[w].streak||0))/2),0)/s.words.length;
+ renderMasteryProgress('spelling-mastery',done,s.words.length,progress);renderTiles(s);
  $('definition').textContent=s.defs[s.current]||'';$('visual-word').className='sr';$('visual-word').textContent='';$('replay-button').hidden=false;$('slow-replay').hidden=false;
  if(!speech&&!sharedAudioPath(s.listId,s.current,'dictation',s.current)){const word=s.current;readRecording(s.listId,word,s.meanings?.[word]).then(clip=>{
   if(clip||state.session!==s||s.current!==word||$('practice-screen').hidden)return;
@@ -151,7 +153,7 @@ function renderPractice(play){
  if(play&&s.phase==='prompt')playPracticeRecording(state.settings.rate);if(['prompt','retype'].includes(s.phase))setTimeout(()=>$('answer-input').focus(),35);
  if(s.phase==='feedback'){clearTimeout(timer);const last=s.log[s.log.length-1],delay=last&&last.ok?state.settings.autoAdvanceMs:state.settings.feedbackMs;timer=setTimeout(advance,delay);}
 }
-function advance(){const s=state.session;if(!s||s.phase!=='feedback')return;if(s.words.every(w=>s.perWord[w].mastered)){s.current='';s.phase='done';finish(true);return;}next(s);save();renderPractice(true);}
+function advance(){const s=state.session;if(!s||s.phase!=='feedback')return;if(s.words.every(w=>s.perWord[w].mastered)){s.current='';s.phase='done';finish(true);celebrateMastery(s);return;}next(s);save();renderPractice(true);}
 function showSummary(r){const s=state.session;if(!s)return;clearTimeout(timer);show('summary-screen');$('summary-setup').textContent=sharedReview?'Back to set':'Return to setup';$('summary-list').textContent=s.listName;$('summary-title').textContent=r.mastered===r.total?'Practice complete':'Practice ended';$('summary-stats').innerHTML='<div class="stat"><span class="hint">Words mastered</span><strong>'+Number(r.mastered)+' / '+Number(r.total)+'</strong><small class="hint">Two correct answers in a row.</small></div><div class="stat"><span class="hint">First-attempt accuracy</span><strong>'+(r.attempts?Number(r.accuracy)+'%':'Not assessed')+'</strong><small class="hint">Correct first answers ÷ first answers submitted.</small></div><div class="stat"><span class="hint">Incorrect retype attempts</span><strong>'+Number(r.retypes)+'</strong><small class="hint">Incorrect answers during the correction step.</small></div>';
  const list=$('missed-list');list.innerHTML='';r.missed.forEach(w=>{const li=document.createElement('li');li.textContent=w+(s.defs[w]?' — '+s.defs[w]:'');list.append(li);});$('missed-empty').hidden=!!r.missed.length;$('practice-missed').disabled=!r.missed.length;$('copy-missed').disabled=!r.missed.length;
  const hist=(state.history[s.listId]?.sessions||[]).slice().reverse(),h=$('history-list');h.innerHTML='';hist.forEach(x=>{const li=document.createElement('li');li.textContent=new Date(x.at).toLocaleDateString()+' · '+x.accuracy+'% · '+x.mastered+'/'+x.total+' mastered'+(Array.isArray(x.missed)&&x.missed.length?' · '+x.missed[0]:'');h.append(li);});

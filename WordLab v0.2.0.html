@@ -140,8 +140,9 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 #teacher-account, #teacher-grade-defaults, #teacher-private-audio { border-top: 0; margin-top: 0; padding-top: 0; }
 
 .mastery-meter { margin: 1.15rem 0 1.4rem; }
+.mastery-confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; }
 .mastery-meta, .mastery-foot { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; }
-.mastery-count { font-weight: 600; }
+.mastery-label { font-weight: 600; }
 .mastery-percent { color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
 .mastery-meter .progressline { height: 8px; margin: .65rem 0 .55rem; }
 .mastery-meter .progressfill { width: 0; transition: width 220ms ease-out; border-radius: inherit; }
@@ -151,7 +152,7 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 #study-shuffle-status:empty { display: none; }
 @media (prefers-reduced-motion: reduce) { .mastery-meter .progressfill { transition: none; } }
 
-#teacher-dialog[data-view="setup"] #teacher-logout { display: none; }
+#teacher-dialog #teacher-logout { display: none; }
 #teacher-dialog[data-view="setup"] .tools-panel { padding: 28px; gap: 24px; }
 #teacher-account { gap: 20px; }
 #teacher-keys-form { gap: 24px; }
@@ -247,13 +248,13 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
  </details>
  <div class="row between tools-footer"><div><p class="hint">Settings save automatically.</p><span id="tools-version" class="hint">WordLab v0.2.0</span></div><button id="done-tools">Close</button></div>
 </div></dialog><dialog id="create-list-dialog" class="tools-dialog create-list-dialog" aria-labelledby="create-list-title"><form id="create-list-form" class="tools-panel create-list-form"><div class="tools-heading"><h1 id="create-list-title">Create a word list</h1><p id="create-list-intro" class="subhead">Give your list a name, then add or import the words to practice.</p></div><div class="stack"><div><label for="create-list-name">List name</label><input id="create-list-name" type="text" maxlength="80" autocomplete="off" placeholder="For example, Week 3 spelling" required autofocus></div><div id="create-list-grade-field"><label for="create-list-grade">Grade preset for this new set</label><select id="create-list-grade"><option value="3">Grade 3</option><option value="4">Grade 4</option><option value="5" selected>Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option></select><p class="hint">Copies your grade defaults into this set. You can adjust them in Prepare vocabulary.</p></div><div><label for="create-list-words">Spelling words</label><textarea id="create-list-words" spellcheck="false" placeholder="because&#10;different&#10;important" aria-describedby="create-list-help" required></textarea><div id="create-list-help" class="hint">Enter up to 200 words or phrases, one per line. Repeated words are removed.</div></div></div><div class="actions"><button id="import-csv" type="button" class="secondary">Import CSV</button><button id="split-list" type="button" class="secondary" hidden>Split into lists</button><button id="copy-list" type="button" class="ghost">Copy as CSV</button></div><p class="hint">CSV: words on separate lines or separated by commas. No headings needed.</p><input id="csv-file" type="file" accept=".csv,text/csv" hidden><div id="list-editor-status" class="status" role="status" aria-live="polite"></div><div class="row between"><button id="cancel-create-list" type="button" class="ghost">Cancel</button><button id="save-list-draft" type="submit">Create this list</button></div></form></dialog>
-<section id="practice-screen" class="screen practice panel" hidden><div class="practice-head"><div><div id="list-name-practice" class="hint"></div><h1>Listen, then spell</h1></div><button id="pause-button" class="ghost">Pause practice <span class="kbd">Esc</span></button></div><div id="spelling-mastery" class="mastery-meter"><div class="mastery-meta"><span id="progress-text" class="mastery-count" aria-live="polite"></span><span class="mastery-percent"></span></div><div id="mastery-progress" class="progressline" role="progressbar" aria-label="Words mastered in this practice" aria-valuemin="0" aria-valuenow="0"><div id="progress-fill" class="progressfill"></div></div><div class="mastery-foot"><span>Two correct spellings in a row to master each word.</span><span id="round-text"></span></div></div><div id="tiles" class="tiles" aria-label="Word progress"></div>
+<section id="practice-screen" class="screen practice panel" hidden><div class="practice-head"><div><div id="list-name-practice" class="hint"></div><h1>Listen, then spell</h1></div><button id="pause-button" class="ghost">Pause practice <span class="kbd">Esc</span></button></div><div id="spelling-mastery" class="mastery-meter"><div class="mastery-meta"><span class="mastery-label">Progress toward mastery</span><span class="mastery-percent"></span></div><div id="mastery-progress" class="progressline" role="progressbar" aria-label="Progress toward mastery" aria-valuemax="100" aria-valuemin="0" aria-valuenow="0"><div id="progress-fill" class="progressfill"></div></div><div class="mastery-foot"><span id="progress-text" class="mastery-count" aria-live="polite"></span><span id="round-text"></span></div><p class="hint">Two correct spellings in a row to master each word.</p></div><div id="tiles" class="tiles" aria-label="Word progress"></div>
 <div class="prompt"><div class="actions" style="justify-content:center"><button id="replay-button" class="secondary">Replay word <span class="kbd">R</span></button><button id="slow-replay" class="ghost">Replay slowly <span class="kbd">S</span></button></div><div id="definition" class="definition"></div><div id="visual-word" class="sr" aria-live="polite"></div><form id="answer-form"><div id="spelling-correction" class="correction" hidden><span>Correct answer</span><strong></strong><span>Type it to continue.</span><p class="correction-detail" hidden></p></div><label class="sr" for="answer-input">Type the word you hear</label><input id="answer-input" class="word-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"><div class="hint">Type the word and press Enter to submit your answer.</div><div class="actions" style="justify-content:center;margin-top:10px"><button id="dont-know" type="button" class="ghost">I’m not sure</button><button id="submit-answer" type="submit">Submit answer</button></div></form></div><div id="feedback" class="feedback" aria-live="polite"></div></section>
 <section id="summary-screen" class="screen panel" hidden><div class="row between"><div><div id="summary-list" class="hint"></div><h1 id="summary-title">Practice summary</h1></div><button id="summary-setup" class="ghost">Return to setup</button></div><div id="summary-stats" class="summary-stat"></div><div class="grid section"><div><h2>Words for more practice</h2><div id="missed-empty" class="hint">No words need additional review from this session.</div><ol id="missed-list" class="missed"></ol><div class="actions"><button id="practice-missed" disabled>Practice these words</button><button id="copy-missed" class="secondary" disabled>Copy review words</button></div></div><div><h2>Recent practice sessions</h2><ol id="history-list" class="history"></ol></div></div></section>
 <section id="learning-screen" class="screen practice panel" hidden>
  <div class="practice-head"><div><div id="learning-label" class="hint"></div><h1 id="learning-title" tabindex="-1"></h1></div><div class="actions"><button id="learning-pause" type="button" class="ghost small">Pause</button><button id="learning-end" type="button" class="ghost small">End session</button></div></div>
  <p id="learning-count" class="hint" aria-live="polite"></p>
- <div id="learning-mastery" class="mastery-meter" hidden><div class="mastery-meta"><span class="mastery-count" aria-live="polite"></span><span class="mastery-percent"></span></div><div class="progressline" role="progressbar" aria-label="Words mastered in this practice" aria-valuemin="0" aria-valuenow="0"><div class="progressfill"></div></div><p class="mastery-foot">Keep going until every word is mastered.</p></div>
+ <div id="learning-mastery" class="mastery-meter" hidden><div class="mastery-meta"><span class="mastery-label">Progress toward mastery</span><span class="mastery-percent"></span></div><div class="progressline" role="progressbar" aria-label="Progress toward mastery" aria-valuemax="100" aria-valuemin="0" aria-valuenow="0"><div class="progressfill"></div></div><p class="mastery-foot mastery-count" aria-live="polite"></p></div>
  <p id="learning-prompt" class="lesson-prompt"></p>
  <div id="learning-audio-actions" class="actions"><button id="learning-audio" type="button" class="secondary small">Listen</button><button id="learning-slow" type="button" class="ghost small">Listen slowly</button></div>
  <p id="learning-audio-error" class="notice" role="alert" hidden></p>
@@ -3297,10 +3298,20 @@ const Learning = (() => {
     if (question && (!feedback?.correct || feedback.assisted || feedback.correctionRequired)) pending.add(question.taskId);
     const words = new Map();
     for (const task of session.tasks) {
-      const word = task.recordIndex;
-      words.set(word, words.get(word) !== false && !pending.has(task.id) && taskMastered(session, task));
+      const word = words.get(task.recordIndex) || {mastered:true, credit:0, skills:0};
+      const mastered = !pending.has(task.id) && taskMastered(session, task);
+      const streak = Math.min(2, Math.max(0, task.streak || 0));
+      const credit = session.settings.phasedVocabulary
+        ? task.skill === 'spelling' ? streak/2 : task.bankPassed ? (1+streak)/3 : 0
+        : Number(mastered);
+      word.mastered = word.mastered && mastered;
+      word.credit += credit;
+      word.skills++;
+      words.set(task.recordIndex, word);
     }
-    return {mastered: [...words.values()].filter(Boolean).length, total: words.size};
+    const rows = [...words.values()];
+    return {mastered: rows.filter(word => word.mastered).length, total: words.size,
+      progress: rows.length ? rows.reduce((sum, word) => sum + word.credit/word.skills, 0)/rows.length : 0};
   }
 
   function practiceMastered(session) {
@@ -4100,19 +4111,83 @@ function beginLearning(list, records, options, dueLists) {
  renderLearning(true);
 }
 
-function renderMasteryProgress(id, mastered, total) {
+let stopMasteryCelebration = () => {};
+function celebrateMastery(session) {
+ if (session.celebrationShown) return;
+ session.celebrationShown = true;
+ save();
+ stopMasteryCelebration();
+ const motion = matchMedia('(prefers-reduced-motion: reduce)');
+ if (motion.matches || document.hidden) return;
+ const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d');
+ if (!ctx) return;
+ canvas.className = 'mastery-confetti';
+ canvas.setAttribute('aria-hidden', 'true');
+ const width = innerWidth, height = innerHeight, scale = Math.min(devicePixelRatio || 1, 2);
+ canvas.width = width*scale; canvas.height = height*scale;
+ ctx.setTransform(scale, 0, 0, scale, 0, 0);
+ document.body.append(canvas);
+ const colors = ['#26ccff','#a25afd','#ff5e7e','#88ff5a','#fcff42','#ffa62d','#ff36ff'];
+ const particles = [], started = performance.now();
+ let frame, previous = started, nextBurst = started, stopped = false;
+ function stop() {
+  if (stopped) return;
+  stopped = true;
+  cancelAnimationFrame(frame); canvas.remove();
+  document.removeEventListener('visibilitychange', onVisibility);
+  window.removeEventListener('pagehide', stop);
+  window.removeEventListener('resize', stop);
+  stopMasteryCelebration = () => {};
+ }
+ function onVisibility() { if (document.hidden) stop(); }
+ stopMasteryCelebration = stop;
+ document.addEventListener('visibilitychange', onVisibility);
+ window.addEventListener('pagehide', stop);
+ window.addEventListener('resize', stop);
+ function burst() {
+  for (const side of [0,1]) for (let i=0;i<36;i++) {
+   const angle = ((side ? 125 : 55) + (Math.random()-.5)*68)*Math.PI/180;
+   const speed = 14 + Math.random()*12;
+   particles.push({x:width*(side ? .94 : .06),y:height*.82,
+    vx:Math.cos(angle)*speed,vy:-Math.sin(angle)*speed,
+    rotation:Math.random()*Math.PI,spin:(Math.random()-.5)*.35,
+    color:colors[i%colors.length],age:0});
+  }
+ }
+ function draw(time) {
+  if (motion.matches || document.hidden) { stop(); return; }
+  const step = Math.min(50, time-previous)/(1000/60); previous = time;
+  if (time-started < 1800 && time >= nextBurst) { burst(); nextBurst = time+260; }
+  ctx.clearRect(0,0,width,height);
+  for (let i=particles.length-1;i>=0;i--) {
+   const p=particles[i]; p.age+=step;
+   if (p.age>=95) { particles.splice(i,1); continue; }
+   p.x+=p.vx*step; p.y+=p.vy*step; p.vy+=.5*step;
+   p.vx*=Math.pow(.98,step); p.rotation+=p.spin*step;
+   ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rotation);
+   ctx.fillStyle=p.color; ctx.globalAlpha=Math.min(1,(95-p.age)/25);
+   ctx.fillRect(-4,-2,8,4); ctx.restore();
+  }
+  if (time-started>=3600 || time-started>=1800 && !particles.length) stop();
+  else frame=requestAnimationFrame(draw);
+ }
+ frame=requestAnimationFrame(draw);
+}
+
+function renderMasteryProgress(id, mastered, total, progress = total ? mastered/total : 0) {
  const meter = $(id), bar = meter.querySelector('[role="progressbar"]');
- const fraction = total ? mastered/total : 0;
- const percent = total > 0 && mastered === total ? 100 : Math.min(99,Math.round(100*fraction));
- const label = mastered + ' of ' + total + ' ' + (total === 1 ? 'word' : 'words') + ' mastered';
+ const complete = total > 0 && mastered === total;
+ const fraction = complete ? 1 : Math.min(.99, Math.max(0, progress));
+ const percent = complete ? 100 : Math.min(99,Math.round(100*fraction));
+ const label = mastered + ' of ' + total + ' ' + (total === 1 ? 'word' : 'words') + ' fully mastered';
  const count = meter.querySelector('.mastery-count');
  if (count.textContent !== label) count.textContent = label;
  meter.querySelector('.mastery-percent').textContent = percent + '%';
  meter.querySelector('.progressfill').style.width = 100*fraction + '%';
- meter.classList.toggle('is-complete', total > 0 && mastered === total);
- bar.setAttribute('aria-valuemax', total);
- bar.setAttribute('aria-valuenow', mastered);
- bar.setAttribute('aria-valuetext', label + ' · ' + percent + '%');
+ meter.classList.toggle('is-complete', complete);
+ bar.setAttribute('aria-valuemax', 100);
+ bar.setAttribute('aria-valuenow', percent);
+ bar.setAttribute('aria-valuetext', percent + '% progress toward mastery. ' + label);
 }
 
 let audioReady = false;
@@ -4171,8 +4246,8 @@ function renderLearning(play, corrected = false) {
  if ($('learning-count').textContent !== progress) $('learning-count').textContent = progress;
  $('learning-mastery').hidden = test;
  if (!test) {
-  const {mastered, total} = Learning.practiceWordProgress(session);
-  renderMasteryProgress('learning-mastery', mastered, total);
+  const {mastered, total, progress} = Learning.practiceWordProgress(session);
+  renderMasteryProgress('learning-mastery', mastered, total, progress);
  }
  $('learning-prompt').textContent = question.type === 'dictation' ? 'Listen to the word, then type it.' : question.prompt;
  $('learning-audio-actions').hidden = !session.settings.audioReplay || !!result;
@@ -4251,7 +4326,9 @@ function renderLearning(play, corrected = false) {
 function advanceLearning() {
  const entry = learningEntry();
  if (!entry) return;
+ const wasActive = entry.session.status === 'active';
  Learning.advance(entry.session); save(); renderLearning(true);
+ if (wasActive && Learning.practiceMastered(entry.session)) celebrateMastery(entry.session);
 }
 
 function advanceAfterFeedback(entry, delay) {
@@ -5813,6 +5890,7 @@ function refreshTeacher() {
   $('open-teacher').textContent = toolsTitle;
  }
  $('teacher-logout').hidden = !signedIn;
+ $('teacher-workspace-logout').hidden = !signedIn;
  $('teacher-url').disabled = signedIn;
  $('teacher-secret').disabled = signedIn;
  $('teacher-login').disabled = signedIn;
@@ -6774,7 +6852,7 @@ let storageOK=true,state=SELFTEST||studentPreview?blank():loadState(),listId=(st
 function save(){return SELFTEST || storageOK && saveState();}
 function warning(){$('storage-warning').hidden=storageOK;if(storageIssue)$('storage-warning').textContent=storageIssue;}
 function status(t){$('setup-status').textContent=t;}
-function show(id){stopRecording();document.querySelectorAll('.screen').forEach(x=>x.hidden=true);$(id).hidden=false;}
+function show(id){stopMasteryCelebration();stopRecording();document.querySelectorAll('.screen').forEach(x=>x.hidden=true);$(id).hidden=false;}
 function selectedList(){return state.lists.find(x=>x.id===listId)||null;}
 function selectedGroup(words,selection){
  const chosen=new Set(selection);
@@ -6868,7 +6946,9 @@ function playPracticeRecording(rate, slow = false){
 }
 function renderPractice(play){
  const s=state.session;if(!s)return;finished=false;show('practice-screen');$('list-name-practice').textContent=s.listName;$('round-text').textContent='Round '+s.round;
- const done=s.words.filter(w=>s.perWord[w].mastered).length;renderMasteryProgress('spelling-mastery',done,s.words.length);renderTiles(s);
+ const done=s.words.filter(w=>s.perWord[w].mastered).length;
+ const progress=s.words.reduce((sum,w)=>sum+(s.perWord[w].mastered?1:Math.min(2,Math.max(0,s.perWord[w].streak||0))/2),0)/s.words.length;
+ renderMasteryProgress('spelling-mastery',done,s.words.length,progress);renderTiles(s);
  $('definition').textContent=s.defs[s.current]||'';$('visual-word').className='sr';$('visual-word').textContent='';$('replay-button').hidden=false;$('slow-replay').hidden=false;
  if(!speech&&!sharedAudioPath(s.listId,s.current,'dictation',s.current)){const word=s.current;readRecording(s.listId,word,s.meanings?.[word]).then(clip=>{
   if(clip||state.session!==s||s.current!==word||$('practice-screen').hidden)return;
@@ -6879,7 +6959,7 @@ function renderPractice(play){
  if(play&&s.phase==='prompt')playPracticeRecording(state.settings.rate);if(['prompt','retype'].includes(s.phase))setTimeout(()=>$('answer-input').focus(),35);
  if(s.phase==='feedback'){clearTimeout(timer);const last=s.log[s.log.length-1],delay=last&&last.ok?state.settings.autoAdvanceMs:state.settings.feedbackMs;timer=setTimeout(advance,delay);}
 }
-function advance(){const s=state.session;if(!s||s.phase!=='feedback')return;if(s.words.every(w=>s.perWord[w].mastered)){s.current='';s.phase='done';finish(true);return;}next(s);save();renderPractice(true);}
+function advance(){const s=state.session;if(!s||s.phase!=='feedback')return;if(s.words.every(w=>s.perWord[w].mastered)){s.current='';s.phase='done';finish(true);celebrateMastery(s);return;}next(s);save();renderPractice(true);}
 function showSummary(r){const s=state.session;if(!s)return;clearTimeout(timer);show('summary-screen');$('summary-setup').textContent=sharedReview?'Back to set':'Return to setup';$('summary-list').textContent=s.listName;$('summary-title').textContent=r.mastered===r.total?'Practice complete':'Practice ended';$('summary-stats').innerHTML='<div class="stat"><span class="hint">Words mastered</span><strong>'+Number(r.mastered)+' / '+Number(r.total)+'</strong><small class="hint">Two correct answers in a row.</small></div><div class="stat"><span class="hint">First-attempt accuracy</span><strong>'+(r.attempts?Number(r.accuracy)+'%':'Not assessed')+'</strong><small class="hint">Correct first answers ÷ first answers submitted.</small></div><div class="stat"><span class="hint">Incorrect retype attempts</span><strong>'+Number(r.retypes)+'</strong><small class="hint">Incorrect answers during the correction step.</small></div>';
  const list=$('missed-list');list.innerHTML='';r.missed.forEach(w=>{const li=document.createElement('li');li.textContent=w+(s.defs[w]?' — '+s.defs[w]:'');list.append(li);});$('missed-empty').hidden=!!r.missed.length;$('practice-missed').disabled=!r.missed.length;$('copy-missed').disabled=!r.missed.length;
  const hist=(state.history[s.listId]?.sessions||[]).slice().reverse(),h=$('history-list');h.innerHTML='';hist.forEach(x=>{const li=document.createElement('li');li.textContent=new Date(x.at).toLocaleDateString()+' · '+x.accuracy+'% · '+x.mastered+'/'+x.total+' mastered'+(Array.isArray(x.missed)&&x.missed.length?' · '+x.missed[0]:'');h.append(li);});

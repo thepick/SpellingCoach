@@ -347,3 +347,22 @@ test('same-version divergent restores mark the conflict and continue instead of 
  assert.equal(h.run('list.remoteConflict'),true);
  assert.deepEqual(JSON.parse(h.run('JSON.stringify(imported)')),['other']);
 });
+
+
+test('standalone teacher and class sign-ins retain a main-page sign-out control',async()=>{
+ for(const role of ['teacher','class']) {
+  const page=startBuiltPage('offline');
+  const profile={teacher:{id:'operator',name:'Owner',username:'owner',isAdmin:true},config:{},keys:{},settings:{}};
+  page.context.fetch=async url=>({ok:true,headers:{get:()=> 'application/json'},json:async()=>url.endsWith('/admin/access')?{...profile,token:'fixture-token'}:url.endsWith('/access')?{token:'fixture-class-token',config:{}}:url.endsWith('/teacher/profile')?profile:{sets:[]}});
+  page.elements.get('teacher-url').value='https://wordlab.mtomlinson.ca';
+  page.elements.get('teacher-login-kind').value='owner';
+  page.elements.get('teacher-secret').value='fixture-password';
+  await page.elements.get('teacher-connect').onsubmit({preventDefault(){},submitter:{id:role==='class'?'class-login':'teacher-login'}});
+  assert.equal(page.elements.get('teacher-workspace-logout').hidden,false,role);
+  page.elements.get('teacher-workspace-logout').click();
+  assert.equal(page.elements.get('teacher-workspace-logout').hidden,true,role);
+  assert.equal(page.elements.get('teacher-login').disabled,false,role);
+ }
+ const css=fs.readFileSync('src/styles.css','utf8');
+ assert.match(css,/#teacher-dialog #teacher-logout\s*\{ display: none;/);
+});
