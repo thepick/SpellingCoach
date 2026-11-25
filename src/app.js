@@ -116,6 +116,16 @@ function speak(value,rate,onError,onStart){if(!speech){if(onError)onError();retu
 function refreshVoices(){if(!speech)return;voices=speechSynthesis.getVoices().filter(v=>/^en(?:-|_)/i.test(v.lang));const sel=$('voice-select'),old=state.settings.voiceURI;sel.innerHTML='<option value="">System default</option>';voices.forEach(v=>sel.add(new Option(v.name+' ('+v.lang+')',v.voiceURI)));sel.value=old;}
 function renderTiles(s){const host=$('tiles');host.innerHTML='';s.words.forEach(w=>{const p=s.perWord[w],el=document.createElement('span');el.className='tile'+(p.mastered?' mastered':p.streak===1?' familiar':'');el.setAttribute('aria-label',p.mastered?'Mastered':p.streak===1?'One correct':'Not mastered');el.title=p.mastered?'Mastered':p.streak===1?'One correct':'Not mastered';host.append(el);});}
 function feedback(msg,kind,d){const box=$('feedback');box.className='feedback'+(kind?' '+kind:'');box.innerHTML='';if(msg){const t=document.createElement('div');t.textContent=msg;box.append(t);}if(d){const x=document.createElement('div');x.className='diff';x.innerHTML=textDiff(d);box.append(x);}}
+function renderCorrection(id, inputId, answer, explanation = '') {
+ const panel = $(id), input = $(inputId);
+ panel.hidden = answer == null;
+ if (panel.hidden) { input.removeAttribute('aria-describedby'); return; }
+ panel.querySelector('strong').textContent = answer;
+ const detail = panel.querySelector('.correction-detail');
+ detail.textContent = explanation;
+ detail.hidden = !explanation;
+ input.setAttribute('aria-describedby', id);
+}
 function playPracticeRecording(rate){
  const s=state.session;if(!s)return;
  dictate(s.listId,s.current,s.meanings?.[s.current],rate);
@@ -128,7 +138,8 @@ function renderPractice(play){
   if(clip||state.session!==s||s.current!==word||$('practice-screen').hidden)return;
   $('visual-word').className='visual-prompt';$('visual-word').textContent='Prompt: '+word;$('replay-button').hidden=true;$('slow-replay').hidden=true;
  });}$('answer-input').value='';$('answer-input').disabled=!['prompt','retype'].includes(s.phase);$('dont-know').hidden=s.phase==='retype';$('submit-answer').textContent=s.phase==='retype'?'Type it correctly':'Check spelling';$('submit-answer').disabled=!['prompt','retype'].includes(s.phase);
- if(s.phase==='retype')feedback('Type the word correctly to continue.','bad',s.feedbackDiff||diff('',s.current));else if(s.phase==='feedback'){const last=s.log[s.log.length-1];if(last&&last.ok)feedback(s.perWord[s.current]?.mastered?'Mastered: two correct answers in a row.':'Correct. One more correct answer will master this word.','good');else if(last)feedback('Compare your answer with the correct spelling.','bad',diff(last.typed,s.current));}else feedback('','');
+ renderCorrection('spelling-correction', 'answer-input', s.phase==='retype' ? s.current : null);
+ if(s.phase==='feedback'){const last=s.log[s.log.length-1];if(last&&last.ok)feedback(s.perWord[s.current]?.mastered?'Mastered: two correct answers in a row.':'Correct. One more correct answer will master this word.','good');else if(last)feedback('Compare your answer with the correct spelling.','bad',diff(last.typed,s.current));}else feedback('','');
  if(play&&s.phase==='prompt')playPracticeRecording(state.settings.rate);if(['prompt','retype'].includes(s.phase))setTimeout(()=>$('answer-input').focus(),35);
  if(s.phase==='feedback'){clearTimeout(timer);const last=s.log[s.log.length-1],delay=last&&last.ok?state.settings.autoAdvanceMs:state.settings.feedbackMs;timer=setTimeout(advance,delay);}
 }

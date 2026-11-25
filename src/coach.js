@@ -231,13 +231,14 @@ function renderLearning(play) {
  $('learning-hint-text').hidden = !lastHint || !!result;
  $('learning-hint-text').textContent = lastHint?.text || '';
  const box = $('learning-feedback');
- box.hidden = !result;
+ renderCorrection('learning-correction', 'learning-input', correction ? result.answer : null, result?.explanation);
+ box.hidden = !result || !!correction;
  box.className = 'feedback' + (result ? result.correct ? ' good' : ' bad' : '');
  if (result) {
   const message = {'other-word': 'That is a different word.', 'word-form': 'Check the word form.', 'likely-spelling': 'Check the spelling.'};
   box.textContent = (result.correct ? (result.assisted ? 'Correct with help.' : 'Correct.') :
    (message[result.kind] || 'Incorrect.') + ' Answer: ' + result.answer + '.') +
-   (result.explanation ? ' ' + result.explanation : '') + (correction ? ' Type the answer to continue.' : '');
+   (result.explanation ? ' ' + result.explanation : '');
  }
  $('learning-next').hidden = !result || !!correction;
  $('learning-end').hidden = test;
