@@ -687,6 +687,21 @@ test('alternate speech rejects JSON and incorrect PCM types/rates without accept
   await assert.rejects(synthesizeAlternateAudio('fake-key','x'.repeat(201),async()=>{throw Error('must not call');}));
 });
 
+test('default connection transport preserves the Workers fetch receiver',async () => {
+  const originalFetch=globalThis.fetch, requests=[];
+  globalThis.fetch=async function(url,init) {
+    if (this !== undefined && this !== globalThis) throw new TypeError('Illegal invocation');
+    requests.push({url,method:init.method});
+    return Response.json({data:url.includes('groq.com') ? [] : {label:'fixture'}});
+  };
+  try {
+    const f=fixture(encryptionEnv), one=await invited(f);
+    await f.call('PUT','/teacher/keys',{groq:'personal-groq-key',openrouter:'personal-router-key'},one.token);
+    assert.deepEqual((await f.call('POST','/teacher/testkeys',undefined,one.token)).data,{groq:'connected',openrouter:'connected'});
+    assert.deepEqual(requests.map(r=>r.method),['GET','GET']);
+  } finally { globalThis.fetch=originalFetch; }
+});
+
 test('connection tests use unbilled endpoints and return sanitized statuses for effective keys',async () => {
   const f=fixture(encryptionEnv), one=await invited(f);
   const requests=[];
