@@ -37,7 +37,7 @@ a { color: var(--accent); text-underline-offset: .18em; }
 #vocab-form textarea, #teacher-dialog textarea { min-height: 3.5rem; }
 #vocab-word { min-height: 6rem; }
 #ai-qr-result img { display: block; width: min(100%, 300px); height: auto; }
-#mode-help:empty, #ai-progress:empty { display: none; }
+#mode-help:empty, #ai-progress:empty, #ai-publish-status:empty { display: none; }
 #setup-screen .section > .row { margin-top: 14px; }
 @media (max-width: 560px) {
  .app { padding: 15px 12px 32px; }

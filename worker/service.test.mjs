@@ -184,6 +184,17 @@ test('approved public packs are versioned, validated, and reusable at zero provi
   assert.equal((await call('GET', '/admin/usage')).data.calls, 0);
 });
 
+test('teachers can publish words without definitions for spelling practice', async () => {
+  const { call } = fixture();
+  const pack = { kind: 'spellingcoach-pack', v: 1, id: 'spelling-only', name: 'Spelling', version: 1,
+    words: [{ word: 'textile', vocabulary: null }] };
+  const publish = (mode, extras) => call('POST', '/admin/publish', { pack, mode, visibility: 'public', ...extras });
+  assert.equal((await publish('mixed')).status, 400);
+  assert.equal((await publish('spelling', { cacheSettings: {} })).status, 400);
+  assert.equal((await publish('spelling')).status, 200);
+  assert.deepEqual((await call('GET', '/packs/spelling-only', undefined, '')).data.pack, pack);
+});
+
 test('provider routing is fail closed and requests use the fixed schema and target', async () => {
   assert.deepEqual(providerChoices({ AI_ENABLED: 'true', GROQ_API_KEY: 'fake' }), []);
   const env = { GROQ_FREE_TIER_CONFIRMED: 'true', GROQ_API_KEY: 'fake', GROQ_MODELS: 'paid-model' };

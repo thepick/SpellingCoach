@@ -79,7 +79,7 @@ a { color: var(--accent); text-underline-offset: .18em; }
 #vocab-form textarea, #teacher-dialog textarea { min-height: 3.5rem; }
 #vocab-word { min-height: 6rem; }
 #ai-qr-result img { display: block; width: min(100%, 300px); height: auto; }
-#mode-help:empty, #ai-progress:empty { display: none; }
+#mode-help:empty, #ai-progress:empty, #ai-publish-status:empty { display: none; }
 #setup-screen .section > .row { margin-top: 14px; }
 @media (max-width: 560px) {
  .app { padding: 15px 12px 32px; }
@@ -212,7 +212,9 @@ body:has(dialog.tools-dialog[open]) { overflow: hidden; }
  <div id="teacher-admin" class="tool-section stack" hidden>
   <h2>Publishing and usage</h2><div><label for="shared-mode">Practice from the student link</label><select id="shared-mode"><option value="mixed">Mixed practice</option><option value="spelling">Spelling</option><option value="vocabulary">Vocabulary</option></select></div>
   <label class="checkline"><input id="shared-hints" type="checkbox" checked> Allow hints in Mixed and Vocabulary practice</label>
-  <div class="actions"><button type="button" id="ai-publish">Publish approved pack</button><button type="button" id="ai-preview" class="secondary" disabled>Preview as student</button><button type="button" id="ai-share" class="secondary" disabled>Copy student link</button><button type="button" id="ai-qr" class="ghost" disabled>Show classroom QR code</button><button type="button" id="ai-usage" class="ghost">Refresh usage</button><button type="button" id="ai-stop" class="danger">Disable generation</button></div>
+  <p class="hint">Anyone with the student link can open the set.</p>
+  <div class="actions"><button type="button" id="ai-publish">Publish set</button><button type="button" id="ai-preview" class="secondary" disabled>Preview as student</button><button type="button" id="ai-share" class="secondary" disabled>Copy student link</button><button type="button" id="ai-qr" class="ghost" disabled>Show classroom QR code</button><button type="button" id="ai-usage" class="ghost">Refresh usage</button><button type="button" id="ai-stop" class="danger">Disable generation</button></div>
+  <p id="ai-publish-status" class="status" role="status"></p>
   <label class="checkline"><input id="ai-publish-cache" type="checkbox"> Reuse this pack’s approved content in generation</label><div id="ai-qr-result" hidden></div><p id="ai-usage-result" class="hint" role="status"></p>
   <details><summary>Recent generation jobs</summary><ol id="ai-job-history"></ol></details><details><summary>Class access codes</summary><div class="stack"><button type="button" id="ai-classes" class="ghost">Refresh class list</button><ul id="ai-class-status"></ul><div class="settings"><div><label for="ai-class-id">Class ID</label><input id="ai-class-id" maxlength="40"></div><div><label for="ai-class-name">Name</label><input id="ai-class-name" maxlength="80"></div><div><label for="ai-class-limit">Daily word allowance</label><input id="ai-class-limit" type="number" min="1" value="200"></div><div><label for="ai-class-expiry">Expires on</label><input id="ai-class-expiry" type="date"></div></div><div class="actions"><button type="button" id="ai-class-save" class="secondary">Save class</button><button type="button" id="ai-class-rotate" class="ghost">Rotate code</button><button type="button" id="ai-class-revoke" class="ghost">Revoke access</button></div></div></details>
  </div>
@@ -4502,6 +4504,7 @@ function initCoach() {
     studyState.rows = ordered; studyState.index = 0; studyState.revealed = false; save(); renderStudy();
    } else {
     list.orderReceipt = {receipt, words: values.slice()};
+    if (ordered.some((word, index) => word !== list.words[index])) list.packVersion = (list.packVersion || 1) + 1;
     list.words = ordered; list.updatedAt = now(); save(); renderSetup(); status('Saved the new word order.');
    }
    $('shuffle-dialog').close();
@@ -4889,10 +4892,10 @@ function aiSettings() {
  return settings;
 }
 
-function publicPackLink(id) {
+function publicPackLink(id, mode, allowHints, root) {
  const site = new URL('practice/', entryPage === 'offline' ? 'https://wordlab.mtomlinson.ca/' : location.href);
- const args = new URLSearchParams({pack: id, service: ai.root, mode: $('shared-mode').value});
- if (!$('shared-hints').checked) args.set('hints', 'off');
+ const args = new URLSearchParams({pack: id, service: root, mode});
+ if (!allowHints) args.set('hints', 'off');
  site.hash = args.toString();
  return site.href;
 }
@@ -4929,6 +4932,11 @@ function initTeacher() {
  $('open-teacher').onclick = () => {
   $('tools-dialog').close();
   if (!$('teacher-url').value) $('teacher-url').value = ONLINE_CONFIG;
+  if (ai.publishedListId !== selectedList()?.id) {
+   ai.published = '';
+   $('ai-publish-status').textContent = '';
+   $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
+  }
   teacherStatus('Select the words you want to generate before opening these tools.');
   refreshTeacher();
   $('teacher-dialog').showModal();
@@ -5032,23 +5040,40 @@ function initTeacher() {
   } catch (error) { $('regenerate-status').textContent = error.message; }
   finally { $('regenerate-submit').disabled = false; }
  };
- $('ai-publish').onclick = teacherAction(async () => {
-  const list = selectedList();
-  if (!list) throw Error('Choose a list before publishing.');
-  const pack = outputPack(list, await loadVocabulary(list));
-  if (!pack.words.some(row => row.vocabulary) || pack.words.some(row => row.vocabulary && row.vocabulary.status !== 'approved')) {
-   throw Error('Review and approve each vocabulary entry before publishing.');
-  }
-  if (!confirm('Publish “' + pack.name + '” for anyone with the link?')) return;
-  const {pack: published} = await service('/admin/publish', {method: 'POST',
-   body: {pack, visibility: 'public', ...($('ai-publish-cache').checked ? {cacheSettings: {...aiSettings(), context: ''}} : {})}, requestId: newListId()});
-  ai.published = publicPackLink(published.id);
-  $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
-  refreshTeacher();
-  teacherStatus('Pack published. Copy the link or show the QR code.');
- });
+ $('ai-publish').onclick = async () => {
+  const button = $('ai-publish'), status = $('ai-publish-status');
+  const mode = $('shared-mode').value, allowHints = $('shared-hints').checked;
+  const reuse = $('ai-publish-cache').checked, {root, token} = ai;
+  button.disabled = true;
+  status.textContent = 'Publishing…';
+  try {
+   const list = selectedList();
+   if (!list) throw Error('Create or select a set before publishing.');
+   const records = await loadVocabulary(list);
+   if (mode !== 'spelling') {
+    if (!records.some(row => row.vocabulary)) throw Error('Add and approve vocabulary in Vocabulary content, or choose Spelling to publish this word list.');
+    if (records.some(row => row.vocabulary && row.vocabulary.status !== 'approved')) {
+     throw Error('Approve the drafts in Vocabulary content before publishing this set.');
+    }
+   }
+   const words = mode === 'spelling' ? records.map(row => row.vocabulary?.status === 'approved' ? row : {...row, vocabulary: null}) : records;
+   const pack = outputPack(list, words);
+   const cacheSettings = reuse && pack.words.some(row => row.vocabulary) ? {...aiSettings(), context: ''} : undefined;
+   const {pack: published} = await service('/admin/publish', {root, token, method: 'POST',
+    body: {pack, mode, visibility: 'public', cacheSettings}, requestId: newListId()});
+   if (ai.token !== token) return;
+   if ((list.packVersion || 0) < published.version) { list.packVersion = published.version; save(); }
+   ai.published = publicPackLink(published.id, mode, allowHints, root);
+   ai.publishedListId = list.id;
+   $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
+   refreshTeacher();
+   status.textContent = 'Published “' + published.name + '”. Preview or copy the student link.';
+  } catch (error) {
+   if (ai.token === token) status.textContent = error.status === 401 ? 'Your sign-in expired. Sign out, sign back in, and try again.' : error.message;
+  } finally { button.disabled = false; }
+ };
  $('ai-share').onclick = teacherAction(async () => {
-  teacherStatus(await copy(ai.published) ? 'Student link copied.' : ai.published);
+  $('ai-publish-status').textContent = await copy(ai.published) ? 'Student link copied.' : ai.published;
  });
  $('ai-preview').onclick = () => {
   if (!ai.published) return;
@@ -5554,6 +5579,7 @@ $('create-list-form').onsubmit=e=>{
  const defs=draftDefinitions(ws),l=state.lists.find(x=>x.id===listDraft.id);
  if(l){
   const oldWords=l.words,chosen=new Set(selectedWords());
+  if (l.name !== name || oldWords.length !== ws.length || oldWords.some((word, index) => word !== ws[index])) l.packVersion = (l.packVersion || 1) + 1;
   l.name=name;l.words=ws;l.defs=defs;l.updatedAt=now();
   state.settings.selected[l.id]=ws.filter(w=>chosen.has(w)||!oldWords.includes(w));
   save();renderSetup();

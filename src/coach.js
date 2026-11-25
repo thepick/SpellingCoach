@@ -849,6 +849,7 @@ function initCoach() {
     studyState.rows = ordered; studyState.index = 0; studyState.revealed = false; save(); renderStudy();
    } else {
     list.orderReceipt = {receipt, words: values.slice()};
+    if (ordered.some((word, index) => word !== list.words[index])) list.packVersion = (list.packVersion || 1) + 1;
     list.words = ordered; list.updatedAt = now(); save(); renderSetup(); status('Saved the new word order.');
    }
    $('shuffle-dialog').close();

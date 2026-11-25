@@ -128,10 +128,10 @@ function aiSettings() {
  return settings;
 }
 
-function publicPackLink(id) {
+function publicPackLink(id, mode, allowHints, root) {
  const site = new URL('practice/', entryPage === 'offline' ? 'https://wordlab.mtomlinson.ca/' : location.href);
- const args = new URLSearchParams({pack: id, service: ai.root, mode: $('shared-mode').value});
- if (!$('shared-hints').checked) args.set('hints', 'off');
+ const args = new URLSearchParams({pack: id, service: root, mode});
+ if (!allowHints) args.set('hints', 'off');
  site.hash = args.toString();
  return site.href;
 }
@@ -168,6 +168,11 @@ function initTeacher() {
  $('open-teacher').onclick = () => {
   $('tools-dialog').close();
   if (!$('teacher-url').value) $('teacher-url').value = ONLINE_CONFIG;
+  if (ai.publishedListId !== selectedList()?.id) {
+   ai.published = '';
+   $('ai-publish-status').textContent = '';
+   $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
+  }
   teacherStatus('Select the words you want to generate before opening these tools.');
   refreshTeacher();
   $('teacher-dialog').showModal();
@@ -271,23 +276,40 @@ function initTeacher() {
   } catch (error) { $('regenerate-status').textContent = error.message; }
   finally { $('regenerate-submit').disabled = false; }
  };
- $('ai-publish').onclick = teacherAction(async () => {
-  const list = selectedList();
-  if (!list) throw Error('Choose a list before publishing.');
-  const pack = outputPack(list, await loadVocabulary(list));
-  if (!pack.words.some(row => row.vocabulary) || pack.words.some(row => row.vocabulary && row.vocabulary.status !== 'approved')) {
-   throw Error('Review and approve each vocabulary entry before publishing.');
-  }
-  if (!confirm('Publish “' + pack.name + '” for anyone with the link?')) return;
-  const {pack: published} = await service('/admin/publish', {method: 'POST',
-   body: {pack, visibility: 'public', ...($('ai-publish-cache').checked ? {cacheSettings: {...aiSettings(), context: ''}} : {})}, requestId: newListId()});
-  ai.published = publicPackLink(published.id);
-  $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
-  refreshTeacher();
-  teacherStatus('Pack published. Copy the link or show the QR code.');
- });
+ $('ai-publish').onclick = async () => {
+  const button = $('ai-publish'), status = $('ai-publish-status');
+  const mode = $('shared-mode').value, allowHints = $('shared-hints').checked;
+  const reuse = $('ai-publish-cache').checked, {root, token} = ai;
+  button.disabled = true;
+  status.textContent = 'Publishing…';
+  try {
+   const list = selectedList();
+   if (!list) throw Error('Create or select a set before publishing.');
+   const records = await loadVocabulary(list);
+   if (mode !== 'spelling') {
+    if (!records.some(row => row.vocabulary)) throw Error('Add and approve vocabulary in Vocabulary content, or choose Spelling to publish this word list.');
+    if (records.some(row => row.vocabulary && row.vocabulary.status !== 'approved')) {
+     throw Error('Approve the drafts in Vocabulary content before publishing this set.');
+    }
+   }
+   const words = mode === 'spelling' ? records.map(row => row.vocabulary?.status === 'approved' ? row : {...row, vocabulary: null}) : records;
+   const pack = outputPack(list, words);
+   const cacheSettings = reuse && pack.words.some(row => row.vocabulary) ? {...aiSettings(), context: ''} : undefined;
+   const {pack: published} = await service('/admin/publish', {root, token, method: 'POST',
+    body: {pack, mode, visibility: 'public', cacheSettings}, requestId: newListId()});
+   if (ai.token !== token) return;
+   if ((list.packVersion || 0) < published.version) { list.packVersion = published.version; save(); }
+   ai.published = publicPackLink(published.id, mode, allowHints, root);
+   ai.publishedListId = list.id;
+   $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
+   refreshTeacher();
+   status.textContent = 'Published “' + published.name + '”. Preview or copy the student link.';
+  } catch (error) {
+   if (ai.token === token) status.textContent = error.status === 401 ? 'Your sign-in expired. Sign out, sign back in, and try again.' : error.message;
+  } finally { button.disabled = false; }
+ };
  $('ai-share').onclick = teacherAction(async () => {
-  teacherStatus(await copy(ai.published) ? 'Student link copied.' : ai.published);
+  $('ai-publish-status').textContent = await copy(ai.published) ? 'Student link copied.' : ai.published;
  });
  $('ai-preview').onclick = () => {
   if (!ai.published) return;

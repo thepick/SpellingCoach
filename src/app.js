@@ -245,6 +245,7 @@ $('create-list-form').onsubmit=e=>{
  const defs=draftDefinitions(ws),l=state.lists.find(x=>x.id===listDraft.id);
  if(l){
   const oldWords=l.words,chosen=new Set(selectedWords());
+  if (l.name !== name || oldWords.length !== ws.length || oldWords.some((word, index) => word !== ws[index])) l.packVersion = (l.packVersion || 1) + 1;
   l.name=name;l.words=ws;l.defs=defs;l.updatedAt=now();
   state.settings.selected[l.id]=ws.filter(w=>chosen.has(w)||!oldWords.includes(w));
   save();renderSetup();

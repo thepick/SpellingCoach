@@ -548,16 +548,17 @@ export class VocabularyService {
   }
 
   async publish(input) {
-    requireInput(shape(input, ['pack', 'visibility', 'classId', 'cacheSettings'])
+    requireInput(shape(input, ['pack', 'visibility', 'classId', 'cacheSettings', 'mode'])
       && ['public', 'class', 'private'].includes(input.visibility), 'Choose a valid pack visibility.');
+    requireInput(input.mode === undefined || ['spelling', 'vocabulary', 'mixed'].includes(input.mode), 'Choose a valid practice mode.');
     const { visibility } = input;
-    const pack = validatePack(input.pack);
+    const pack = validatePack(input.pack, { allowSpellingOnly: input.mode === 'spelling' });
     const classId = input.classId;
     requireInput(visibility === 'class' ? shortId(classId) && this.readClass(classId) : classId == null || classId === '',
       'Class packs must have a valid classroom.');
     const settings = input.cacheSettings === undefined ? null : parseSettings(input.cacheSettings, true);
     const vocabularyEntries = pack.words.filter((entry) => entry.vocabulary !== null);
-    requireInput(!settings || (visibility === 'public' && !settings.context && !settings.sense
+    requireInput(!settings || (visibility === 'public' && vocabularyEntries.length > 0 && !settings.context && !settings.sense
       && vocabularyEntries.every((entry) => cacheEligible(entry, settings))), 'Reusable packs must be public and match the declared settings.');
     const info = { pack, visibility, ...(visibility === 'class' ? { classId } : {}) };
     const storage = { ...info, ...(settings ? { cacheSettings: settings } : {}) };
