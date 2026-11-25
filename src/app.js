@@ -133,7 +133,7 @@ function playPracticeRecording(rate, slow = false){
  if(s.phase==='prompt')$('answer-input').focus();
  const clip=sharedAudioPath(s.listId,s.current,'dictation',s.current);
  const fallback=()=>dictate(s.listId,s.current,s.meanings?.[s.current],rate);
- if(clip)playPublishedRecording(clip,slow,fallback);else fallback();
+ if(clip)playPublishedRecording(clip,slow,()=>feedback('The recording could not play. Press Listen to try again.','bad'),()=>feedback('',''));else fallback();
 }
 function renderPractice(play){
  const s=state.session;if(!s)return;finished=false;show('practice-screen');$('list-name-practice').textContent=s.listName;$('round-text').textContent='Round '+s.round;

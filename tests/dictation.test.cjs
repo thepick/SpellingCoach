@@ -39,20 +39,22 @@ test('dictation suggestions match multiword targets and reject changed endings',
  assert.equal(containsTarget('Please turn the light off.', 'turn the light off'), true);
 });
 
-test('published audio is scoped to the demo version and the exact spoken prompt', () => {
- const pack = {id:'matter-mixed-troy', version:1};
- assert.equal(publishedClip(pack, 'solid', 'dictation', 'solid'), '/demo-audio/matter-mixed-troy/words/solid.wav');
- assert.equal(publishedClip(pack, 'solid', 'sentence-choice', 'An ice cube is a blank.'), '/demo-audio/matter-mixed-troy/cloze/solid.wav');
- assert.equal(publishedClip(pack, 'gas', 'definition-recall', 'A form of matter that spreads out to fill its container.'), '/demo-audio/matter-mixed-troy/definitions/gas.wav');
+test('matching demo audio survives republishing and rejects changed prompts or meanings', () => {
+ const pack = {id:'matter-mixed', version:1};
+ assert.equal(publishedClip(pack, 'solid', 'dictation', 'solid'), '/demo-audio/matter-mixed/words/solid.wav');
+ assert.equal(publishedClip(pack, 'solid', 'sentence-choice', 'An ice cube is a blank.'), '/demo-audio/matter-mixed/cloze/solid.wav');
+ assert.equal(publishedClip(pack, 'gas', 'definition-recall', 'A form of matter that spreads out to fill its container.'), '/demo-audio/matter-mixed/definitions/gas.wav');
+ assert.equal(publishedClip({...pack, version:4}, 'solid', 'missing-word', 'An ice cube is a blank.'), '/demo-audio/matter-mixed/cloze/solid.wav');
+ assert.equal(publishedClip({...pack, version:4, words:[{word:'solid',vocabulary:{definition:'Reliable.'}}]}, 'solid', 'dictation', 'solid'), null);
  assert.equal(publishedClip(pack, 'solid', 'sentence-choice', 'The block is a blank.'), null);
- assert.equal(publishedClip({...pack, version:2}, 'solid', 'dictation', 'solid'), null);
+ assert.equal(publishedClip({...pack, version:2}, 'solid', 'dictation', 'solid'), '/demo-audio/matter-mixed/words/solid.wav');
  assert.equal(publishedClip(pack, 'constructor', 'dictation', 'constructor'), null);
 });
 
 test('the published demo ships valid PCM WAVs for every recording path', () => {
  for (const kind of ['words', 'cloze', 'definitions']) {
   for (const word of ['solid', 'liquid', 'gas', 'melt']) {
-   const bytes = readFileSync(join(__dirname, '../demo-audio/matter-mixed-troy', kind, word + '.wav'));
+   const bytes = readFileSync(join(__dirname, '../demo-audio/matter-mixed', kind, word + '.wav'));
    assert.doesNotThrow(() => validateRecording(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)));
   }
  }

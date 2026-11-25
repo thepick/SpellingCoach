@@ -171,7 +171,7 @@ const themePreference = (() => {
   <p id="ai-share-help" class="hint">Publish to get a link students can open without signing in.</p>
   <p id="ai-publish-status" class="status" role="status"></p>
   <div id="ai-link-actions" class="section stack" hidden>
-   <div id="ai-share-audio" class="stack" hidden><p class="hint">Optional. Save recordings of the words and practice prompts for students to replay.</p><div class="actions"><button type="button" id="ai-prepare-audio" class="secondary" disabled>Prepare practice audio</button></div></div>
+   <div id="ai-share-audio" class="stack" hidden><p id="ai-audio-status" class="hint" role="status"></p><div class="actions"><button type="button" id="ai-prepare-audio" class="secondary" hidden>Retry practice audio</button></div></div>
    <div><label for="ai-student-link">Student link</label><input id="ai-student-link" type="url" readonly></div>
    <div class="actions"><button type="button" id="ai-share" disabled>Copy student link</button><button type="button" id="ai-qr" class="ghost" disabled>Show QR code</button></div>
    <div id="ai-qr-result" hidden></div>

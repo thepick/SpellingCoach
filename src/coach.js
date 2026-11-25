@@ -192,7 +192,7 @@ function playQuestion(initial, slow) {
   () => dictate(owner, message, session.records[question.recordIndex]?.vocabulary, rate, failed, ready) :
   () => speak(message, rate, failed, ready);
  const clip = sharedAudioPath(owner, question.word, question.type, Learning.audio(question));
- if (clip) playPublishedRecording(clip, slow, fallback, ready);
+ if (clip) playPublishedRecording(clip, slow, failed, ready);
  else fallback();
 }
 
@@ -523,7 +523,7 @@ function renderStudy() {
 
 function outputPack(list, records) {
  return Vocabulary.validatePack({kind: 'spellingcoach-pack', v: 1,
-  id: list.packId || list.id, version: list.packVersion || 1, name: list.name, words: records});
+  id: Dictation.canonicalPackId(list.packId) || list.id, version: list.packVersion || 1, name: list.name, words: records});
 }
 
 async function saveVocabulary(list, records, metadata) {

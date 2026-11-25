@@ -41,7 +41,7 @@ function sharedAudioPath(listId, word, type, spoken) {
  return prompt ? review.origin + '/api/packs/' + encodeURIComponent(review.pack.id) + '/audio/' + review.pack.version + '/' + prompt.key : null;
 }
 
-async function playPublishedRecording(path, slow, fallback, onStart) {
+async function playPublishedRecording(path, slow, onError, onStart) {
  stopRecording();
  const request = dictationRequest;
  try {
@@ -49,7 +49,7 @@ async function playPublishedRecording(path, slow, fallback, onStart) {
  } catch {
   if (request !== dictationRequest) return;
   stopRecording();
-  fallback();
+  onError();
  }
 }
 

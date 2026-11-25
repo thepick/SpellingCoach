@@ -5,6 +5,7 @@ import {
 import { GROQ_MODELS, providerChoices, requestVocabulary, tokenBudget } from './provider.mjs';
 import { hasSpeechSignal, synthesizeDictation } from './dictation.mjs';
 import Learning from '../src/learning.js';
+import Dictation from '../src/dictation.js';
 
 const DAY = 86_400_000;
 const HOUR = 3600_000;
@@ -31,6 +32,7 @@ const schema = [
   'CREATE TABLE IF NOT EXISTS provider_delay (key TEXT PRIMARY KEY, until INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS packs (id TEXT PRIMARY KEY, version INTEGER NOT NULL, value TEXT NOT NULL)',
   'CREATE TABLE IF NOT EXISTS pack_audio (pack TEXT NOT NULL, version INTEGER NOT NULL, prompt TEXT NOT NULL, bytes BLOB NOT NULL, PRIMARY KEY(pack, version, prompt))',
+  'CREATE TABLE IF NOT EXISTS audio_queue (pack TEXT PRIMARY KEY, version INTEGER NOT NULL, mode TEXT NOT NULL, cursor INTEGER NOT NULL, tries INTEGER NOT NULL, due INTEGER)',
   'CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, pack TEXT NOT NULL, word TEXT NOT NULL, content TEXT NOT NULL)',
   'CREATE INDEX IF NOT EXISTS cache_pack ON cache(pack)',
   'CREATE INDEX IF NOT EXISTS cache_word ON cache(word)'
@@ -43,6 +45,25 @@ const fail = (status, code, message) => { throw new ApiError(status, code, messa
 const json = (data, status = 200) => Response.json(data, { status });
 const notFound = () => fail(404, 'not_found', 'This resource is unavailable.');
 const denied = () => fail(401, 'unauthorized', 'Sign in with valid classroom or teacher access.');
+
+function audioResponse(value, range) {
+  const bytes = new Uint8Array(value);
+  const size = bytes.length;
+  const headers = new Headers({'Content-Type':'audio/wav', 'Accept-Ranges':'bytes', 'Content-Length':String(size)});
+  if (!range) return new Response(bytes, {headers});
+  const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+  if (!match || (!match[1] && !match[2])) return new Response(bytes, {headers});
+  const start = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]));
+  const end = match[1] && match[2] ? Math.min(size - 1, Number(match[2])) : size - 1;
+  if (start > end || start >= size) {
+    headers.set('Content-Range', 'bytes */' + size);
+    headers.set('Content-Length','0');
+    return new Response(null, {status:416, headers});
+  }
+  headers.set('Content-Range', 'bytes ' + start + '-' + end + '/' + size);
+  headers.set('Content-Length', String(end - start + 1));
+  return new Response(bytes.subarray(start, end + 1), {status:206, headers});
+}
 
 function base64(bytes) {
   return btoa(String.fromCharCode(...bytes)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
@@ -101,6 +122,7 @@ function secureEquals(first, second) {
 
 export class VocabularyService {
   constructor(storage, env, { now = Date.now, fetcher = requestVocabulary, speechFetcher = synthesizeDictation } = {}) {
+    this.storage = storage;
     this.sql = storage.sql;
     this.atomic = (work) => storage.transactionSync(work);
     this.env = env;
@@ -111,6 +133,16 @@ export class VocabularyService {
     this.origins = new Set((env.ALLOWED_ORIGINS ?? '').split(',').map((origin) => origin.trim())
       .filter((origin) => /^https?:\/\/[^/]+$/i.test(origin)));
     for (const statement of schema) this.sql.exec(statement);
+    this.atomic(() => {
+      const {legacyDemoPackId, demoPackId} = Dictation;
+      const old = this.one('SELECT value FROM packs WHERE id = ?', legacyDemoPackId);
+      if (!old || this.one('SELECT id FROM packs WHERE id = ?', demoPackId)) return;
+      const value = JSON.parse(old.value);
+      value.pack.id = demoPackId;
+      this.sql.exec('UPDATE packs SET id = ?, value = ? WHERE id = ?', demoPackId, JSON.stringify(value), legacyDemoPackId);
+      this.sql.exec('UPDATE pack_audio SET pack = ? WHERE pack = ?', demoPackId, legacyDemoPackId);
+      this.sql.exec('UPDATE cache SET pack = ? WHERE pack = ?', demoPackId, legacyDemoPackId);
+    });
   }
 
   rows(query, ...args) {
@@ -559,6 +591,7 @@ export class VocabularyService {
     requireInput(input.allowHints === undefined || typeof input.allowHints === 'boolean', 'Choose whether to allow hints.');
     const { visibility } = input;
     const pack = validatePack(input.pack, { allowSpellingOnly: input.mode === 'spelling' });
+    pack.id = Dictation.canonicalPackId(pack.id);
     const classId = input.classId;
     requireInput(visibility === 'class' ? shortId(classId) && this.readClass(classId) : classId == null || classId === '',
       'Class packs must have a valid classroom.');
@@ -582,6 +615,7 @@ export class VocabularyService {
       this.sql.exec('INSERT INTO packs VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET version = excluded.version, value = excluded.value',
         pack.id, pack.version, JSON.stringify(storage));
       this.sql.exec('DELETE FROM pack_audio WHERE pack = ? AND version <> ?', pack.id, pack.version);
+      this.sql.exec('DELETE FROM audio_queue WHERE pack = ?', pack.id);
       this.sql.exec('DELETE FROM cache WHERE pack = ?', pack.id);
       if (settings) for (const entry of vocabularyEntries) {
         this.sql.exec('INSERT INTO cache VALUES (?, ?, ?, ?) ON CONFLICT(key) DO UPDATE SET pack = excluded.pack, content = excluded.content',
@@ -631,9 +665,8 @@ export class VocabularyService {
     this.atomic(() => {
       const window = this.saved('dictationMinute');
       const calls = window?.minute === minute ? window.calls : 0;
-      if (calls >= 10 || this.meter(day, 'dictationCalls') >= 100) {
-        fail(429, 'dictation_budget', 'The pilot audio allowance is used up. Try again later.');
-      }
+      if (this.meter(day, 'dictationCalls') >= 100) fail(429, 'dictation_daily', 'The daily audio allowance is used up.');
+      if (calls >= 10) fail(429, 'dictation_budget', 'The minute audio allowance is used up.');
       this.save('dictationMinute', {minute, calls: calls + 1});
       this.charge(day, 'dictationCalls', 1);
     });
@@ -645,14 +678,19 @@ export class VocabularyService {
     requireInput(shape(input, ['packId', 'version', 'prompt']) && shortId(input.packId) &&
       integer(input.version, 1, Number.MAX_SAFE_INTEGER) && typeof input.prompt === 'string' &&
       /^\d{1,3}-(?:s|v\d)$/.test(input.prompt), 'Choose a valid saved audio prompt.');
-    const { pack } = await this.pack(input.packId, request);
+    const { pack } = await this.pack(Dictation.canonicalPackId(input.packId), request);
     if (pack.version !== input.version) fail(409, 'pack_version', 'Publish the latest set before preparing its audio.');
     const wordIndex = Number(input.prompt.split('-')[0]);
     const record = pack.words[wordIndex];
     const prompt = record && Learning.practiceAudioPrompts(record, wordIndex).find(item => item.key === input.prompt);
     if (!prompt) notFound();
+    await this.savePackPrompt(pack, prompt);
+    return json({ ready: true });
+  }
+
+  async savePackPrompt(pack, prompt) {
     const args = [pack.id, pack.version, prompt.key];
-    if (this.one('SELECT prompt FROM pack_audio WHERE pack = ? AND version = ? AND prompt = ?', ...args)) return json({ ready: true });
+    if (this.one('SELECT prompt FROM pack_audio WHERE pack = ? AND version = ? AND prompt = ?', ...args)) return;
     const id = JSON.stringify(args);
     if (!this.audioInFlight.has(id)) {
       const pending = this.generateSpeech(prompt.text).then(bytes => {
@@ -666,7 +704,74 @@ export class VocabularyService {
       this.audioInFlight.set(id, pending);
     }
     await this.audioInFlight.get(id);
-    return json({ ready: true });
+  }
+
+  audioPlan(pack, mode) {
+    const saved = this.rows('SELECT prompt FROM pack_audio WHERE pack = ? AND version = ?', pack.id, pack.version).map(row => row.prompt);
+    const ready = new Set(saved);
+    const prompts = pack.words.flatMap((record, index) => Learning.practiceAudioPrompts(record, index)
+      .filter(prompt => mode === 'mixed' || prompt.skill === mode)
+      .map(prompt => {
+        const type = prompt.skill === 'spelling' ? 'dictation' : 'word-bank';
+        if (Dictation.publishedClip(pack, record.word, type, prompt.text)) ready.add(prompt.key);
+        return prompt;
+      }));
+    return {prompts, saved, ready, audioStatus: {
+      ready: prompts.filter(prompt => ready.has(prompt.key)).length,
+      total: prompts.length,
+      pending: this.one('SELECT due FROM audio_queue WHERE pack = ? AND version = ?', pack.id, pack.version)?.due != null
+    }};
+  }
+
+  async scheduleAudio() {
+    const next = this.one('SELECT MIN(due) AS due FROM audio_queue')?.due;
+    if (next != null) await this.storage.setAlarm(Math.max(this.now() + 1000, next));
+  }
+
+  async queueAudio({pack, practice}, retry = false) {
+    const {audioStatus} = this.audioPlan(pack, practice.mode);
+    if (this.dictationEnabled() && audioStatus.ready < audioStatus.total && !audioStatus.pending) {
+      const existing = this.one('SELECT pack FROM audio_queue WHERE pack = ? AND version = ?', pack.id, pack.version);
+      if (!existing || retry) {
+        this.sql.exec('INSERT OR REPLACE INTO audio_queue VALUES (?, ?, ?, 0, 0, ?)', pack.id, pack.version, practice.mode, this.now());
+        await this.scheduleAudio();
+        audioStatus.pending = true;
+      }
+    }
+    return audioStatus;
+  }
+
+  async processAudioQueue() {
+    const now = this.now();
+    const job = this.one('SELECT * FROM audio_queue WHERE due <= ? ORDER BY due LIMIT 1', now);
+    if (!job) { await this.scheduleAudio(); return; }
+    const {pack, version, mode, cursor, tries} = job;
+    const row = this.one('SELECT value FROM packs WHERE id = ? AND version = ?', pack, version);
+    const current = row && JSON.parse(row.value).pack;
+    const plan = current && this.audioPlan(current, mode);
+    const index = plan?.prompts.findIndex((prompt, i) => i >= cursor && !plan.ready.has(prompt.key)) ?? -1;
+    if (index < 0 || !this.dictationEnabled()) {
+      this.sql.exec('UPDATE audio_queue SET due = NULL WHERE pack = ?', pack);
+      await this.scheduleAudio();
+      return;
+    }
+    const lease = now + LEASE;
+    this.sql.exec('UPDATE audio_queue SET due = ? WHERE pack = ?', lease, pack);
+    await this.scheduleAudio();
+    let next = index + 1, attempts = 0, due = this.now();
+    try {
+      await this.savePackPrompt(current, plan.prompts[index]);
+    } catch (error) {
+      if (error.status === 429 || tries < 1) {
+        next = index;
+        attempts = error.status === 429 ? tries : tries + 1;
+        due = error.code === 'dictation_daily' ? nextDay(now) :
+          error.status === 429 ? now + 61_000 : this.now() + 1500;
+      }
+    }
+    this.sql.exec('UPDATE audio_queue SET cursor = ?, tries = ?, due = ? WHERE pack = ? AND version = ? AND due = ?',
+      next, attempts, due, pack, version, lease);
+    await this.scheduleAudio();
   }
 
   async admin(request, route, method) {
@@ -679,7 +784,15 @@ export class VocabularyService {
     }
     if (route === 'packaudio' && method === 'POST') return this.preparePackAudio(request);
     if (route === 'usage' && method === 'GET') return json(this.usage());
-    if (route === 'publish' && method === 'POST') return json(await this.publish(await bodyOf(request, 1_500_000)));
+    if (route === 'publish' && method === 'POST') {
+      const info = await this.publish(await bodyOf(request, 1_500_000));
+      return json({...info, audioStatus: await this.queueAudio(info)});
+    }
+    if (route === 'packaudioqueue' && method === 'POST') {
+      const {id} = await bodyOf(request, 2048);
+      requireInput(shortId(id), 'Choose a published set.');
+      return json({audioStatus: await this.queueAudio(await this.pack(Dictation.canonicalPackId(id), request), true)});
+    }
     if (route === 'packs' && method === 'GET') {
       const packs = this.rows('SELECT value FROM packs ORDER BY id LIMIT 200').map(({ value }) => {
         const { pack, visibility, classId } = JSON.parse(value);
@@ -728,16 +841,17 @@ export class VocabularyService {
       let id;
       try { id = decodeURIComponent(pack[1]); } catch { notFound(); }
       if (!shortId(id)) notFound();
+      id = Dictation.canonicalPackId(id);
       const info = await this.pack(id, request);
       const version = info.pack.version;
       if (pack[2]) {
         if (Number(pack[2]) !== version) notFound();
         const clip = this.one('SELECT bytes FROM pack_audio WHERE pack = ? AND version = ? AND prompt = ?', id, version, pack[3]);
         if (!clip) notFound();
-        return new Response(clip.bytes, {headers: {'Content-Type': 'audio/wav'}});
+        return audioResponse(clip.bytes, request.headers.get('Range'));
       }
-      const audio = this.rows('SELECT prompt FROM pack_audio WHERE pack = ? AND version = ?', id, version).map(row => row.prompt);
-      return json(audio.length ? {...info, audio} : info);
+      const {saved:audio, audioStatus} = this.audioPlan(info.pack, info.practice.mode);
+      return json({...info, audio, audioStatus});
     }
     if ((pathname === '/api/generate' || pathname === '/api/regenerate') && method === 'POST') {
       const identity = await this.principal(request);

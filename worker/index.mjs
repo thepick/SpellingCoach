@@ -10,6 +10,10 @@ export class VocabularyCoordinator extends DurableObject {
   fetch(request) {
     return this.service.fetch(request);
   }
+
+  alarm() {
+    return this.service.processAudioQueue();
+  }
 }
 
 export default {

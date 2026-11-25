@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import { VocabularyService } from './service.mjs';
 import { finishStreamedWav } from './dictation.mjs';
 import { providerChoices, requestVocabulary } from './provider.mjs';
+import { ApiError } from './validation.mjs';
 
 const secret = 'admin-secret-for-local-tests-only-128';
 const origin = 'https://spellingcoach.mtomlinson.ca';
@@ -29,11 +30,13 @@ const draft = (word) => {
 function fixture(vars = {}, fetcher = async ({ words }) => ({ records: words.map(draft), tokens: 100 }), speechFetcher) {
   const db = new DatabaseSync(':memory:');
   let clock = Date.parse('2026-11-25T01:00:00Z');
+  let alarm;
   const env = {
     ADMIN_AUTH_SECRET: secret, SESSION_SIGNING_SECRET: 'session-secret-for-local-tests-only-200',
     GROQ_API_KEY: 'fake', GROQ_FREE_TIER_CONFIRMED: 'true', AI_ENABLED: 'true', ALLOWED_ORIGINS: origin, ...vars
   };
   const storage = {
+    async setAlarm(time) { alarm = time; },
     sql: { exec(query, ...args) {
       const statement = db.prepare(query);
       args = args.map(value => value instanceof ArrayBuffer ? new Uint8Array(value) : value);
@@ -73,7 +76,13 @@ function fixture(vars = {}, fetcher = async ({ words }) => ({ records: words.map
     assert.equal(access.status, 200);
     return access.data.token;
   };
-  return { call, createClass, env, advance: (ms) => { clock += ms; } };
+  return { call, createClass, env, advance: (ms) => { clock += ms; },
+    runAudioAlarm: async () => {
+      assert(alarm >= clock);
+      clock = alarm;
+      alarm = undefined;
+      await new VocabularyService(storage, env, {now: () => clock, fetcher, speechFetcher}).processAudioQueue();
+    } };
 }
 
 test('teacher access is authenticated and CORS has an exact origin allowlist', async () => {
@@ -209,7 +218,7 @@ test('a published pack carries the teacher’s mode and hint policy', async () =
 });
 
 test('shared practice audio is prepared by teachers from saved prompts and reused by students', async () => {
-  const wav = readFileSync(new URL('../demo-audio/matter-mixed-troy/words/solid.wav', import.meta.url));
+  const wav = readFileSync(new URL('../demo-audio/matter-mixed/words/solid.wav', import.meta.url));
   const spoken = [];
   const {call} = fixture({}, undefined, async (_key, text) => {spoken.push(text); return wav;});
   const pack = {kind:'spellingcoach-pack', v:1, version:1, id:'audio-test', name:'Audio test', words:[approved('textile')]};
@@ -221,7 +230,45 @@ test('shared practice audio is prepared by teachers from saved prompts and reuse
   assert.deepEqual(spoken, ['The tailor used the blank for project 0.']);
   assert.deepEqual((await call('GET','/packs/audio-test',undefined,'')).data.audio, ['0-v0']);
   assert.deepEqual((await call('GET','/packs/audio-test/audio/1/0-v0',undefined,'')).data, new Uint8Array(wav));
+  const range = await call('GET','/packs/audio-test/audio/1/0-v0',undefined,'',{Range:'bytes=0-1'});
+  assert.equal(range.status,206);
+  assert.equal(range.headers.get('Content-Range'),'bytes 0-1/' + wav.length);
+  assert.deepEqual(range.data,new Uint8Array(wav.subarray(0,2)));
   assert.equal((await call('GET','/packs/audio-test/audio/2/0-v0',undefined,'')).status, 404);
+});
+
+test('publishing queues practice recordings and alarms finish them without a teacher request', async () => {
+  const wav = readFileSync(new URL('../demo-audio/matter-mixed/words/solid.wav', import.meta.url));
+  const spoken = [];
+  const {call, runAudioAlarm} = fixture({}, undefined, async (_key, text) => {
+    spoken.push(text);
+    if (spoken.length === 1) throw new ApiError(429, 'dictation_rate_limit', 'Try again');
+    return wav;
+  });
+  const pack = {kind:'spellingcoach-pack',v:1,version:1,id:'auto-audio',name:'Automatic audio',words:[{word:'solid',vocabulary:null}]};
+  const published = await call('POST','/admin/publish',{pack,visibility:'public',mode:'spelling'});
+  assert.deepEqual(published.data.audioStatus,{ready:0,total:1,pending:true});
+  assert.equal((await call('POST','/admin/packaudioqueue',{id:pack.id},'')).status,401);
+  await runAudioAlarm();
+  assert.equal((await call('GET','/packs/auto-audio',undefined,'')).data.audioStatus.pending,true);
+  await runAudioAlarm();
+  await runAudioAlarm();
+  const student = await call('GET','/packs/auto-audio',undefined,'');
+  assert.deepEqual(student.data.audioStatus,{ready:1,total:1,pending:false});
+  assert.deepEqual(student.data.audio,['0-s']);
+  assert.deepEqual((await call('GET','/packs/auto-audio/audio/1/0-s',undefined,'')).data,new Uint8Array(wav));
+  assert.deepEqual(spoken,['solid','solid']);
+});
+
+test('the old demo link returns the canonical pack ID', async () => {
+  const {call} = fixture();
+  const pack = {kind:'spellingcoach-pack',v:1,version:1,id:'matter-mixed-troy',name:'Matter',words:[{word:'solid',vocabulary:null}]};
+  assert.equal((await call('POST','/admin/publish',{pack,visibility:'public',mode:'spelling'})).status,200);
+  for (const id of [pack.id, 'matter-mixed']) {
+    const {data} = await call('GET','/packs/' + id,undefined,'');
+    assert.equal(data.pack.id,'matter-mixed');
+    assert.deepEqual(data.audioStatus,{ready:1,total:1,pending:false});
+  }
 });
 
 test('provider routing is fail closed and requests use the fixed schema and target', async () => {

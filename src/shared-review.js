@@ -39,7 +39,7 @@ let sharedLoad = 0;
 const parkedKey = (id, type) => 'paused-activity:' + JSON.stringify([id, type]);
 
 function findPackList(id, origin) {
- const lists = state.lists.filter(list => list.packId === id);
+ const lists = state.lists.filter(list => Dictation.canonicalPackId(list.packId) === Dictation.canonicalPackId(id));
  return (origin && lists.find(list => list.sharedOrigin === origin)) ||
   lists.find(list => !list.sharedOrigin) || (!origin ? lists[0] : undefined);
 }
@@ -90,6 +90,23 @@ function clearParkedActivity(id) {
 async function renderSharedReady() {
  const review = sharedReview;
  if (!review) return;
+ if (review.audioStatus?.pending) {
+  $('shared-title').textContent = review.pack.name;
+  $('shared-instruction').textContent = 'Practice audio is being prepared. This page will update when it is ready.';
+  $('shared-start').hidden = true;
+  show('shared-ready');
+  setTimeout(async () => {
+   if (sharedReview !== review) return;
+   try {
+    const {audio, audioStatus} = await service('/packs/' + encodeURIComponent(review.pack.id), {root:review.origin});
+    if (sharedReview !== review) return;
+    review.audio = new Set(audio);
+    review.audioStatus = audioStatus;
+   } catch {}
+   if (sharedReview === review) renderSharedReady();
+  }, 5000);
+  return;
+ }
  const list = findPackList(review.pack.id, review.origin);
  const completed = state.learningSession;
  if (list && completed?.listId === list.id && completed.session.mode === review.mode && Learning.practiceMastered(completed.session)) {
@@ -138,7 +155,7 @@ async function startSharedReview() {
   if (sharedReview !== review) return;
   if (review.mode === 'spelling') await start(records.map(row => row.word), list);
   else beginLearning(list, records, {...coachOptions(), mode:review.mode, type:'practice', allowHints:review.allowHints,
-   bankOrder:review.pack.id === 'matter-mixed-troy' && review.pack.version === 1 ? matterBankOrder : undefined,
+   bankOrder:review.pack.id === Dictation.demoPackId && review.pack.version === 1 ? matterBankOrder : undefined,
    difficulty:'adaptive', audioReplay:true, masteryPractice:true});
  } catch (error) { $('shared-ready-status').textContent = error.message; }
  finally { button.disabled = false; }
@@ -159,13 +176,18 @@ async function openSharedReview() {
  $('shared-ready-status').textContent = '';
  $('shared-start').hidden = true;
  show('shared-ready');
- const id = args.get('pack');
+ const oldId = args.get('pack');
+ const id = Dictation.canonicalPackId(oldId);
+ if (oldId !== id) {
+  args.set('pack', id);
+  history.replaceState(history.state, '', location.pathname + location.search + '#' + args);
+ }
  const previewTicket = studentPreview ? args.get('draft') : null;
  try {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,95}$/.test(id)) throw Error('Invalid pack link.');
   if (state.learningCheckpoint && !state.learningSession) await recoverCheckpoint(false);
   const origin = previewTicket ? location.origin : serviceOrigin(entryPage === 'offline' ? args.get('service') || ONLINE_CONFIG : ONLINE_CONFIG);
-  let pack, practice, audio;
+  let pack, practice, audio, audioStatus;
   if (previewTicket) {
    const local = JSON.parse(localStorage.getItem(LOCAL_PREVIEW_KEY) || 'null');
    if (local?.ticket !== previewTicket || local.expiresAt < Date.now()) throw Error('Preview expired.');
@@ -177,11 +199,14 @@ async function openSharedReview() {
    const response = await service('/packs/' + encodeURIComponent(id), {root:origin, token});
    pack = Vocabulary.validatePack(response.pack);
    practice = response.practice;
-   if (response.visibility === 'public' && Array.isArray(response.audio)) audio = new Set(response.audio);
+   if (response.visibility === 'public' && Array.isArray(response.audio)) {
+    audio = new Set(response.audio);
+    audioStatus = response.audioStatus;
+   }
   }
   if (pack.id !== id) throw Error('Wrong review set.');
   if (load !== sharedLoad) return;
-  sharedReview = {pack, origin, audio, mode:SharedReview.reviewMode(practice?.mode, pack.words), allowHints:practice?.allowHints !== false};
+  sharedReview = {pack, origin, audio, audioStatus, mode:SharedReview.reviewMode(practice?.mode, pack.words), allowHints:practice?.allowHints !== false};
   await renderSharedReady();
  } catch (error) {
   if (load !== sharedLoad) return;

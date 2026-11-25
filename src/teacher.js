@@ -4,7 +4,7 @@ const ONLINE_CONFIG = 'https://wordlab.mtomlinson.ca';
 let ai = {root: '', token: '', role: '', config: {}, job: null, listId: '', published: '', generation: 0};
 let sharing = {list:null, records:null};
 let publishing = false;
-let preparingAudio = false;
+let audioStatusTimer;
 function teacherStatus(message) {
  $('teacher-status').textContent = message;
  $('teacher-signin-status').textContent = message;
@@ -191,17 +191,43 @@ function renderSharing() {
  $('ai-share-help').hidden = hasLink;
  $('ai-publish').hidden = hasLink;
  $('ai-publish').disabled = !shareReady;
- $('ai-preview').disabled = entryPage === 'teacher' ? !shareReady : !hasLink;
+ const audioStatus = hasLink && ai.audioStatus;
+ const pending = audioStatus?.pending;
+ const incomplete = audioStatus && audioStatus.ready < audioStatus.total;
+ const waitingForAudio = !!pending || !!incomplete && !!ai.config.dictationEnabled;
+ $('ai-preview').disabled = entryPage === 'teacher' ? !shareReady || !!pending : !hasLink || !!pending;
  $('ai-link-actions').hidden = !hasLink;
  $('ai-publish-options').hidden = !ai.config.draftingAvailable;
  $('ai-student-link').value = hasLink ? ai.published : '';
- $('ai-share').disabled = !hasLink;
- $('ai-qr').disabled = !hasLink;
+ $('ai-share').disabled = !hasLink || waitingForAudio;
+ $('ai-qr').disabled = !hasLink || waitingForAudio;
  $('ai-share-audio').hidden = !ai.config.dictationEnabled;
- $('ai-prepare-audio').disabled = preparingAudio || !hasLink;
+ $('ai-prepare-audio').hidden = !incomplete || !!pending;
+ $('ai-audio-status').textContent = !audioStatus ? '' : pending
+  ? 'Preparing practice audio. ' + audioStatus.ready + ' of ' + audioStatus.total + ' recordings ready. You can close this tab.'
+  : incomplete ? audioStatus.ready + ' of ' + audioStatus.total + ' recordings are ready. Retry to prepare the remaining recordings.'
+  : 'Practice audio is ready.';
  $('shared-mode').disabled = publishing;
  $('shared-hints').disabled = publishing || mode === 'spelling';
  $('shared-hints-row').hidden = mode === 'spelling';
+}
+
+function watchPracticeAudio() {
+ clearTimeout(audioStatusTimer);
+ if (!ai.audioStatus?.pending) return;
+ const {published, root, token} = ai;
+ const id = new URLSearchParams(new URL(published).hash.slice(1)).get('pack');
+ audioStatusTimer = setTimeout(async () => {
+  if (ai.published !== published || ai.token !== token) return;
+  try {
+   const {audioStatus} = await service('/packs/' + encodeURIComponent(id), {root, token});
+   if (ai.published === published && ai.token === token) {
+    ai.audioStatus = audioStatus;
+    renderSharing();
+   }
+  } catch {}
+  if (ai.published === published && ai.token === token) watchPracticeAudio();
+ }, 3500);
 }
 
 async function showTeacherTools(view = 'tools') {
@@ -229,6 +255,23 @@ async function showTeacherTools(view = 'tools') {
   current.records = rows;
   if (changedSet && rows) $('shared-mode').value = rows.some(row => row.vocabulary) ? 'mixed' : 'spelling';
   renderSharing();
+  if (view === 'share' && changedSet && rows && ai.token) {
+   const {token, root} = ai;
+   const mode = $('shared-mode').value, hints = $('shared-hints').checked;
+   const id = Dictation.canonicalPackId(list.packId) || list.id;
+   const saved = await service('/packs/' + encodeURIComponent(id), {root, token}).catch(() => null);
+   if (sharing !== current || ai.token !== token || !dialog.open ||
+       $('shared-mode').value !== mode || $('shared-hints').checked !== hints || saved?.visibility !== 'public') return;
+   const {pack, practice, audioStatus} = saved;
+   const local = outputPack(list, SharedReview.sharingContent(rows, practice.mode).words);
+   if (JSON.stringify(local) !== JSON.stringify(Vocabulary.validatePack(pack))) return;
+   $('shared-mode').value = practice.mode;
+   $('shared-hints').checked = practice.allowHints;
+   Object.assign(ai, {published:publicPackLink(id, root), publishedListId:list.id, publishedMode:practice.mode,
+    publishedHints:practice.allowHints, publishedUpdatedAt:list.updatedAt, audioStatus});
+   renderSharing();
+   watchPracticeAudio();
+  }
  } catch (error) { $('ai-publish-readiness').textContent = error.message; }
 }
 
@@ -416,7 +459,7 @@ function initTeacher() {
    if (!info.ready) throw Error('Review the vocabulary before publishing, or choose Spelling.');
    const pack = outputPack(list, info.words);
    const cacheSettings = reuse && pack.words.some(row => row.vocabulary) ? {...aiSettings(), context: ''} : undefined;
-   const {pack: published} = await service('/admin/publish', {root, token, method: 'POST',
+   const {pack: published, audioStatus} = await service('/admin/publish', {root, token, method: 'POST',
     body: {pack, mode, allowHints, visibility: 'public', cacheSettings}, requestId: newListId()});
    if (ai.token !== token) return;
    if ((list.packVersion || 0) < published.version) { list.packVersion = published.version; save(); }
@@ -425,9 +468,11 @@ function initTeacher() {
    ai.publishedMode = mode;
    ai.publishedHints = allowHints;
    ai.publishedUpdatedAt = list.updatedAt;
+   ai.audioStatus = audioStatus;
    $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
    refreshTeacher();
-   status.textContent = 'Set published. You can now copy the student link.';
+   status.textContent = 'Set published.';
+   watchPracticeAudio();
   } catch (error) {
    if (ai.token === token) status.textContent = error.status === 401 ? 'Your sign-in expired. Sign out, sign back in, and try again.' : error.message;
   } finally { publishing = false; renderSharing(); }
@@ -436,27 +481,18 @@ function initTeacher() {
   $('ai-publish-status').textContent = await copy(ai.published) ? 'Student link copied.' : ai.published;
  });
  $('ai-prepare-audio').onclick = async () => {
-  const {published, publishedMode, token, root} = ai;
-  const status = $('ai-publish-status');
-  preparingAudio = true; renderSharing();
+  const {published, token, root} = ai;
+  const button = $('ai-prepare-audio');
+  button.disabled = true;
   try {
    const id = new URLSearchParams(new URL(published).hash.slice(1)).get('pack');
-   const {pack, audio} = await service('/packs/' + encodeURIComponent(id), {root, token});
-   const saved = new Set(audio || []);
-   const prompts = pack.words.flatMap((record, index) => Learning.practiceAudioPrompts(record, index))
-    .filter(prompt => publishedMode === 'mixed' || prompt.skill === publishedMode);
-   let ready = prompts.filter(prompt => saved.has(prompt.key)).length;
-   for (const prompt of prompts) {
-    if (ai.token !== token || ai.published !== published || ai.publishedMode !== publishedMode) return;
-    if (saved.has(prompt.key)) continue;
-    status.textContent = 'Preparing practice audio. ' + ready + ' of ' + prompts.length + ' recordings ready.';
-    await service('/admin/packaudio', {root, token, method:'POST', body:{packId:pack.id,version:pack.version,prompt:prompt.key}});
-    ready++;
-   }
-   status.textContent = 'Practice audio is ready.';
-  } catch (error) {
-   if (ai.token === token) status.textContent = error.message + ' Select Prepare practice audio again to resume.';
-  } finally { preparingAudio = false; renderSharing(); }
+   const {audioStatus} = await service('/admin/packaudioqueue', {root, token, method:'POST', body:{id}});
+   if (ai.published !== published || ai.token !== token) return;
+   ai.audioStatus = audioStatus;
+   renderSharing();
+   watchPracticeAudio();
+  } catch (error) { $('ai-publish-status').textContent = error.message; }
+  finally { button.disabled = false; }
  };
  $('ai-preview').onclick = () => {
   try {

@@ -262,7 +262,7 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
   <p id="ai-share-help" class="hint">Publish to get a link students can open without signing in.</p>
   <p id="ai-publish-status" class="status" role="status"></p>
   <div id="ai-link-actions" class="section stack" hidden>
-   <div id="ai-share-audio" class="stack" hidden><p class="hint">Optional. Save recordings of the words and practice prompts for students to replay.</p><div class="actions"><button type="button" id="ai-prepare-audio" class="secondary" disabled>Prepare practice audio</button></div></div>
+   <div id="ai-share-audio" class="stack" hidden><p id="ai-audio-status" class="hint" role="status"></p><div class="actions"><button type="button" id="ai-prepare-audio" class="secondary" hidden>Retry practice audio</button></div></div>
    <div><label for="ai-student-link">Student link</label><input id="ai-student-link" type="url" readonly></div>
    <div class="actions"><button type="button" id="ai-share" disabled>Copy student link</button><button type="button" id="ai-qr" class="ghost" disabled>Show QR code</button></div>
    <div id="ai-qr-result" hidden></div>
@@ -3740,6 +3740,9 @@ function archiveQuestions(entry) {
 
 const Dictation = (() => {
  const MAX_WAV_BYTES = 1024 * 1024;
+ const demoPackId = 'matter-mixed';
+ const legacyDemoPackId = 'matter-mixed-troy';
+ const canonicalPackId = id => id === legacyDemoPackId ? demoPackId : id;
  const demoPrompts = {
   solid: ['An ice cube is a blank.', 'A form of matter that keeps its own shape.'],
   liquid: ['When you pour milk into a glass, the blank takes the shape of the glass.', 'A form of matter that flows and takes the shape of its container.'],
@@ -3748,12 +3751,13 @@ const Dictation = (() => {
  };
 
  function publishedClip(pack, word, type, spoken) {
-  if (pack?.id !== 'matter-mixed-troy' || pack.version !== 1 || !Object.hasOwn(demoPrompts, word)) return null;
+  if (canonicalPackId(pack?.id) !== demoPackId || !Object.hasOwn(demoPrompts, word)) return null;
   const [cloze, definition] = demoPrompts[word];
-  const folder = type === 'dictation' && spoken === word ? 'words' :
+  const sense = pack.words?.find(row => row.word === word)?.vocabulary?.definition;
+  const folder = type === 'dictation' && spoken === word && (!sense || sense === definition) ? 'words' :
    ['definition-recall', 'word-bank'].includes(type) && spoken === definition ? 'definitions' :
     ['sentence-choice', 'missing-word', 'word-bank'].includes(type) && spoken === cloze ? 'cloze' : '';
-  return folder ? '/demo-audio/matter-mixed-troy/' + folder + '/' + word + '.wav' : null;
+  return folder ? '/demo-audio/' + demoPackId + '/' + folder + '/' + word + '.wav' : null;
  }
 
  const pronunciationWord = value => String(value).normalize('NFC').trim().replace(/[’‘]/g, "'").replace(/\s+/g, ' ').toLowerCase();
@@ -3790,7 +3794,7 @@ const Dictation = (() => {
   if (!format || !audio) invalid();
  }
 
- return { containsTarget, recordingKey, validateRecording, publishedClip, MAX_WAV_BYTES };
+ return { containsTarget, recordingKey, validateRecording, publishedClip, canonicalPackId, demoPackId, legacyDemoPackId, MAX_WAV_BYTES };
 })();
 if (typeof module === 'object' && module.exports) module.exports = Dictation;
 
@@ -3988,7 +3992,7 @@ function playQuestion(initial, slow) {
   () => dictate(owner, message, session.records[question.recordIndex]?.vocabulary, rate, failed, ready) :
   () => speak(message, rate, failed, ready);
  const clip = sharedAudioPath(owner, question.word, question.type, Learning.audio(question));
- if (clip) playPublishedRecording(clip, slow, fallback, ready);
+ if (clip) playPublishedRecording(clip, slow, failed, ready);
  else fallback();
 }
 
@@ -4319,7 +4323,7 @@ function renderStudy() {
 
 function outputPack(list, records) {
  return Vocabulary.validatePack({kind: 'spellingcoach-pack', v: 1,
-  id: list.packId || list.id, version: list.packVersion || 1, name: list.name, words: records});
+  id: Dictation.canonicalPackId(list.packId) || list.id, version: list.packVersion || 1, name: list.name, words: records});
 }
 
 async function saveVocabulary(list, records, metadata) {
@@ -4817,7 +4821,7 @@ function sharedAudioPath(listId, word, type, spoken) {
  return prompt ? review.origin + '/api/packs/' + encodeURIComponent(review.pack.id) + '/audio/' + review.pack.version + '/' + prompt.key : null;
 }
 
-async function playPublishedRecording(path, slow, fallback, onStart) {
+async function playPublishedRecording(path, slow, onError, onStart) {
  stopRecording();
  const request = dictationRequest;
  try {
@@ -4825,7 +4829,7 @@ async function playPublishedRecording(path, slow, fallback, onStart) {
  } catch {
   if (request !== dictationRequest) return;
   stopRecording();
-  fallback();
+  onError();
  }
 }
 
@@ -4948,7 +4952,7 @@ const ONLINE_CONFIG = 'https://wordlab.mtomlinson.ca';
 let ai = {root: '', token: '', role: '', config: {}, job: null, listId: '', published: '', generation: 0};
 let sharing = {list:null, records:null};
 let publishing = false;
-let preparingAudio = false;
+let audioStatusTimer;
 function teacherStatus(message) {
  $('teacher-status').textContent = message;
  $('teacher-signin-status').textContent = message;
@@ -5135,17 +5139,43 @@ function renderSharing() {
  $('ai-share-help').hidden = hasLink;
  $('ai-publish').hidden = hasLink;
  $('ai-publish').disabled = !shareReady;
- $('ai-preview').disabled = entryPage === 'teacher' ? !shareReady : !hasLink;
+ const audioStatus = hasLink && ai.audioStatus;
+ const pending = audioStatus?.pending;
+ const incomplete = audioStatus && audioStatus.ready < audioStatus.total;
+ const waitingForAudio = !!pending || !!incomplete && !!ai.config.dictationEnabled;
+ $('ai-preview').disabled = entryPage === 'teacher' ? !shareReady || !!pending : !hasLink || !!pending;
  $('ai-link-actions').hidden = !hasLink;
  $('ai-publish-options').hidden = !ai.config.draftingAvailable;
  $('ai-student-link').value = hasLink ? ai.published : '';
- $('ai-share').disabled = !hasLink;
- $('ai-qr').disabled = !hasLink;
+ $('ai-share').disabled = !hasLink || waitingForAudio;
+ $('ai-qr').disabled = !hasLink || waitingForAudio;
  $('ai-share-audio').hidden = !ai.config.dictationEnabled;
- $('ai-prepare-audio').disabled = preparingAudio || !hasLink;
+ $('ai-prepare-audio').hidden = !incomplete || !!pending;
+ $('ai-audio-status').textContent = !audioStatus ? '' : pending
+  ? 'Preparing practice audio. ' + audioStatus.ready + ' of ' + audioStatus.total + ' recordings ready. You can close this tab.'
+  : incomplete ? audioStatus.ready + ' of ' + audioStatus.total + ' recordings are ready. Retry to prepare the remaining recordings.'
+  : 'Practice audio is ready.';
  $('shared-mode').disabled = publishing;
  $('shared-hints').disabled = publishing || mode === 'spelling';
  $('shared-hints-row').hidden = mode === 'spelling';
+}
+
+function watchPracticeAudio() {
+ clearTimeout(audioStatusTimer);
+ if (!ai.audioStatus?.pending) return;
+ const {published, root, token} = ai;
+ const id = new URLSearchParams(new URL(published).hash.slice(1)).get('pack');
+ audioStatusTimer = setTimeout(async () => {
+  if (ai.published !== published || ai.token !== token) return;
+  try {
+   const {audioStatus} = await service('/packs/' + encodeURIComponent(id), {root, token});
+   if (ai.published === published && ai.token === token) {
+    ai.audioStatus = audioStatus;
+    renderSharing();
+   }
+  } catch {}
+  if (ai.published === published && ai.token === token) watchPracticeAudio();
+ }, 3500);
 }
 
 async function showTeacherTools(view = 'tools') {
@@ -5173,6 +5203,23 @@ async function showTeacherTools(view = 'tools') {
   current.records = rows;
   if (changedSet && rows) $('shared-mode').value = rows.some(row => row.vocabulary) ? 'mixed' : 'spelling';
   renderSharing();
+  if (view === 'share' && changedSet && rows && ai.token) {
+   const {token, root} = ai;
+   const mode = $('shared-mode').value, hints = $('shared-hints').checked;
+   const id = Dictation.canonicalPackId(list.packId) || list.id;
+   const saved = await service('/packs/' + encodeURIComponent(id), {root, token}).catch(() => null);
+   if (sharing !== current || ai.token !== token || !dialog.open ||
+       $('shared-mode').value !== mode || $('shared-hints').checked !== hints || saved?.visibility !== 'public') return;
+   const {pack, practice, audioStatus} = saved;
+   const local = outputPack(list, SharedReview.sharingContent(rows, practice.mode).words);
+   if (JSON.stringify(local) !== JSON.stringify(Vocabulary.validatePack(pack))) return;
+   $('shared-mode').value = practice.mode;
+   $('shared-hints').checked = practice.allowHints;
+   Object.assign(ai, {published:publicPackLink(id, root), publishedListId:list.id, publishedMode:practice.mode,
+    publishedHints:practice.allowHints, publishedUpdatedAt:list.updatedAt, audioStatus});
+   renderSharing();
+   watchPracticeAudio();
+  }
  } catch (error) { $('ai-publish-readiness').textContent = error.message; }
 }
 
@@ -5360,7 +5407,7 @@ function initTeacher() {
    if (!info.ready) throw Error('Review the vocabulary before publishing, or choose Spelling.');
    const pack = outputPack(list, info.words);
    const cacheSettings = reuse && pack.words.some(row => row.vocabulary) ? {...aiSettings(), context: ''} : undefined;
-   const {pack: published} = await service('/admin/publish', {root, token, method: 'POST',
+   const {pack: published, audioStatus} = await service('/admin/publish', {root, token, method: 'POST',
     body: {pack, mode, allowHints, visibility: 'public', cacheSettings}, requestId: newListId()});
    if (ai.token !== token) return;
    if ((list.packVersion || 0) < published.version) { list.packVersion = published.version; save(); }
@@ -5369,9 +5416,11 @@ function initTeacher() {
    ai.publishedMode = mode;
    ai.publishedHints = allowHints;
    ai.publishedUpdatedAt = list.updatedAt;
+   ai.audioStatus = audioStatus;
    $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
    refreshTeacher();
-   status.textContent = 'Set published. You can now copy the student link.';
+   status.textContent = 'Set published.';
+   watchPracticeAudio();
   } catch (error) {
    if (ai.token === token) status.textContent = error.status === 401 ? 'Your sign-in expired. Sign out, sign back in, and try again.' : error.message;
   } finally { publishing = false; renderSharing(); }
@@ -5380,27 +5429,18 @@ function initTeacher() {
   $('ai-publish-status').textContent = await copy(ai.published) ? 'Student link copied.' : ai.published;
  });
  $('ai-prepare-audio').onclick = async () => {
-  const {published, publishedMode, token, root} = ai;
-  const status = $('ai-publish-status');
-  preparingAudio = true; renderSharing();
+  const {published, token, root} = ai;
+  const button = $('ai-prepare-audio');
+  button.disabled = true;
   try {
    const id = new URLSearchParams(new URL(published).hash.slice(1)).get('pack');
-   const {pack, audio} = await service('/packs/' + encodeURIComponent(id), {root, token});
-   const saved = new Set(audio || []);
-   const prompts = pack.words.flatMap((record, index) => Learning.practiceAudioPrompts(record, index))
-    .filter(prompt => publishedMode === 'mixed' || prompt.skill === publishedMode);
-   let ready = prompts.filter(prompt => saved.has(prompt.key)).length;
-   for (const prompt of prompts) {
-    if (ai.token !== token || ai.published !== published || ai.publishedMode !== publishedMode) return;
-    if (saved.has(prompt.key)) continue;
-    status.textContent = 'Preparing practice audio. ' + ready + ' of ' + prompts.length + ' recordings ready.';
-    await service('/admin/packaudio', {root, token, method:'POST', body:{packId:pack.id,version:pack.version,prompt:prompt.key}});
-    ready++;
-   }
-   status.textContent = 'Practice audio is ready.';
-  } catch (error) {
-   if (ai.token === token) status.textContent = error.message + ' Select Prepare practice audio again to resume.';
-  } finally { preparingAudio = false; renderSharing(); }
+   const {audioStatus} = await service('/admin/packaudioqueue', {root, token, method:'POST', body:{id}});
+   if (ai.published !== published || ai.token !== token) return;
+   ai.audioStatus = audioStatus;
+   renderSharing();
+   watchPracticeAudio();
+  } catch (error) { $('ai-publish-status').textContent = error.message; }
+  finally { button.disabled = false; }
  };
  $('ai-preview').onclick = () => {
   try {
@@ -5535,7 +5575,7 @@ let sharedLoad = 0;
 const parkedKey = (id, type) => 'paused-activity:' + JSON.stringify([id, type]);
 
 function findPackList(id, origin) {
- const lists = state.lists.filter(list => list.packId === id);
+ const lists = state.lists.filter(list => Dictation.canonicalPackId(list.packId) === Dictation.canonicalPackId(id));
  return (origin && lists.find(list => list.sharedOrigin === origin)) ||
   lists.find(list => !list.sharedOrigin) || (!origin ? lists[0] : undefined);
 }
@@ -5586,6 +5626,23 @@ function clearParkedActivity(id) {
 async function renderSharedReady() {
  const review = sharedReview;
  if (!review) return;
+ if (review.audioStatus?.pending) {
+  $('shared-title').textContent = review.pack.name;
+  $('shared-instruction').textContent = 'Practice audio is being prepared. This page will update when it is ready.';
+  $('shared-start').hidden = true;
+  show('shared-ready');
+  setTimeout(async () => {
+   if (sharedReview !== review) return;
+   try {
+    const {audio, audioStatus} = await service('/packs/' + encodeURIComponent(review.pack.id), {root:review.origin});
+    if (sharedReview !== review) return;
+    review.audio = new Set(audio);
+    review.audioStatus = audioStatus;
+   } catch {}
+   if (sharedReview === review) renderSharedReady();
+  }, 5000);
+  return;
+ }
  const list = findPackList(review.pack.id, review.origin);
  const completed = state.learningSession;
  if (list && completed?.listId === list.id && completed.session.mode === review.mode && Learning.practiceMastered(completed.session)) {
@@ -5634,7 +5691,7 @@ async function startSharedReview() {
   if (sharedReview !== review) return;
   if (review.mode === 'spelling') await start(records.map(row => row.word), list);
   else beginLearning(list, records, {...coachOptions(), mode:review.mode, type:'practice', allowHints:review.allowHints,
-   bankOrder:review.pack.id === 'matter-mixed-troy' && review.pack.version === 1 ? matterBankOrder : undefined,
+   bankOrder:review.pack.id === Dictation.demoPackId && review.pack.version === 1 ? matterBankOrder : undefined,
    difficulty:'adaptive', audioReplay:true, masteryPractice:true});
  } catch (error) { $('shared-ready-status').textContent = error.message; }
  finally { button.disabled = false; }
@@ -5655,13 +5712,18 @@ async function openSharedReview() {
  $('shared-ready-status').textContent = '';
  $('shared-start').hidden = true;
  show('shared-ready');
- const id = args.get('pack');
+ const oldId = args.get('pack');
+ const id = Dictation.canonicalPackId(oldId);
+ if (oldId !== id) {
+  args.set('pack', id);
+  history.replaceState(history.state, '', location.pathname + location.search + '#' + args);
+ }
  const previewTicket = studentPreview ? args.get('draft') : null;
  try {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,95}$/.test(id)) throw Error('Invalid pack link.');
   if (state.learningCheckpoint && !state.learningSession) await recoverCheckpoint(false);
   const origin = previewTicket ? location.origin : serviceOrigin(entryPage === 'offline' ? args.get('service') || ONLINE_CONFIG : ONLINE_CONFIG);
-  let pack, practice, audio;
+  let pack, practice, audio, audioStatus;
   if (previewTicket) {
    const local = JSON.parse(localStorage.getItem(LOCAL_PREVIEW_KEY) || 'null');
    if (local?.ticket !== previewTicket || local.expiresAt < Date.now()) throw Error('Preview expired.');
@@ -5673,11 +5735,14 @@ async function openSharedReview() {
    const response = await service('/packs/' + encodeURIComponent(id), {root:origin, token});
    pack = Vocabulary.validatePack(response.pack);
    practice = response.practice;
-   if (response.visibility === 'public' && Array.isArray(response.audio)) audio = new Set(response.audio);
+   if (response.visibility === 'public' && Array.isArray(response.audio)) {
+    audio = new Set(response.audio);
+    audioStatus = response.audioStatus;
+   }
   }
   if (pack.id !== id) throw Error('Wrong review set.');
   if (load !== sharedLoad) return;
-  sharedReview = {pack, origin, audio, mode:SharedReview.reviewMode(practice?.mode, pack.words), allowHints:practice?.allowHints !== false};
+  sharedReview = {pack, origin, audio, audioStatus, mode:SharedReview.reviewMode(practice?.mode, pack.words), allowHints:practice?.allowHints !== false};
   await renderSharedReady();
  } catch (error) {
   if (load !== sharedLoad) return;
@@ -5841,7 +5906,7 @@ function playPracticeRecording(rate, slow = false){
  if(s.phase==='prompt')$('answer-input').focus();
  const clip=sharedAudioPath(s.listId,s.current,'dictation',s.current);
  const fallback=()=>dictate(s.listId,s.current,s.meanings?.[s.current],rate);
- if(clip)playPublishedRecording(clip,slow,fallback);else fallback();
+ if(clip)playPublishedRecording(clip,slow,()=>feedback('The recording could not play. Press Listen to try again.','bad'),()=>feedback('',''));else fallback();
 }
 function renderPractice(play){
  const s=state.session;if(!s)return;finished=false;show('practice-screen');$('list-name-practice').textContent=s.listName;$('round-text').textContent='Round '+s.round;
