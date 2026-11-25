@@ -1,9 +1,15 @@
 let dictationPlayer = null;
 let dictationRequest = 0;
+let dictationDownload = null;
+let publishedRecordingCache = null;
 
 function stopRecording() {
  dictationRequest++;
+ if (dictationDownload) { dictationDownload.abort(); dictationDownload = null; }
  if (dictationPlayer) {
+  dictationPlayer.audio.onplaying = null;
+  dictationPlayer.audio.onended = null;
+  dictationPlayer.audio.onerror = null;
   dictationPlayer.audio.pause();
   if (dictationPlayer.url.startsWith('blob:')) URL.revokeObjectURL(dictationPlayer.url);
   dictationPlayer = null;
@@ -15,7 +21,7 @@ function readRecording(listId, word, vocabulary) {
   .catch(() => null);
 }
 
-async function playRecording(recording, rate, request, onStart) {
+async function playRecording(recording, rate, request, onStart, onError) {
  if (request !== dictationRequest) return;
  if (speech) speechSynthesis.cancel();
  const url = typeof recording === 'string' ? recording : URL.createObjectURL(recording);
@@ -24,6 +30,12 @@ async function playRecording(recording, rate, request, onStart) {
  audio.playbackRate = rate;
  if (onStart) audio.onplaying = () => { if (request === dictationRequest) onStart(); };
  audio.onended = () => { if (request === dictationRequest) stopRecording(); };
+ audio.onerror = () => {
+  if (request !== dictationRequest) return;
+  const error = audio.error;
+  stopRecording();
+  if (onError) onError(error);
+ };
  await audio.play();
 }
 
@@ -44,12 +56,37 @@ function sharedAudioPath(listId, word, type, spoken) {
 async function playPublishedRecording(path, slow, onError, onStart) {
  stopRecording();
  const request = dictationRequest;
+ const workspace = state;
+ let recording = publishedRecordingCache?.path === path && publishedRecordingCache.workspace === workspace ? publishedRecordingCache.recording : null;
+ const evict = () => {
+  if (publishedRecordingCache?.path === path && publishedRecordingCache.workspace === workspace && publishedRecordingCache.recording === recording) publishedRecordingCache = null;
+ };
+ const failed = error => {
+  if (error?.code === 3 || error?.code === 4) evict();
+  onError();
+ };
+ const download = recording ? null : new AbortController();
+ if (download) dictationDownload = download;
+ const deadline = download ? setTimeout(() => download.abort(), 45000) : null;
  try {
-  await playRecording(path, slow ? .75 : 1, request, onStart);
- } catch {
-  if (request !== dictationRequest) return;
+  if (!recording) {
+   const response = await fetch(path, {signal:download.signal});
+   if (request !== dictationRequest || state !== workspace) return;
+   if (!response.ok) throw Error('The recording could not download.');
+   recording = await response.blob();
+   if (request !== dictationRequest || state !== workspace) return;
+   if (!recording.size) throw Error('The recording is empty.');
+   publishedRecordingCache = {path,workspace,recording};
+  }
+  await playRecording(recording, slow ? .75 : 1, request, onStart, failed);
+ } catch (error) {
+  if (request !== dictationRequest || state !== workspace) return;
+  if (error?.name === 'NotSupportedError') evict();
   stopRecording();
   onError();
+ } finally {
+  if (deadline !== null) clearTimeout(deadline);
+  if (dictationDownload === download) dictationDownload = null;
  }
 }
 
@@ -59,7 +96,7 @@ async function dictate(listId, word, vocabulary, rate, onError, onStart) {
  const recording = await readRecording(listId, word, vocabulary);
  if (request !== dictationRequest) return;
  if (recording) {
-  try { await playRecording(recording, rate, request, onStart); return; }
+  try { await playRecording(recording, rate, request, onStart, () => speak(word, rate, onError, onStart)); return; }
   catch (error) {
    if (request !== dictationRequest) return;
    stopRecording();
@@ -169,7 +206,7 @@ function initDictation() {
   try {
    const clip = await readRecording(target.listId, target.word, target.vocabulary);
    if (!clip) throw Error('Recording unavailable.');
-   await playRecording(clip, 1, request);
+   await playRecording(clip, 1, request, undefined, () => editorStatusText('The recording could not play.'));
   } catch (error) {
    if (request === dictationRequest) { stopRecording(); editorStatusText('The recording could not play.'); }
   }

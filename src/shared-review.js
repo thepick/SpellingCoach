@@ -90,20 +90,27 @@ function clearParkedActivity(id) {
 async function renderSharedReady() {
  const review = sharedReview;
  if (!review) return;
+ const workspace = state, session = state.session, learning = state.learningSession;
+ const phase = session?.phase, status = learning?.session.status;
+ let playback = dictationRequest;
+ const current = () => sharedReview === review && state === workspace && state.session === session && state.learningSession === learning &&
+  session?.phase === phase && learning?.session.status === status && dictationRequest === playback;
  if (review.audioStatus?.pending) {
   $('shared-title').textContent = review.pack.name;
   $('shared-instruction').textContent = 'Practice audio is being prepared. This page will update when it is ready.';
   $('shared-start').hidden = true;
+  $('shared-study').hidden = true;
   show('shared-ready');
+  playback = dictationRequest;
   setTimeout(async () => {
-   if (sharedReview !== review) return;
+   if (!current()) return;
    try {
     const {audio, audioStatus} = await service('/packs/' + encodeURIComponent(review.pack.id), {root:review.origin});
-    if (sharedReview !== review) return;
+    if (!current()) return;
     review.audio = new Set(audio);
     review.audioStatus = audioStatus;
    } catch {}
-   if (sharedReview === review) renderSharedReady();
+   if (current()) renderSharedReady();
   }, 5000);
   return;
  }
@@ -114,7 +121,7 @@ async function renderSharedReady() {
   return;
  }
  const saved = list && (SharedReview.matchingPractice(state, list.id, review.mode) ? state : await parkedActivity(list.id));
- if (sharedReview !== review) return;
+ if (!current()) return;
  const mode = SharedReview.matchingPractice(saved || {}, list?.id, review.mode);
  const instruction = mode === 'learning' ? saved.learningSession.session.mode :
   mode === 'spelling' ? 'spelling' : review.mode;
@@ -178,6 +185,7 @@ async function openSharedReview() {
  $('shared-instruction').textContent = '';
  $('shared-ready-status').textContent = '';
  $('shared-start').hidden = true;
+ $('shared-study').hidden = true;
  show('shared-ready');
  const oldId = args.get('pack');
  const id = Dictation.canonicalPackId(oldId);

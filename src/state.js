@@ -66,6 +66,17 @@ function loadState() {
  }
 }
 
+function shuffledCopy(values) {
+ const result = values.slice(), draw = new Uint32Array(1);
+ for (let index = result.length-1; index > 0; index--) {
+  const range = index+1, limit = 0x100000000 - 0x100000000 % range;
+  do { crypto.getRandomValues(draw); } while (draw[0] >= limit);
+  const swap = draw[0] % range;
+  [result[index],result[swap]] = [result[swap],result[index]];
+ }
+ return result;
+}
+
 function orderFromReceipt(receipt, count) {
  if (!receipt || receipt.status !== 'complete' || !Array.isArray(receipt.result?.random?.data)) throw Error('Choose a completed RANDOM.ORG shuffle receipt.');
  const positions = receipt.result.random.data;
