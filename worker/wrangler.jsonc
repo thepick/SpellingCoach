@@ -1,0 +1,22 @@
+{
+  "name": "spellingcoach-api",
+  "main": "index.mjs",
+  "compatibility_date": "2026-08-22",
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": {
+    "ALLOWED_ORIGINS": "https://spellingcoach.mtomlinson.ca",
+    "AI_ENABLED": "false",
+    "STUDENT_AI_ENABLED": "false",
+    "GROQ_FREE_TIER_CONFIRMED": "false",
+    "OPENROUTER_FREE_TIER_CONFIRMED": "false"
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "VOCABULARY", "class_name": "VocabularyCoordinator" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["VocabularyCoordinator"] }
+  ]
+}

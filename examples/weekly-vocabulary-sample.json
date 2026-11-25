@@ -1,0 +1,633 @@
+{
+  "kind": "spellingcoach-pack",
+  "v": 1,
+  "id": "weekly-vocabulary-sample",
+  "version": 1,
+  "name": "English Weekly Vocabulary — Grade 5 Sample (Draft)",
+  "words": [
+    {
+      "word": "agency",
+      "vocabulary": {
+        "senseId": "agency-organization",
+        "partOfSpeech": "noun",
+        "definition": "An organization that provides a service or carries out a special job.",
+        "examples": [
+          "The travel agency helped Dad book our train tickets.",
+          "The rescue agency sent a team to help the hikers."
+        ],
+        "clozeQuestions": [
+          {
+            "id": "agency-q1",
+            "sentence": "When the river flooded, a government _____ sent workers to help families move to safety.",
+            "answer": "agency",
+            "explanation": "The clue is an organization that sends trained workers to help."
+          },
+          {
+            "id": "agency-q2",
+            "sentence": "We went to a travel _____ where staff booked our flights and found us a hotel.",
+            "answer": "agency",
+            "explanation": "A travel service is making bookings for the family."
+          },
+          {
+            "id": "agency-q3",
+            "sentence": "The city asked an environmental _____ to test the water and look for pollution.",
+            "answer": "agency",
+            "explanation": "The clue is a group whose job is to protect the environment."
+          },
+          {
+            "id": "agency-q4",
+            "sentence": "Mia called a job _____ that helps people find work and meet employers.",
+            "answer": "agency",
+            "explanation": "The group provides a service to people who are looking for work."
+          },
+          {
+            "id": "agency-q5",
+            "sentence": "The news _____ collected reports from several towns and sent them to newspapers.",
+            "answer": "agency",
+            "explanation": "The group collects and shares information as its service."
+          }
+        ],
+        "meaningDistractors": [
+          "A person who runs a meeting.",
+          "A building where goods are made.",
+          "A plan for saving money."
+        ],
+        "acceptedSpellings": [],
+        "readingLevel": 5,
+        "status": "draft"
+      }
+    },
+    {
+      "word": "arthritis",
+      "vocabulary": {
+        "senseId": "arthritis-joint-condition",
+        "partOfSpeech": "noun",
+        "definition": "A condition that can make joints stiff, swollen, or painful.",
+        "examples": [
+          "Grandma has arthritis in her knees.",
+          "With arthritis in his fingers, Dan found it hard to turn the key."
+        ],
+        "clozeQuestions": [
+          {
+            "id": "arthritis-q1",
+            "sentence": "The doctor said _____ was causing Kim's knees to swell and hurt when she bent them.",
+            "answer": "arthritis",
+            "explanation": "Knees are joints. Joint swelling and pain fit this condition."
+          },
+          {
+            "id": "arthritis-q2",
+            "sentence": "Because of _____ in her fingers, Lee's joints felt stiff when she opened a jar.",
+            "answer": "arthritis",
+            "explanation": "The clues are stiff joints and trouble moving her fingers."
+          },
+          {
+            "id": "arthritis-q3",
+            "sentence": "The nurse explained that _____ can make a person's wrists hurt where the hand meets the arm.",
+            "answer": "arthritis",
+            "explanation": "That place is a joint, and the condition can make it hurt."
+          },
+          {
+            "id": "arthritis-q4",
+            "sentence": "After sitting for a long time, Grandpa stood up slowly because _____ made his hips stiff.",
+            "answer": "arthritis",
+            "explanation": "Stiffness in the hip joints is the clue."
+          },
+          {
+            "id": "arthritis-q5",
+            "sentence": "The doctor checked several sore joints in Noor's hands to find out whether she had _____.",
+            "answer": "arthritis",
+            "explanation": "The doctor was checking for a condition that affects joints."
+          }
+        ],
+        "meaningDistractors": [
+          "An illness that causes a cough and sore throat.",
+          "An injury where a bone breaks.",
+          "A rash that makes the skin itch."
+        ],
+        "acceptedSpellings": [],
+        "readingLevel": 5,
+        "status": "draft"
+      }
+    },
+    {
+      "word": "bade",
+      "vocabulary": {
+        "senseId": "bade-asked-told",
+        "partOfSpeech": "verb",
+        "definition": "Asked or told someone to do something, especially in formal or old-fashioned language.",
+        "examples": [
+          "The queen bade her guests sit beside the fire.",
+          "In the old tale, the farmer bade the children follow him."
+        ],
+        "clozeQuestions": [
+          {
+            "id": "bade-q1",
+            "sentence": "In the old tale, the king _____ the guard open the gate, and the guard obeyed.",
+            "answer": "bade",
+            "explanation": "The king told the guard what to do."
+          },
+          {
+            "id": "bade-q2",
+            "sentence": "The castle cook _____ the young helper carry bread to the hall, and the helper took the basket.",
+            "answer": "bade",
+            "explanation": "The cook gave the helper a task to do."
+          },
+          {
+            "id": "bade-q3",
+            "sentence": "The captain _____ the sailors pull up the ropes before the ship left the harbor.",
+            "answer": "bade",
+            "explanation": "The captain told the sailors to pull up the ropes."
+          },
+          {
+            "id": "bade-q4",
+            "sentence": "In the story, the queen _____ the travelers enter, so they stepped through the open door.",
+            "answer": "bade",
+            "explanation": "The queen told the travelers to come in."
+          },
+          {
+            "id": "bade-q5",
+            "sentence": "In the old play, the judge _____ everyone rise before the court began.",
+            "answer": "bade",
+            "explanation": "The judge told everyone to stand."
+          }
+        ],
+        "meaningDistractors": [
+          "Waited until someone arrived.",
+          "Heard what someone said.",
+          "Sent something by mail."
+        ],
+        "acceptedSpellings": [],
+        "readingLevel": 5,
+        "status": "draft"
+      }
+    },
+    {
+      "word": "contract",
+      "vocabulary": {
+        "senseId": "contract-written-agreement",
+        "partOfSpeech": "noun",
+        "definition": "An agreement, often written and signed, that sets out what each side must do.",
+        "examples": [
+          "Both sides signed a contract before the work began.",
+          "The coach read the contract before agreeing to lead the team."
+        ],
+        "clozeQuestions": [
+          {
+            "id": "contract-q1",
+            "sentence": "The builder and the family signed a _____ saying what work would be done and how much it would cost.",
+            "answer": "contract",
+            "explanation": "The signed paper sets out the jobs and the payment each side agrees to."
+          },
+          {
+            "id": "contract-q2",
+            "sentence": "Before she rented the shop, Ana read the _____ to see what she and the owner had agreed to do.",
+            "answer": "contract",
+            "explanation": "The paper lists promises made by the renter and the shop owner."
+          },
+          {
+            "id": "contract-q3",
+            "sentence": "The singer signed a _____ promising to perform for three nights for a set fee.",
+            "answer": "contract",
+            "explanation": "The agreement sets out the work and the payment."
+          },
+          {
+            "id": "contract-q4",
+            "sentence": "The school kept a copy of the _____ that both bus companies had signed.",
+            "answer": "contract",
+            "explanation": "Both companies had signed a paper setting out their agreement."
+          },
+          {
+            "id": "contract-q5",
+            "sentence": "Dad checked the _____ to see whether the repair company had agreed to replace the broken part.",
+            "answer": "contract",
+            "explanation": "The paper records what the company promised to do."
+          }
+        ],
+        "meaningDistractors": [
+          "A letter that invites someone to a celebration.",
+          "A record of money already spent.",
+          "A chart showing when work is done."
+        ],
+        "acceptedSpellings": [],
+        "readingLevel": 5,
+        "status": "draft"
+      }
+    },
+    {
+      "word": "levying",
+      "vocabulary": {
+        "senseId": "levying-charging-tax",
+        "partOfSpeech": "verb",
+        "definition": "Officially charging people a tax or fee.",
+        "examples": [
+          "The town began levying a fee on trucks that used the new bridge.",
+          "The government was levying a tax on imported bags."
+        ],
+        "clozeQuestions": [
+          {
+            "id": "levying-q1",
+            "sentence": "The council is _____ a new tax to pay for streetlights, so shops must pay it each year.",
+            "answer": "levying",
+            "explanation": "The council is officially charging shops a tax."
+          },
+          {
+            "id": "levying-q2",
+            "sentence": "The city began _____ a fee that drivers had to pay when they entered the busy town center.",
+            "answer": "levying",
+            "explanation": "The city made the fee an official charge for drivers."
+          },
+          {
+            "id": "levying-q3",
+            "sentence": "The government is _____ a tax on some goods brought in from other countries.",
+            "answer": "levying",
+            "explanation": "A government is requiring a tax to be paid."
+          },
+          {
+            "id": "levying-q4",
+            "sentence": "The local council is _____ a fee on late license renewals, so stores must pay more after the due date.",
+            "answer": "levying",
+            "explanation": "The council is charging an official fee for being late."
+          },
+          {
+            "id": "levying-q5",
+            "sentence": "Instead of asking for donations, the town is _____ a small tax that all adult residents must pay.",
+            "answer": "levying",
+            "explanation": "The town is officially requiring payment."
+          }
+        ],
+        "meaningDistractors": [
+          "Returning money people have paid.",
+          "Choosing how to spend public money.",
+          "Counting how many people use a road."
+        ],
+        "acceptedSpellings": [],
+        "readingLevel": 5,
+        "status": "draft"
+      }
+    },
+    {
+      "word": "mill",
+      "vocabulary": {
+        "senseId": "mill-grain-grinding",
+        "partOfSpeech": "noun",
+        "definition": "A place or machine that grinds grain into flour or meal.",
+        "examples": [
+          "The village mill turned corn into meal.",
+          "A river wheel once powered the flour mill."
+        ],
+        "clozeQuestions": [
+          {
+            "id": "mill-q1",
+            "sentence": "Farmers brought bags of wheat to the _____, where large stones ground it into flour.",
+            "answer": "mill",
+            "explanation": "The place uses stones to grind grain."
+          },
+          {
+            "id": "mill-q2",
+            "sentence": "At the _____, we watched a waterwheel power the stones that crushed corn into meal.",
+            "answer": "mill",
+            "explanation": "The waterwheel powers the grain-grinding equipment."
+          },
+          {
+            "id": "mill-q3",
+            "sentence": "Dad took rye to the _____ and came home with a sack of finely ground flour.",
+            "answer": "mill",
+            "explanation": "The rye was ground into flour at this place."
+          },
+          {
+            "id": "mill-q4",
+            "sentence": "A small hand-powered _____ crushed the dried grain when Ben turned its handle.",
+            "answer": "mill",
+            "explanation": "The hand-powered machine grinds grain."
+          },
+          {
+            "id": "mill-q5",
+            "sentence": "The village rebuilt its _____ so that local wheat could be ground into flour again.",
+            "answer": "mill",
+            "explanation": "The village needed a place to grind local grain."
+          }
+        ],
+        "meaningDistractors": [
+          "A place where grain is grown.",
+          "A place where tools are repaired.",
+          "A machine that plants seeds."
+        ],
+        "acceptedSpellings": [],
+        "readingLevel": 5,
+        "status": "draft"
+      }
+    },
+    {
+      "word": "obliged",
+      "vocabulary": {
+        "senseId": "obliged-required",
+        "partOfSpeech": "adjective",
+        "definition": "Required to do something because of a rule, a promise, or a duty.",
+        "examples": [
+          "By the rules, every player was obliged to wear a helmet.",
+          "Nina felt obliged to return the book she had promised to bring back."
+        ],
+        "clozeQuestions": [
+          {
+            "id": "obliged-q1",
+            "sentence": "By the team rules, the players were _____ to attend the safety meeting.",
+            "answer": "obliged",
+            "explanation": "The rules required players to go to the meeting."
+          },
+          {
+            "id": "obliged-q2",
+            "sentence": "According to the rental agreement, we were _____ to return the bikes by six.",
+            "answer": "obliged",
+            "explanation": "The agreement required us to bring the bikes back at a certain time."
+          },
+          {
+            "id": "obliged-q3",
+            "sentence": "The law says shops are _____ to list the full price on each item.",
+            "answer": "obliged",
+            "explanation": "The law makes it a duty for shops to show the full price."
+          },
+          {
+            "id": "obliged-q4",
+            "sentence": "Omar felt _____ to keep the secret because he had given his word.",
+            "answer": "obliged",
+            "explanation": "Omar's promise made him feel he had a duty to keep the secret."
+          },
+          {
+            "id": "obliged-q5",
+            "sentence": "The staff were _____ to close the pool during the storm because the safety rules required it.",
+            "answer": "obliged",
+            "explanation": "The safety rules made closing the pool a duty."
+          }
+        ],
+        "meaningDistractors": [
+          "Allowed to choose freely.",
+          "Too surprised to speak.",
+          "Pleased to receive a gift."
+        ],
+        "acceptedSpellings": [],
+        "readingLevel": 5,
+        "status": "draft"
+      }
+    },
+    {
+      "word": "posh",
+      "vocabulary": {
+        "senseId": "posh-fancy-expensive",
+        "partOfSpeech": "adjective",
+        "definition": "Fancy or expensive in a way that shows wealth or high social status.",
+        "examples": [
+          "The posh hotel had a marble floor and a grand piano.",
+          "He wore a posh suit to the dinner."
+        ],
+        "clozeQuestions": [
+          {
+            "id": "posh-q1",
+            "sentence": "They stayed in a _____ hotel with silk chairs, marble stairs, and staff who carried every bag.",
+            "answer": "posh",
+            "explanation": "The expensive materials and special service make the hotel fancy."
+          },
+          {
+            "id": "posh-q2",
+            "sentence": "Ava wore her _____ coat made of fine wool to the fancy dinner at the palace.",
+            "answer": "posh",
+            "explanation": "The coat is made of fine material and suited to a fancy event."
+          },
+          {
+            "id": "posh-q3",
+            "sentence": "The _____ restaurant served dinner on silver plates and charged more than any other place in town.",
+            "answer": "posh",
+            "explanation": "The silver plates and high price show a fancy place."
+          },
+          {
+            "id": "posh-q4",
+            "sentence": "We passed a _____ shopping street where every shop sold expensive clothes or jewelry.",
+            "answer": "posh",
+            "explanation": "The shops sell costly goods."
+          },
+          {
+            "id": "posh-q5",
+            "sentence": "Their _____ car had soft leather seats, a personal driver, and a price few people could afford.",
+            "answer": "posh",
+            "explanation": "The special features and high price suggest wealth."
+          }
+        ],
+        "meaningDistractors": [
+          "Crowded and hard to move around in.",
+          "Old and in need of repair.",
+          "Simple enough to use every day."
+        ],
+        "acceptedSpellings": [],
+        "readingLevel": 5,
+        "status": "draft"
+      }
+    },
+    {
+      "word": "textile",
+      "vocabulary": {
+        "senseId": "textile-cloth",
+        "partOfSpeech": "noun",
+        "definition": "Cloth or fabric used to make things such as clothes, bags, and curtains.",
+        "examples": [
+          "Cotton denim is a strong textile used to make jeans.",
+          "The museum displayed a textile woven from wool."
+        ],
+        "clozeQuestions": [
+          {
+            "id": "textile-q1",
+            "sentence": "The tailor chose a smooth, woven _____ to sew into a shirt.",
+            "answer": "textile",
+            "explanation": "The tailor needs fabric for the shirt."
+          },
+          {
+            "id": "textile-q2",
+            "sentence": "The museum showed a bright _____ made of interlaced silk threads.",
+            "answer": "textile",
+            "explanation": "Threads woven together make cloth."
+          },
+          {
+            "id": "textile-q3",
+            "sentence": "The designer picked a thick cotton _____ for the curtains, so they would block the light.",
+            "answer": "textile",
+            "explanation": "The designer is picking a fabric for the curtains."
+          },
+          {
+            "id": "textile-q4",
+            "sentence": "The weaver made a striped _____ from blue and green threads.",
+            "answer": "textile",
+            "explanation": "A weaver turns threads into cloth."
+          },
+          {
+            "id": "textile-q5",
+            "sentence": "Our group used a light, colorful _____ to sew a cloth bag.",
+            "answer": "textile",
+            "explanation": "The cloth bag is made from fabric."
+          }
+        ],
+        "meaningDistractors": [
+          "A tool for cutting through thread.",
+          "A label that lists washing instructions.",
+          "A room where clothes are sold."
+        ],
+        "acceptedSpellings": [],
+        "readingLevel": 5,
+        "status": "draft"
+      }
+    },
+    {
+      "word": "tittered",
+      "vocabulary": {
+        "senseId": "tittered-quiet-giggle",
+        "partOfSpeech": "verb",
+        "definition": "Laughed quietly in short little sounds, often because of nerves or embarrassment.",
+        "examples": [
+          "Some children tittered when the speaker lost her place.",
+          "They tittered behind their hands at the silly mistake."
+        ],
+        "clozeQuestions": [
+          {
+            "id": "tittered-q1",
+            "sentence": "When the speaker's hat slipped over his eyes, a few guests _____ behind their hands.",
+            "answer": "tittered",
+            "explanation": "They made little laughs and tried to hide them."
+          },
+          {
+            "id": "tittered-q2",
+            "sentence": "Tess _____ nervously when she waved at a stranger by mistake, letting out two tiny laughs.",
+            "answer": "tittered",
+            "explanation": "Two little nervous laughs fit this word."
+          },
+          {
+            "id": "tittered-q3",
+            "sentence": "The students _____ softly when a toy duck squeaked during the silent reading time.",
+            "answer": "tittered",
+            "explanation": "The unexpected noise made them laugh quietly."
+          },
+          {
+            "id": "tittered-q4",
+            "sentence": "When Sam stumbled over his first line, his friends _____ under their breath.",
+            "answer": "tittered",
+            "explanation": "They laughed a little without making much noise."
+          },
+          {
+            "id": "tittered-q5",
+            "sentence": "The actors _____ with small, nervous giggles when the director walked onstage with odd socks.",
+            "answer": "tittered",
+            "explanation": "The clue is their short, quiet laughs."
+          }
+        ],
+        "meaningDistractors": [
+          "Shouted a warning to the crowd.",
+          "Spoke slowly so others could hear.",
+          "Cried quietly after getting bad news."
+        ],
+        "acceptedSpellings": [],
+        "readingLevel": 5,
+        "status": "draft"
+      }
+    },
+    {
+      "word": "wearily",
+      "vocabulary": {
+        "senseId": "wearily-tired-way",
+        "partOfSpeech": "adverb",
+        "definition": "In a tired way, with little energy left.",
+        "examples": [
+          "Chi leaned wearily against the door after the long walk.",
+          "After packing several boxes, Mae sat wearily on the floor."
+        ],
+        "clozeQuestions": [
+          {
+            "id": "wearily-q1",
+            "sentence": "After carrying boxes up the stairs all morning, Jo sank _____ into a chair and closed his eyes.",
+            "answer": "wearily",
+            "explanation": "The work left Jo with little energy."
+          },
+          {
+            "id": "wearily-q2",
+            "sentence": "After two nights with little sleep, Ben rubbed his eyes and _____ reached for his bag.",
+            "answer": "wearily",
+            "explanation": "Ben had hardly slept, so he moved in a tired way."
+          },
+          {
+            "id": "wearily-q3",
+            "sentence": "The team walked _____ to the bus after playing three matches without a break.",
+            "answer": "wearily",
+            "explanation": "Playing several matches left the team tired."
+          },
+          {
+            "id": "wearily-q4",
+            "sentence": "After hours of rowing, Min _____ lifted the heavy oar one last time.",
+            "answer": "wearily",
+            "explanation": "She has little energy left after rowing for so long."
+          },
+          {
+            "id": "wearily-q5",
+            "sentence": "The hikers _____ climbed the last hill, taking slow steps on tired legs.",
+            "answer": "wearily",
+            "explanation": "Their tired legs made them move with little energy."
+          }
+        ],
+        "meaningDistractors": [
+          "In a way that shows great pride.",
+          "In a way that shows anger.",
+          "In a way that shows excitement."
+        ],
+        "acceptedSpellings": [],
+        "readingLevel": 5,
+        "status": "draft"
+      }
+    },
+    {
+      "word": "wistfully",
+      "vocabulary": {
+        "senseId": "wistfully-sad-wish",
+        "partOfSpeech": "adverb",
+        "definition": "In a way that shows a sad wish for something missing or out of reach.",
+        "examples": [
+          "Lina smiled wistfully at a photo of her old home.",
+          "He spoke wistfully about summers with his grandparents."
+        ],
+        "clozeQuestions": [
+          {
+            "id": "wistfully-q1",
+            "sentence": "Mali looked _____ at the football field, wishing she could join her team while her leg healed.",
+            "answer": "wistfully",
+            "explanation": "She feels sad because she cannot do something she wants to do."
+          },
+          {
+            "id": "wistfully-q2",
+            "sentence": "Dan spoke _____ about his old school because he missed the friends he used to see there.",
+            "answer": "wistfully",
+            "explanation": "The clue is his sad wish to see his old friends again."
+          },
+          {
+            "id": "wistfully-q3",
+            "sentence": "She looked _____ at the sold-out concert poster and wished she could hear her favorite band.",
+            "answer": "wistfully",
+            "explanation": "She wants to go, but she knows she cannot get a ticket."
+          },
+          {
+            "id": "wistfully-q4",
+            "sentence": "As the train pulled away, I watched _____, wishing I could stay with Grandma a little longer.",
+            "answer": "wistfully",
+            "explanation": "I feel sad to leave and want more time with Grandma."
+          },
+          {
+            "id": "wistfully-q5",
+            "sentence": "Kai smiled _____ at a photo of the tree house he could no longer visit.",
+            "answer": "wistfully",
+            "explanation": "The photo brings back a happy memory and a wish to visit again."
+          }
+        ],
+        "meaningDistractors": [
+          "In a way that shows sudden fear.",
+          "In a way that shows you are very tired.",
+          "In a way that shows you are in a hurry."
+        ],
+        "acceptedSpellings": [],
+        "readingLevel": 5,
+        "status": "draft"
+      }
+    }
+  ]
+}
