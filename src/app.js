@@ -128,6 +128,7 @@ function renderCorrection(id, inputId, answer, explanation = '') {
 }
 function playPracticeRecording(rate){
  const s=state.session;if(!s)return;
+ if(s.phase==='prompt')$('answer-input').focus();
  dictate(s.listId,s.current,s.meanings?.[s.current],rate);
 }
 function renderPractice(play){

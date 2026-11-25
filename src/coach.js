@@ -160,6 +160,7 @@ function playQuestion(initial, slow) {
  const session = entry?.session;
  const question = session && Learning.current(session);
  if (!question || !initial && !session.settings.audioReplay || session.feedback) return;
+ if (!initial && !$('learning-typed').hidden) $('learning-input').focus();
  const message = Learning.audio(question, {choices: true});
  if (!message) return;
  const failed = () => {
@@ -182,7 +183,7 @@ function playQuestion(initial, slow) {
  } else speak(message, rate, failed, ready);
 }
 
-function renderLearning(play) {
+function renderLearning(play, corrected = false) {
  clearTimeout(learningAdvanceTimer);
  const entry = learningEntry();
  if (!entry) return;
@@ -232,6 +233,7 @@ function renderLearning(play) {
  $('learning-hint-text').textContent = lastHint?.text || '';
  const box = $('learning-feedback');
  renderCorrection('learning-correction', 'learning-input', correction ? result.answer : null, result?.explanation);
+ if (!correction) $('learning-input').setAttribute('aria-describedby', 'learning-prompt');
  box.hidden = !result || !!correction;
  box.className = 'feedback' + (result ? result.correct ? ' good' : ' bad' : '');
  if (result) {
@@ -240,13 +242,18 @@ function renderLearning(play) {
    (message[result.kind] || 'Incorrect.') + ' Answer: ' + result.answer + '.') +
    (result.explanation ? ' ' + result.explanation : '');
  }
- $('learning-next').hidden = !result || !!correction;
+ const next = $('learning-next');
+ const advance = result && !correction && (result.correct || corrected ||
+   question.type === 'dictation' && result.kind !== 'skipped');
+ next.hidden = !result || !!correction || !!advance;
  $('learning-end').hidden = test;
  $('learning-pause').textContent = test ? 'Save and pause' : 'Pause';
  $('learning-end').textContent = 'End practice';
- if (correction || play && !result && question.type === 'dictation') $('learning-input').focus();
- else if (play) (result ? $('learning-next') : $('learning-title')).focus();
+ if (correction || play && !result && !$('learning-typed').hidden) $('learning-input').focus();
+ else if (!next.hidden) next.focus();
+ else if (play && !result) $('learning-title').focus();
  if (play && !result && question.type === 'dictation') playQuestion(true, false);
+ if (advance) advanceAfterFeedback(entry, result.correct || corrected ? state.settings.autoAdvanceMs : state.settings.feedbackMs);
 }
 
 function advanceLearning() {
@@ -255,11 +262,11 @@ function advanceLearning() {
  Learning.advance(entry.session); save(); renderLearning(true);
 }
 
-function advanceSpellingAfterFeedback(entry, corrected) {
+function advanceAfterFeedback(entry, delay) {
  const feedback = entry.session.feedback;
  learningAdvanceTimer = setTimeout(() => {
   if (!$('learning-screen').hidden && learningEntry() === entry && entry.session.feedback === feedback) advanceLearning();
- }, feedback.correct || corrected ? state.settings.autoAdvanceMs : state.settings.feedbackMs);
+ }, delay);
 }
 
 function submitLearning(value) {
@@ -267,18 +274,13 @@ function submitLearning(value) {
  if (!item || $('learning-submit').disabled) return;
  const session = item.session;
  const correcting = session.feedback?.correctionRequired;
- const spelling = Learning.current(session)?.type === 'dictation';
  if (correcting) {
   if (!Learning.correct(session, value)) { $('learning-input').setCustomValidity('Type the answer shown above.'); $('learning-input').reportValidity(); return; }
  } else {
   if (!Learning.submit(session, value)) return;
  }
  save();
- renderLearning(session.type === 'test');
- if (!$('learning-next').hidden) {
-  $('learning-next').focus();
-  if (spelling && session.feedback) advanceSpellingAfterFeedback(item, correcting);
- }
+ renderLearning(session.type === 'test', correcting);
 }
 
 function updateLearningProgress(entry) {
