@@ -65,9 +65,31 @@ body:has(dialog.tools-dialog[open]) { overflow: hidden; }
 #teacher-signin-screen .subhead { margin-top: .65rem; }
 #teacher-signin-status:empty, #teacher-dialog .tools-panel > .status:empty { display: none; }
 #teacher-signin-screen #teacher-login { width: 100%; }
-#teacher-dialog[data-view=share] :is(#teacher-job, #teacher-operations, #teacher-status, #teacher-publishing-title) { display: none; }
+#teacher-dialog[data-view=share] :is(#teacher-job, #teacher-operations, #teacher-status, #teacher-publishing-title, #teacher-drafting-info) { display: none; }
 #teacher-dialog[data-view=admin] #teacher-admin > :not(#teacher-operations) { display: none; }
-#teacher-dialog[data-view=share] #teacher-admin { border: 0; margin: 0; padding: 0; }
+#teacher-dialog[data-view=admin] #teacher-admin, #teacher-dialog[data-view=share] #teacher-admin { border: 0; margin: 0; padding: 0; }
+#teacher-dialog[data-view=admin] #teacher-draft-intro h2 { display: none; }
+#teacher-dialog { max-height: 90dvh; }
+.teacher-dialog-heading { flex-wrap: nowrap; align-items: flex-start; }
+.teacher-dialog-heading button { flex: none; }
+#teacher-dialog :is(p, ul, ol, h2) { margin: 0; }
+#teacher-dialog :is(p, ul, ol):empty { display: none; }
+#teacher-dialog summary { cursor: pointer; padding: .4rem 0; }
+#teacher-dialog details > :is(.stack, .settings, .checkline) { margin-top: .65rem; }
+#teacher-dialog .section { margin-top: .25rem; }
+#teacher-dialog .teacher-fields { align-items: end; }
+#teacher-dialog .teacher-fields input { max-width: none; }
+#teacher-dialog .teacher-fields :is(input, select) { display: block; height: 46px; }
+#teacher-dialog .teacher-checkboxes { align-items: start; }
+#teacher-dialog .teacher-checkboxes label { align-items: baseline; margin: 0; }
+#teacher-dialog .teacher-checkboxes input { flex: none; margin: 0; }
+#teacher-dialog #ai-context-help { margin-top: .2rem; }
+#ai-share-audio { gap: .6rem; }
+body[data-entry=teacher] #setup-screen .subhead { margin-bottom: 1rem; }
+body[data-entry=teacher] #setup-status:empty { display: none; }
+body[data-entry=teacher] #setup-screen .actions > button { min-height: 44px; }
+body[data-entry=teacher] #teacher-workspace-actions { display: grid; gap: 12px; justify-items: start; }
+body[data-entry=teacher] #setup-set-summary { margin: 0; }
 #teacher-dialog #ai-vocabulary-words { white-space: pre-line; overflow-wrap: anywhere; }
 #setup-screen .grid:has(> .stack[hidden]) { grid-template-columns: minmax(0, 1fr); }
 #setup-set-summary:empty { display: none; }

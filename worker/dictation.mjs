@@ -1,7 +1,7 @@
 import { ApiError } from './validation.mjs';
 
 const MAX_WAV_BYTES = 1024 * 1024;
-const unavailable = () => new ApiError(502, 'dictation_unavailable', 'Troy could not make a recording. Try again or attach a WAV file.');
+const unavailable = () => new ApiError(502, 'dictation_unavailable', 'WordLab could not create a recording.');
 
 export function finishStreamedWav(bytes) {
   const wav = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);

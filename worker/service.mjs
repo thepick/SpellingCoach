@@ -143,8 +143,10 @@ export class VocabularyService {
   }
 
   publicConfig() {
+    const draftingAvailable = this.env.AI_ENABLED === 'true' && this.providers(true).length > 0;
     return {
-      generationEnabled: this.enabled(true) && this.providers(true).length > 0,
+      draftingAvailable,
+      generationEnabled: draftingAvailable && this.enabled(true),
       dictationEnabled: this.dictationEnabled(),
       studentGenerationEnabled: this.enabled(false) && this.providers(false).length > 0,
       maxWords: MAX_WORDS, maxWordLength: MAX_WORD_LENGTH, defaults: DEFAULT_SETTINGS
@@ -624,7 +626,7 @@ export class VocabularyService {
   }
 
   async generateSpeech(sentence) {
-    if (!this.dictationEnabled()) fail(503, 'unavailable', 'Troy audio generation is disabled.');
+    if (!this.dictationEnabled()) fail(503, 'unavailable', 'Practice audio generation is unavailable.');
     const now = this.now(), day = localDay(now), minute = Math.floor(now / 60000);
     this.atomic(() => {
       const window = this.saved('dictationMinute');
@@ -654,7 +656,7 @@ export class VocabularyService {
     const id = JSON.stringify(args);
     if (!this.audioInFlight.has(id)) {
       const pending = this.generateSpeech(prompt.text).then(bytes => {
-        if (!hasSpeechSignal(bytes)) fail(502, 'audio_quality', 'Troy returned a mostly silent recording.');
+        if (!hasSpeechSignal(bytes)) fail(502, 'audio_quality', 'The recording was mostly silent.');
         if (this.one('SELECT version FROM packs WHERE id = ?', pack.id)?.version !== pack.version) {
           fail(409, 'pack_version', 'The set changed while generating audio. Publish and try again.');
         }

@@ -339,13 +339,23 @@ test('the emergency switch holds pending work and rejects a paid model change', 
   });
   const job = (await call('POST', '/generate', { words: ['textile'] })).data;
   assert.equal((await call('PUT', '/admin/settings', { groqModels: ['paid'] })).status, 400);
-  assert.equal((await call('PUT', '/admin/settings', { generationEnabled: false })).data.generationEnabled, false);
+  const paused = (await call('PUT', '/admin/settings', { generationEnabled: false })).data;
+  assert.equal(paused.generationEnabled, false);
+  assert.equal(paused.draftingAvailable, true);
   const held = await call('POST', '/jobs/' + job.id + '/step');
   assert.equal(held.data.status, 'paused');
   assert.equal(calls, 0);
   assert.equal((await call('PUT', '/admin/settings', { generationEnabled: true })).data.generationEnabled, true);
   assert.equal((await call('POST', '/jobs/' + job.id + '/step')).data.status, 'complete');
   assert.equal(calls, 1);
+});
+
+test('the site can offer Troy while AI vocabulary drafting is off at deployment', async () => {
+  const {call} = fixture({AI_ENABLED: 'false', TROY_AUDIO_ENABLED: 'true'});
+  const {data} = await call('PUT', '/admin/settings', {generationEnabled: true});
+  assert.equal(data.draftingAvailable, false);
+  assert.equal(data.generationEnabled, false);
+  assert.equal(data.dictationEnabled, true);
 });
 
 test('Troy audio requires teacher access and a sentence containing the exact word', async () => {

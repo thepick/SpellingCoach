@@ -96,7 +96,7 @@ function textDiff(d){return'<div>'+d.x.map(x=>'<span class="'+x.k+'">'+esc(x.c)+
 function renderSetup(){
  const sel=$('list-select');sel.innerHTML='';
  if(!state.lists.length){sel.add(new Option('No saved lists',''));listId='';}else{state.lists.forEach(l=>sel.add(new Option(l.name,l.id)));if(!state.lists.some(l=>l.id===listId))listId=state.lists[0].id;sel.value=listId;}
- const l=selectedList();$('setup-intro').textContent=state.lists.length?(entryPage==='teacher'?'Choose a set to edit its content or share it with students.':'Choose a word list and select the words you want to practice.'):'Create a list to get started. Give it a name and add one word or phrase per line.';$('list-actions-help').hidden=!!l;
+ const l=selectedList();$('setup-intro').textContent=state.lists.length?(entryPage==='teacher'?'Choose a set, check its words and vocabulary, then share it with students.':'Choose a word list and select the words you want to practice.'):'Create a list to get started. Give it a name and add one word or phrase per line.';$('list-actions-help').hidden=!!l;
  ['edit-list','delete-list','reset-progress','shuffle-words','select-all','select-none','select-next-group'].forEach(id=>$(id).disabled=!l);
  const host=$('word-chips');host.innerHTML='';
  if(l){const chosen=new Set(selectedWords());l.words.forEach(w=>{const label=document.createElement('label');label.className='chip';const cb=document.createElement('input');cb.type='checkbox';cb.checked=chosen.has(w);cb.setAttribute('aria-label','Include '+w);cb.onchange=()=>{const a=selectedWords();state.settings.selected[l.id]=l.words.filter(x=>x===w?cb.checked:a.includes(x));save();countSelected();};const span=document.createElement('span');span.textContent=w;label.append(cb,span);host.append(label);});}

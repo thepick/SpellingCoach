@@ -91,7 +91,7 @@ function updateTroyControls() {
  $('generate-troy').disabled = !teacher || !ai.config.dictationEnabled || generatingTroy ||
   !$('troy-sentence').value.trim();
  $('troy-help').textContent = teacher && !ai.config.dictationEnabled
-  ? 'Troy generation is disabled on this service.'
+  ? 'Audio generation is unavailable. You can attach a WAV file.'
   : 'Use the exact spelling word in a sentence that shows its meaning.';
 }
 
@@ -120,11 +120,11 @@ function initDictation() {
   if (!target || generatingTroy || ai.role !== 'teacher' || !ai.config.dictationEnabled) return;
   generatingTroy = true;
   updateTroyControls();
-  editorStatusText('Generating Troy audio for “' + target.word + '”…');
+  editorStatusText('Generating audio for “' + target.word + '”…');
   try {
    const bytes = await service('/admin/dictation', {method:'POST', audio:true, body:{word:target.word, sentence}});
    await saveRecording(target, bytes);
-   editorStatusText('Troy audio attached to “' + target.word + '”. Listen to check the pronunciation.');
+   editorStatusText('Audio attached to “' + target.word + '”. Listen to check the pronunciation.');
   } catch (error) { editorStatusText(error.message); }
   finally { generatingTroy = false; updateTroyControls(); renderRecordingControls(); }
  };

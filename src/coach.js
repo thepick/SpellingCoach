@@ -219,7 +219,6 @@ function renderLearning(play, corrected = false) {
  $('learning-audio-actions').hidden = !session.settings.audioReplay || !!result;
  const recordedPrompt = sharedAudioPath(entry.listId, question.word, question.type, Learning.audio(question));
  const audioAvailable = speech || question.type === 'dictation' || !!recordedPrompt;
- $('learning-audio').textContent = recordedPrompt ? 'Listen to Troy' : 'Listen';
  $('learning-audio').disabled = !audioAvailable;
  $('learning-slow').disabled = !audioAvailable;
  $('learning-audio-error').hidden = audioAvailable;

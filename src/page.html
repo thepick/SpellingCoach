@@ -124,7 +124,7 @@ const themePreference = (() => {
    <div><label for="vocab-distractors">Incorrect definitions for multiple-choice tests</label><textarea id="vocab-distractors" rows="3" placeholder="One per line"></textarea></div>
   </div></details>
   <details id="vocab-audio"><summary>Pronunciation recording</summary><div class="stack">
-  <div class="stack"><div><label for="troy-sentence">Sentence for Troy</label><input id="troy-sentence" type="text" maxlength="200" aria-describedby="troy-help"><p id="troy-help" class="hint">Use the exact spelling word in a sentence that shows its meaning.</p></div><div class="actions"><button id="generate-troy" type="button" class="secondary" disabled>Generate and attach Troy audio</button><button id="troy-sign-in" type="button" class="ghost small">Teacher sign-in</button></div></div>
+  <div class="stack"><div><label for="troy-sentence">Pronunciation example</label><input id="troy-sentence" type="text" maxlength="200" aria-describedby="troy-help"><p id="troy-help" class="hint">Use the exact spelling word in a sentence that shows its meaning.</p></div><div class="actions"><button id="generate-troy" type="button" class="secondary" disabled>Generate and attach audio</button><button id="troy-sign-in" type="button" class="ghost small">Teacher sign-in</button></div></div>
   <div><label for="recording-file">Dictation recording (WAV)</label><input id="recording-file" type="file" accept=".wav,audio/wav,audio/x-wav" aria-describedby="recording-help"><p id="recording-help" class="hint">Add a checked pronunciation for this word and meaning. Save any definition changes before attaching the file.</p><div class="actions"><button id="recording-preview" type="button" class="ghost small" disabled>Listen to recording</button><button id="recording-remove" type="button" class="ghost small" disabled>Remove recording</button></div></div>
   </div></details>
   <div class="actions"><button type="submit">Save draft</button><button id="vocab-approve" type="submit" class="secondary">Save and approve</button><button id="vocab-regenerate" type="button" class="ghost">Regenerate an item</button><button id="vocab-undo" type="button" class="ghost" disabled>Undo last change</button></div>
@@ -133,29 +133,55 @@ const themePreference = (() => {
  <p id="vocab-status" class="status" role="status"></p>
 </div></dialog>
 <dialog id="teacher-dialog" class="tools-dialog" aria-labelledby="teacher-title"><div class="tools-panel stack">
- <div class="row between"><h1 id="teacher-title">Online vocabulary tools</h1><button type="button" id="teacher-close" class="ghost">Close</button></div>
+ <div class="row between teacher-dialog-heading"><h1 id="teacher-title">Online vocabulary tools</h1><button type="button" id="teacher-close" class="ghost" autofocus>Close</button></div>
  <form id="teacher-connect" class="stack"><div id="teacher-url-field"><label for="teacher-url">WordLab service URL</label><input type="url" id="teacher-url" placeholder="https://api.wordlab.mtomlinson.ca" required></div><div><label id="teacher-secret-label" for="teacher-secret">Teacher secret or class access code</label><input id="teacher-secret" type="password" autocomplete="off"></div><div class="actions"><button type="submit" id="teacher-login">Teacher sign-in</button><button type="submit" id="class-login" class="secondary">Use class code</button><button type="button" id="teacher-logout" class="ghost" hidden>Sign out</button></div></form>
  <p id="teacher-status" class="status" role="status"></p>
- <div id="teacher-job" class="tool-section" hidden>
-  <h2>Generation</h2><p id="teacher-selection" class="hint"></p>
-  <div class="settings"><div><label for="ai-grade">Reading grade</label><input id="ai-grade" type="number" min="1" max="12" value="5"></div><div><label for="ai-sentences">Practice sentences per word</label><input id="ai-sentences" type="number" min="1" max="5" value="5"></div></div>
-  <div class="settings"><div><label for="ai-examples">Examples per word</label><select id="ai-examples"><option>1</option><option selected>2</option></select></div><label class="checkline"><input type="checkbox" id="ai-esl" checked> ESL-friendly definitions</label><label class="checkline"><input type="checkbox" id="ai-distractors" checked> Definition distractors</label><label class="checkline"><input type="checkbox" id="ai-explanations" checked> Answer explanations</label><label class="checkline"><input type="checkbox" id="ai-reuse" checked> Reuse approved content</label><label class="checkline"><input type="checkbox" id="ai-only-missing" checked> Generate only missing</label></div><div id="ai-context-wrap"><label for="ai-context">Textbook context (optional)</label><textarea id="ai-context" rows="2" maxlength="800" placeholder="Use learning material without personal information"></textarea></div>
-  <div class="actions"><button type="button" id="ai-generate">Generate missing content</button><button type="button" id="ai-pause" class="secondary">Pause</button><button type="button" id="ai-resume" class="secondary">Resume</button><button type="button" id="ai-cancel" class="ghost">Cancel remaining work</button><button type="button" id="ai-apply" class="secondary">Apply completed drafts</button><button type="button" id="ai-retry-words" class="ghost">Retry failed words</button></div>
+ <div id="teacher-drafting-info" class="stack" hidden>
+  <p id="teacher-drafting-status" class="hint"></p>
+  <div class="actions"><button id="teacher-write-vocabulary" type="button" class="secondary">Edit vocabulary</button></div>
+ </div>
+ <div id="teacher-job" class="stack" hidden>
+  <div id="teacher-draft-form" class="stack">
+   <div id="teacher-draft-intro"><h2>Draft vocabulary with AI</h2><p class="hint">AI writes definitions and practice sentences. Review and approve the drafts before sharing.</p></div>
+   <p id="teacher-selection" class="hint"></p>
+   <div class="settings teacher-fields">
+    <div><label for="ai-grade">Reading grade</label><input id="ai-grade" type="number" min="1" max="12" value="5"></div>
+    <div><label for="ai-sentences">Practice sentences per word</label><input id="ai-sentences" type="number" min="1" max="5" value="5"></div>
+    <div><label for="ai-examples">Examples per word</label><select id="ai-examples"><option>1</option><option selected>2</option></select></div>
+   </div>
+   <div id="ai-context-wrap"><label for="ai-context">Textbook context (optional)</label><textarea id="ai-context" rows="2" maxlength="800" aria-describedby="ai-context-help"></textarea><p id="ai-context-help" class="hint">Paste a short excerpt to help AI use the right meaning. Leave out student information.</p></div>
+   <details><summary>More drafting options</summary><div class="settings teacher-checkboxes">
+    <label class="checkline"><input type="checkbox" id="ai-esl" checked> Use plain English in definitions</label>
+    <label class="checkline"><input type="checkbox" id="ai-distractors" checked> Write incorrect choices for tests</label>
+    <label class="checkline"><input type="checkbox" id="ai-explanations" checked> Explain the answers</label>
+    <label class="checkline"><input type="checkbox" id="ai-reuse" checked> Reuse matching approved vocabulary</label>
+    <label class="checkline"><input type="checkbox" id="ai-only-missing" checked> Skip words with vocabulary</label>
+   </div></details>
+   <div class="actions"><button type="button" id="ai-generate">Draft vocabulary</button></div>
+  </div>
   <p id="ai-progress" class="hint" role="status"></p>
+  <div id="teacher-job-actions" class="actions" hidden><button type="button" id="ai-apply">Save drafts to this set</button><button type="button" id="ai-pause" class="secondary">Pause</button><button type="button" id="ai-resume" class="secondary">Resume</button><button type="button" id="ai-cancel" class="ghost">Cancel remaining work</button><button type="button" id="ai-retry-words" class="ghost">Retry failed words</button><button type="button" id="ai-review-saved" class="secondary" hidden>Review saved drafts</button></div>
  </div>
  <div id="teacher-admin" class="tool-section stack" hidden>
-  <h2 id="teacher-publishing-title">Share a set</h2><div><label for="shared-mode">Student practice mode</label><select id="shared-mode"><option value="mixed">Mixed practice</option><option value="spelling">Spelling</option><option value="vocabulary">Vocabulary</option></select></div>
-  <label class="checkline"><input id="shared-hints" type="checkbox" checked> Allow hints in Mixed and Vocabulary practice</label>
+  <h2 id="teacher-publishing-title">Share a set</h2><div><label for="shared-mode">What will students practice?</label><select id="shared-mode"><option value="mixed">Spelling and vocabulary</option><option value="spelling">Spelling only</option><option value="vocabulary">Vocabulary only</option></select></div>
+  <label id="shared-hints-row" class="checkline"><input id="shared-hints" type="checkbox" checked> Allow hints during practice</label>
   <p id="ai-publish-readiness" class="notice" role="status"></p>
   <details id="ai-vocabulary-details" hidden><summary>Vocabulary by word</summary><p id="ai-vocabulary-words" class="hint"></p></details>
   <div class="actions"><button type="button" id="ai-publish-review" hidden>Review vocabulary</button><button type="button" id="ai-preview" class="secondary" disabled>Preview as student</button><button type="button" id="ai-publish">Publish set</button></div>
-  <p class="hint">Anyone with the published link can open the set.</p>
+  <p id="ai-share-help" class="hint">Publish to get a link students can open without signing in.</p>
   <p id="ai-publish-status" class="status" role="status"></p>
-  <div id="ai-link-actions" class="section stack" hidden><label for="ai-student-link">Student link</label><input id="ai-student-link" type="url" readonly><div class="actions"><button type="button" id="ai-share" disabled>Copy student link</button><button type="button" id="ai-prepare-audio" class="secondary" hidden disabled>Prepare Troy audio</button><button type="button" id="ai-qr" class="ghost" disabled>Show classroom QR code</button></div><div id="ai-qr-result" hidden></div></div>
-  <details id="ai-publish-options"><summary>Advanced publishing options</summary><label class="checkline"><input id="ai-publish-cache" type="checkbox"> Reuse approved vocabulary in future generation</label></details>
-  <div id="teacher-operations" class="section stack"><div class="actions"><button type="button" id="ai-usage" class="ghost">Refresh usage</button><button type="button" id="ai-stop" class="danger">Disable generation</button></div><p id="ai-usage-result" class="hint" role="status"></p>
-  <details><summary>Recent generation jobs</summary><ol id="ai-job-history"></ol></details><details><summary>Class access codes</summary><div class="stack"><button type="button" id="ai-classes" class="ghost">Refresh class list</button><ul id="ai-class-status"></ul><div class="settings"><div><label for="ai-class-id">Class ID</label><input id="ai-class-id" maxlength="40"></div><div><label for="ai-class-name">Name</label><input id="ai-class-name" maxlength="80"></div><div><label for="ai-class-limit">Daily word allowance</label><input id="ai-class-limit" type="number" min="1" value="200"></div><div><label for="ai-class-expiry">Expires on</label><input id="ai-class-expiry" type="date"></div></div><div class="actions"><button type="button" id="ai-class-save" class="secondary">Save class</button><button type="button" id="ai-class-rotate" class="ghost">Rotate code</button><button type="button" id="ai-class-revoke" class="ghost">Revoke access</button></div></div></details>
+  <div id="ai-link-actions" class="section stack" hidden>
+   <div id="ai-share-audio" class="stack" hidden><p class="hint">Optional. Save recordings of the words and practice prompts for students to replay.</p><div class="actions"><button type="button" id="ai-prepare-audio" class="secondary" disabled>Prepare practice audio</button></div></div>
+   <div><label for="ai-student-link">Student link</label><input id="ai-student-link" type="url" readonly></div>
+   <div class="actions"><button type="button" id="ai-share" disabled>Copy student link</button><button type="button" id="ai-qr" class="ghost" disabled>Show QR code</button></div>
+   <div id="ai-qr-result" hidden></div>
   </div>
+  <details id="ai-publish-options"><summary>Vocabulary reuse</summary><label class="checkline"><input id="ai-publish-cache" type="checkbox"> Let WordLab reuse approved definitions and sentences in future AI drafts</label></details>
+  <details id="teacher-operations" class="section"><summary>Service settings and class access</summary><div class="stack">
+   <div id="ai-drafting-controls" class="stack" hidden><p class="hint">Pause or resume AI vocabulary drafting for the whole site.</p><div class="actions"><button type="button" id="ai-stop" class="ghost">Pause AI drafting</button></div></div>
+   <div class="actions"><button type="button" id="ai-usage" class="ghost">Check AI usage</button></div><p id="ai-usage-result" class="hint" role="status"></p><ol id="ai-job-history" aria-label="Recent AI drafting jobs"></ol>
+   <details><summary>Class access codes</summary><div class="stack"><p class="hint">Class codes are for restricted access. Students can open published practice links without a code.</p><div class="actions"><button type="button" id="ai-classes" class="ghost">Refresh class list</button></div><ul id="ai-class-status"></ul><div class="settings teacher-fields"><div><label for="ai-class-id">Class ID</label><input id="ai-class-id" maxlength="40"></div><div><label for="ai-class-name">Class name</label><input id="ai-class-name" maxlength="80"></div><div><label for="ai-class-limit">Daily word limit</label><input id="ai-class-limit" type="number" min="1" value="200"></div><div><label for="ai-class-expiry">Expires on</label><input id="ai-class-expiry" type="date"></div></div><div class="actions"><button type="button" id="ai-class-save" class="secondary">Save class</button><button type="button" id="ai-class-rotate" class="ghost">Replace code</button><button type="button" id="ai-class-revoke" class="ghost">Revoke access</button></div></div></details>
+  </div></details>
  </div>
 </div></dialog>
 <dialog id="regenerate-dialog" class="tools-dialog" aria-labelledby="regenerate-title"><div class="tools-panel stack"><h1 id="regenerate-title">Regenerate one item</h1><div><label for="regenerate-item">Content to replace</label><select id="regenerate-item"><option value="cloze">Practice sentence</option><option value="definition">Definition</option><option value="examples">Examples</option><option value="distractors">Incorrect definitions</option></select></div><div><label for="regenerate-sentence">Practice sentence number</label><input id="regenerate-sentence" type="number" min="1" max="5" value="1"></div><p id="regenerate-status" class="status" role="status"></p><div class="actions"><button id="regenerate-submit" type="button">Generate replacement</button><button id="regenerate-close" class="ghost" type="button">Cancel</button></div></div></dialog>

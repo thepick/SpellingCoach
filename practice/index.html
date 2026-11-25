@@ -107,9 +107,31 @@ body:has(dialog.tools-dialog[open]) { overflow: hidden; }
 #teacher-signin-screen .subhead { margin-top: .65rem; }
 #teacher-signin-status:empty, #teacher-dialog .tools-panel > .status:empty { display: none; }
 #teacher-signin-screen #teacher-login { width: 100%; }
-#teacher-dialog[data-view=share] :is(#teacher-job, #teacher-operations, #teacher-status, #teacher-publishing-title) { display: none; }
+#teacher-dialog[data-view=share] :is(#teacher-job, #teacher-operations, #teacher-status, #teacher-publishing-title, #teacher-drafting-info) { display: none; }
 #teacher-dialog[data-view=admin] #teacher-admin > :not(#teacher-operations) { display: none; }
-#teacher-dialog[data-view=share] #teacher-admin { border: 0; margin: 0; padding: 0; }
+#teacher-dialog[data-view=admin] #teacher-admin, #teacher-dialog[data-view=share] #teacher-admin { border: 0; margin: 0; padding: 0; }
+#teacher-dialog[data-view=admin] #teacher-draft-intro h2 { display: none; }
+#teacher-dialog { max-height: 90dvh; }
+.teacher-dialog-heading { flex-wrap: nowrap; align-items: flex-start; }
+.teacher-dialog-heading button { flex: none; }
+#teacher-dialog :is(p, ul, ol, h2) { margin: 0; }
+#teacher-dialog :is(p, ul, ol):empty { display: none; }
+#teacher-dialog summary { cursor: pointer; padding: .4rem 0; }
+#teacher-dialog details > :is(.stack, .settings, .checkline) { margin-top: .65rem; }
+#teacher-dialog .section { margin-top: .25rem; }
+#teacher-dialog .teacher-fields { align-items: end; }
+#teacher-dialog .teacher-fields input { max-width: none; }
+#teacher-dialog .teacher-fields :is(input, select) { display: block; height: 46px; }
+#teacher-dialog .teacher-checkboxes { align-items: start; }
+#teacher-dialog .teacher-checkboxes label { align-items: baseline; margin: 0; }
+#teacher-dialog .teacher-checkboxes input { flex: none; margin: 0; }
+#teacher-dialog #ai-context-help { margin-top: .2rem; }
+#ai-share-audio { gap: .6rem; }
+body[data-entry=teacher] #setup-screen .subhead { margin-bottom: 1rem; }
+body[data-entry=teacher] #setup-status:empty { display: none; }
+body[data-entry=teacher] #setup-screen .actions > button { min-height: 44px; }
+body[data-entry=teacher] #teacher-workspace-actions { display: grid; gap: 12px; justify-items: start; }
+body[data-entry=teacher] #setup-set-summary { margin: 0; }
 #teacher-dialog #ai-vocabulary-words { white-space: pre-line; overflow-wrap: anywhere; }
 #setup-screen .grid:has(> .stack[hidden]) { grid-template-columns: minmax(0, 1fr); }
 #setup-set-summary:empty { display: none; }
@@ -203,7 +225,7 @@ body:has(dialog.tools-dialog[open]) { overflow: hidden; }
    <div><label for="vocab-distractors">Incorrect definitions for multiple-choice tests</label><textarea id="vocab-distractors" rows="3" placeholder="One per line"></textarea></div>
   </div></details>
   <details id="vocab-audio"><summary>Pronunciation recording</summary><div class="stack">
-  <div class="stack"><div><label for="troy-sentence">Sentence for Troy</label><input id="troy-sentence" type="text" maxlength="200" aria-describedby="troy-help"><p id="troy-help" class="hint">Use the exact spelling word in a sentence that shows its meaning.</p></div><div class="actions"><button id="generate-troy" type="button" class="secondary" disabled>Generate and attach Troy audio</button><button id="troy-sign-in" type="button" class="ghost small">Teacher sign-in</button></div></div>
+  <div class="stack"><div><label for="troy-sentence">Pronunciation example</label><input id="troy-sentence" type="text" maxlength="200" aria-describedby="troy-help"><p id="troy-help" class="hint">Use the exact spelling word in a sentence that shows its meaning.</p></div><div class="actions"><button id="generate-troy" type="button" class="secondary" disabled>Generate and attach audio</button><button id="troy-sign-in" type="button" class="ghost small">Teacher sign-in</button></div></div>
   <div><label for="recording-file">Dictation recording (WAV)</label><input id="recording-file" type="file" accept=".wav,audio/wav,audio/x-wav" aria-describedby="recording-help"><p id="recording-help" class="hint">Add a checked pronunciation for this word and meaning. Save any definition changes before attaching the file.</p><div class="actions"><button id="recording-preview" type="button" class="ghost small" disabled>Listen to recording</button><button id="recording-remove" type="button" class="ghost small" disabled>Remove recording</button></div></div>
   </div></details>
   <div class="actions"><button type="submit">Save draft</button><button id="vocab-approve" type="submit" class="secondary">Save and approve</button><button id="vocab-regenerate" type="button" class="ghost">Regenerate an item</button><button id="vocab-undo" type="button" class="ghost" disabled>Undo last change</button></div>
@@ -212,29 +234,55 @@ body:has(dialog.tools-dialog[open]) { overflow: hidden; }
  <p id="vocab-status" class="status" role="status"></p>
 </div></dialog>
 <dialog id="teacher-dialog" class="tools-dialog" aria-labelledby="teacher-title"><div class="tools-panel stack">
- <div class="row between"><h1 id="teacher-title">Online vocabulary tools</h1><button type="button" id="teacher-close" class="ghost">Close</button></div>
+ <div class="row between teacher-dialog-heading"><h1 id="teacher-title">Online vocabulary tools</h1><button type="button" id="teacher-close" class="ghost" autofocus>Close</button></div>
  <form id="teacher-connect" class="stack"><div id="teacher-url-field"><label for="teacher-url">WordLab service URL</label><input type="url" id="teacher-url" placeholder="https://api.wordlab.mtomlinson.ca" required></div><div><label id="teacher-secret-label" for="teacher-secret">Teacher secret or class access code</label><input id="teacher-secret" type="password" autocomplete="off"></div><div class="actions"><button type="submit" id="teacher-login">Teacher sign-in</button><button type="submit" id="class-login" class="secondary">Use class code</button><button type="button" id="teacher-logout" class="ghost" hidden>Sign out</button></div></form>
  <p id="teacher-status" class="status" role="status"></p>
- <div id="teacher-job" class="tool-section" hidden>
-  <h2>Generation</h2><p id="teacher-selection" class="hint"></p>
-  <div class="settings"><div><label for="ai-grade">Reading grade</label><input id="ai-grade" type="number" min="1" max="12" value="5"></div><div><label for="ai-sentences">Practice sentences per word</label><input id="ai-sentences" type="number" min="1" max="5" value="5"></div></div>
-  <div class="settings"><div><label for="ai-examples">Examples per word</label><select id="ai-examples"><option>1</option><option selected>2</option></select></div><label class="checkline"><input type="checkbox" id="ai-esl" checked> ESL-friendly definitions</label><label class="checkline"><input type="checkbox" id="ai-distractors" checked> Definition distractors</label><label class="checkline"><input type="checkbox" id="ai-explanations" checked> Answer explanations</label><label class="checkline"><input type="checkbox" id="ai-reuse" checked> Reuse approved content</label><label class="checkline"><input type="checkbox" id="ai-only-missing" checked> Generate only missing</label></div><div id="ai-context-wrap"><label for="ai-context">Textbook context (optional)</label><textarea id="ai-context" rows="2" maxlength="800" placeholder="Use learning material without personal information"></textarea></div>
-  <div class="actions"><button type="button" id="ai-generate">Generate missing content</button><button type="button" id="ai-pause" class="secondary">Pause</button><button type="button" id="ai-resume" class="secondary">Resume</button><button type="button" id="ai-cancel" class="ghost">Cancel remaining work</button><button type="button" id="ai-apply" class="secondary">Apply completed drafts</button><button type="button" id="ai-retry-words" class="ghost">Retry failed words</button></div>
+ <div id="teacher-drafting-info" class="stack" hidden>
+  <p id="teacher-drafting-status" class="hint"></p>
+  <div class="actions"><button id="teacher-write-vocabulary" type="button" class="secondary">Edit vocabulary</button></div>
+ </div>
+ <div id="teacher-job" class="stack" hidden>
+  <div id="teacher-draft-form" class="stack">
+   <div id="teacher-draft-intro"><h2>Draft vocabulary with AI</h2><p class="hint">AI writes definitions and practice sentences. Review and approve the drafts before sharing.</p></div>
+   <p id="teacher-selection" class="hint"></p>
+   <div class="settings teacher-fields">
+    <div><label for="ai-grade">Reading grade</label><input id="ai-grade" type="number" min="1" max="12" value="5"></div>
+    <div><label for="ai-sentences">Practice sentences per word</label><input id="ai-sentences" type="number" min="1" max="5" value="5"></div>
+    <div><label for="ai-examples">Examples per word</label><select id="ai-examples"><option>1</option><option selected>2</option></select></div>
+   </div>
+   <div id="ai-context-wrap"><label for="ai-context">Textbook context (optional)</label><textarea id="ai-context" rows="2" maxlength="800" aria-describedby="ai-context-help"></textarea><p id="ai-context-help" class="hint">Paste a short excerpt to help AI use the right meaning. Leave out student information.</p></div>
+   <details><summary>More drafting options</summary><div class="settings teacher-checkboxes">
+    <label class="checkline"><input type="checkbox" id="ai-esl" checked> Use plain English in definitions</label>
+    <label class="checkline"><input type="checkbox" id="ai-distractors" checked> Write incorrect choices for tests</label>
+    <label class="checkline"><input type="checkbox" id="ai-explanations" checked> Explain the answers</label>
+    <label class="checkline"><input type="checkbox" id="ai-reuse" checked> Reuse matching approved vocabulary</label>
+    <label class="checkline"><input type="checkbox" id="ai-only-missing" checked> Skip words with vocabulary</label>
+   </div></details>
+   <div class="actions"><button type="button" id="ai-generate">Draft vocabulary</button></div>
+  </div>
   <p id="ai-progress" class="hint" role="status"></p>
+  <div id="teacher-job-actions" class="actions" hidden><button type="button" id="ai-apply">Save drafts to this set</button><button type="button" id="ai-pause" class="secondary">Pause</button><button type="button" id="ai-resume" class="secondary">Resume</button><button type="button" id="ai-cancel" class="ghost">Cancel remaining work</button><button type="button" id="ai-retry-words" class="ghost">Retry failed words</button><button type="button" id="ai-review-saved" class="secondary" hidden>Review saved drafts</button></div>
  </div>
  <div id="teacher-admin" class="tool-section stack" hidden>
-  <h2 id="teacher-publishing-title">Share a set</h2><div><label for="shared-mode">Student practice mode</label><select id="shared-mode"><option value="mixed">Mixed practice</option><option value="spelling">Spelling</option><option value="vocabulary">Vocabulary</option></select></div>
-  <label class="checkline"><input id="shared-hints" type="checkbox" checked> Allow hints in Mixed and Vocabulary practice</label>
+  <h2 id="teacher-publishing-title">Share a set</h2><div><label for="shared-mode">What will students practice?</label><select id="shared-mode"><option value="mixed">Spelling and vocabulary</option><option value="spelling">Spelling only</option><option value="vocabulary">Vocabulary only</option></select></div>
+  <label id="shared-hints-row" class="checkline"><input id="shared-hints" type="checkbox" checked> Allow hints during practice</label>
   <p id="ai-publish-readiness" class="notice" role="status"></p>
   <details id="ai-vocabulary-details" hidden><summary>Vocabulary by word</summary><p id="ai-vocabulary-words" class="hint"></p></details>
   <div class="actions"><button type="button" id="ai-publish-review" hidden>Review vocabulary</button><button type="button" id="ai-preview" class="secondary" disabled>Preview as student</button><button type="button" id="ai-publish">Publish set</button></div>
-  <p class="hint">Anyone with the published link can open the set.</p>
+  <p id="ai-share-help" class="hint">Publish to get a link students can open without signing in.</p>
   <p id="ai-publish-status" class="status" role="status"></p>
-  <div id="ai-link-actions" class="section stack" hidden><label for="ai-student-link">Student link</label><input id="ai-student-link" type="url" readonly><div class="actions"><button type="button" id="ai-share" disabled>Copy student link</button><button type="button" id="ai-prepare-audio" class="secondary" hidden disabled>Prepare Troy audio</button><button type="button" id="ai-qr" class="ghost" disabled>Show classroom QR code</button></div><div id="ai-qr-result" hidden></div></div>
-  <details id="ai-publish-options"><summary>Advanced publishing options</summary><label class="checkline"><input id="ai-publish-cache" type="checkbox"> Reuse approved vocabulary in future generation</label></details>
-  <div id="teacher-operations" class="section stack"><div class="actions"><button type="button" id="ai-usage" class="ghost">Refresh usage</button><button type="button" id="ai-stop" class="danger">Disable generation</button></div><p id="ai-usage-result" class="hint" role="status"></p>
-  <details><summary>Recent generation jobs</summary><ol id="ai-job-history"></ol></details><details><summary>Class access codes</summary><div class="stack"><button type="button" id="ai-classes" class="ghost">Refresh class list</button><ul id="ai-class-status"></ul><div class="settings"><div><label for="ai-class-id">Class ID</label><input id="ai-class-id" maxlength="40"></div><div><label for="ai-class-name">Name</label><input id="ai-class-name" maxlength="80"></div><div><label for="ai-class-limit">Daily word allowance</label><input id="ai-class-limit" type="number" min="1" value="200"></div><div><label for="ai-class-expiry">Expires on</label><input id="ai-class-expiry" type="date"></div></div><div class="actions"><button type="button" id="ai-class-save" class="secondary">Save class</button><button type="button" id="ai-class-rotate" class="ghost">Rotate code</button><button type="button" id="ai-class-revoke" class="ghost">Revoke access</button></div></div></details>
+  <div id="ai-link-actions" class="section stack" hidden>
+   <div id="ai-share-audio" class="stack" hidden><p class="hint">Optional. Save recordings of the words and practice prompts for students to replay.</p><div class="actions"><button type="button" id="ai-prepare-audio" class="secondary" disabled>Prepare practice audio</button></div></div>
+   <div><label for="ai-student-link">Student link</label><input id="ai-student-link" type="url" readonly></div>
+   <div class="actions"><button type="button" id="ai-share" disabled>Copy student link</button><button type="button" id="ai-qr" class="ghost" disabled>Show QR code</button></div>
+   <div id="ai-qr-result" hidden></div>
   </div>
+  <details id="ai-publish-options"><summary>Vocabulary reuse</summary><label class="checkline"><input id="ai-publish-cache" type="checkbox"> Let WordLab reuse approved definitions and sentences in future AI drafts</label></details>
+  <details id="teacher-operations" class="section"><summary>Service settings and class access</summary><div class="stack">
+   <div id="ai-drafting-controls" class="stack" hidden><p class="hint">Pause or resume AI vocabulary drafting for the whole site.</p><div class="actions"><button type="button" id="ai-stop" class="ghost">Pause AI drafting</button></div></div>
+   <div class="actions"><button type="button" id="ai-usage" class="ghost">Check AI usage</button></div><p id="ai-usage-result" class="hint" role="status"></p><ol id="ai-job-history" aria-label="Recent AI drafting jobs"></ol>
+   <details><summary>Class access codes</summary><div class="stack"><p class="hint">Class codes are for restricted access. Students can open published practice links without a code.</p><div class="actions"><button type="button" id="ai-classes" class="ghost">Refresh class list</button></div><ul id="ai-class-status"></ul><div class="settings teacher-fields"><div><label for="ai-class-id">Class ID</label><input id="ai-class-id" maxlength="40"></div><div><label for="ai-class-name">Class name</label><input id="ai-class-name" maxlength="80"></div><div><label for="ai-class-limit">Daily word limit</label><input id="ai-class-limit" type="number" min="1" value="200"></div><div><label for="ai-class-expiry">Expires on</label><input id="ai-class-expiry" type="date"></div></div><div class="actions"><button type="button" id="ai-class-save" class="secondary">Save class</button><button type="button" id="ai-class-rotate" class="ghost">Replace code</button><button type="button" id="ai-class-revoke" class="ghost">Revoke access</button></div></div></details>
+  </div></details>
  </div>
 </div></dialog>
 <dialog id="regenerate-dialog" class="tools-dialog" aria-labelledby="regenerate-title"><div class="tools-panel stack"><h1 id="regenerate-title">Regenerate one item</h1><div><label for="regenerate-item">Content to replace</label><select id="regenerate-item"><option value="cloze">Practice sentence</option><option value="definition">Definition</option><option value="examples">Examples</option><option value="distractors">Incorrect definitions</option></select></div><div><label for="regenerate-sentence">Practice sentence number</label><input id="regenerate-sentence" type="number" min="1" max="5" value="1"></div><p id="regenerate-status" class="status" role="status"></p><div class="actions"><button id="regenerate-submit" type="button">Generate replacement</button><button id="regenerate-close" class="ghost" type="button">Cancel</button></div></div></dialog>
@@ -3977,7 +4025,6 @@ function renderLearning(play, corrected = false) {
  $('learning-audio-actions').hidden = !session.settings.audioReplay || !!result;
  const recordedPrompt = sharedAudioPath(entry.listId, question.word, question.type, Learning.audio(question));
  const audioAvailable = speech || question.type === 'dictation' || !!recordedPrompt;
- $('learning-audio').textContent = recordedPrompt ? 'Listen to Troy' : 'Listen';
  $('learning-audio').disabled = !audioAvailable;
  $('learning-slow').disabled = !audioAvailable;
  $('learning-audio-error').hidden = audioAvailable;
@@ -4830,7 +4877,7 @@ function updateTroyControls() {
  $('generate-troy').disabled = !teacher || !ai.config.dictationEnabled || generatingTroy ||
   !$('troy-sentence').value.trim();
  $('troy-help').textContent = teacher && !ai.config.dictationEnabled
-  ? 'Troy generation is disabled on this service.'
+  ? 'Audio generation is unavailable. You can attach a WAV file.'
   : 'Use the exact spelling word in a sentence that shows its meaning.';
 }
 
@@ -4859,11 +4906,11 @@ function initDictation() {
   if (!target || generatingTroy || ai.role !== 'teacher' || !ai.config.dictationEnabled) return;
   generatingTroy = true;
   updateTroyControls();
-  editorStatusText('Generating Troy audio for “' + target.word + '”…');
+  editorStatusText('Generating audio for “' + target.word + '”…');
   try {
    const bytes = await service('/admin/dictation', {method:'POST', audio:true, body:{word:target.word, sentence}});
    await saveRecording(target, bytes);
-   editorStatusText('Troy audio attached to “' + target.word + '”. Listen to check the pronunciation.');
+   editorStatusText('Audio attached to “' + target.word + '”. Listen to check the pronunciation.');
   } catch (error) { editorStatusText(error.message); }
   finally { generatingTroy = false; updateTroyControls(); renderRecordingControls(); }
  };
@@ -4957,28 +5004,45 @@ function saveJob() {
 
 function refreshTeacher() {
  const teacher = ai.role === 'teacher', signedIn = !!ai.token;
- if (entryPage === 'teacher') $('setup-word-selection-title').closest('.stack').hidden = !ai.config.generationEnabled;
+ const canDraft = !!(teacher ? ai.config.generationEnabled : ai.config.studentGenerationEnabled);
+ if (entryPage === 'teacher') {
+  const toolsTitle = canDraft ? 'Draft vocabulary with AI' : 'Online vocabulary tools';
+  $('setup-word-selection-title').closest('.stack').hidden = !canDraft;
+  $('open-teacher').textContent = toolsTitle;
+  if ($('teacher-dialog').dataset.view === 'admin') $('teacher-title').textContent = toolsTitle;
+ }
  $('teacher-logout').hidden = !signedIn;
  $('teacher-url').disabled = signedIn;
  $('teacher-secret').disabled = signedIn;
  $('teacher-login').disabled = signedIn;
  $('class-login').disabled = signedIn;
- $('teacher-job').hidden = !signedIn;
+ $('teacher-job').hidden = !signedIn || !canDraft && !ai.job;
+ $('teacher-draft-form').hidden = !canDraft;
  $('teacher-admin').hidden = !teacher;
  $('ai-context-wrap').hidden = !teacher;
- $('vocab-regenerate').disabled = !teacher || !editorRecords.find(row => row.word === $('vocab-word').value)?.vocabulary;
+ $('vocab-regenerate').hidden = !teacher || !canDraft;
+ $('vocab-regenerate').disabled = !editorRecords.find(row => row.word === $('vocab-word').value)?.vocabulary;
  updateTroyControls();
- $('teacher-selection').textContent = selectedWords().length + ' words selected from ' + (selectedList()?.name || 'no list');
+ const list = selectedList(), selected = selectedWords().length;
+ $('teacher-drafting-info').hidden = !signedIn || canDraft;
+ $('teacher-drafting-status').textContent = teacher && ai.config.draftingAvailable
+  ? 'AI drafting is paused. You can edit vocabulary by hand and still publish sets.'
+  : 'AI drafting is off. You can edit vocabulary by hand and still publish sets.';
+ $('teacher-write-vocabulary').disabled = !list;
+ $('teacher-selection').textContent = !list ? 'Create a set to draft vocabulary.' : !selected
+  ? 'Select words in the workspace to draft vocabulary.' : selected + (selected === 1 ? ' word selected in ' : ' words selected in ') + list.name + '.';
  const active = ai.job && ['ready', 'processing', 'paused'].includes(ai.job.status);
- $('ai-generate').disabled = !signedIn || !selectedWords().length || active ||
-  !(teacher ? ai.config.generationEnabled : ai.config.studentGenerationEnabled);
- $('ai-pause').disabled = !active || ai.job?.status === 'paused';
- $('ai-resume').disabled = !active;
- $('ai-cancel').disabled = !active;
- $('ai-apply').disabled = !ai.job?.words.length;
- $('ai-retry-words').disabled = active || !ai.job?.failedWords.length;
+ $('ai-generate').disabled = !canDraft || !selected || active;
+ $('teacher-job-actions').hidden = !ai.job;
+ $('ai-pause').hidden = !active || ai.job?.status === 'paused';
+ $('ai-resume').hidden = !canDraft || ai.job?.status !== 'paused';
+ $('ai-cancel').hidden = !active;
+ $('ai-apply').hidden = !ai.job?.words.length || ai.reviewDrafts === ai.job.words.length;
+ $('ai-retry-words').hidden = !canDraft || active || !ai.job?.failedWords.length;
+ $('ai-review-saved').hidden = !ai.reviewDrafts;
  renderSharing();
- $('ai-stop').textContent = ai.config.generationEnabled ? 'Disable generation' : 'Enable generation';
+ $('ai-drafting-controls').hidden = !ai.config.draftingAvailable;
+ $('ai-stop').textContent = ai.config.generationEnabled ? 'Pause AI drafting' : 'Resume AI drafting';
  if (ai.job) {
   const {counts, status: current, message, retryAt, failedWords} = ai.job;
   $('ai-progress').textContent = counts.cached + counts.generated + ' of ' + counts.total + ' ready · ' +
@@ -4989,6 +5053,7 @@ function refreshTeacher() {
 }
 
 function applyJob(job) {
+ if (ai.job?.id !== job.id) ai.reviewDrafts = 0;
  ai.job = job;
  saveJob();
  refreshTeacher();
@@ -5039,7 +5104,8 @@ function aiSettings() {
 
 function publicPackLink(id, root) {
  const site = new URL('practice/', entryPage === 'offline' ? 'https://wordlab.mtomlinson.ca/' : location.href);
- const args = new URLSearchParams({pack: id, service: root});
+ const args = new URLSearchParams({pack: id});
+ if (root !== ONLINE_CONFIG) args.set('service', root);
  site.hash = args.toString();
  return site.href;
 }
@@ -5059,30 +5125,37 @@ function renderSharing() {
  const shareReady = !!info?.ready && !publishing;
  const needsReview = !!info && mode !== 'spelling' && !info.ready;
  const hasLink = !!ai.published && ai.publishedListId === sharing.list?.id && ai.publishedMode === mode &&
-  ai.publishedHints === $('shared-hints').checked;
+  ai.publishedHints === $('shared-hints').checked && ai.publishedUpdatedAt === sharing.list.updatedAt;
  $('ai-publish-readiness').textContent = !sharing.list ? 'Create or select a set first.' :
   !info ? 'Checking which words are ready…' : mode === 'spelling' ?
    'Ready to share. Students will spell all ' + info.words.length + ' words.' : drafts.length ?
     'Review and approve the remaining vocabulary drafts before sharing.' : !approved.length ?
      'Add and approve vocabulary, or choose Spelling to share this word list.' : mode === 'mixed' ?
-      'Ready to share. ' + approved.length + ' words include vocabulary' + (missing.length ? ' and ' + missing.length + ' are spelling only.' : '.') :
-      'Ready to share. Students will practice ' + approved.length + ' words with approved vocabulary.';
+      'Ready to share. All ' + info.words.length + (info.words.length === 1 ? ' word is' : ' words are') +
+       ' included for spelling. ' + approved.length + (approved.length === 1 ? ' also has' : ' also have') + ' vocabulary.' +
+       (missing.length ? ' Remaining words are spelling only.' : '') :
+      'Ready to share. Students will practice ' + approved.length + (approved.length === 1 ? ' word' : ' words') + ' with approved vocabulary.';
  $('ai-publish-readiness').className = needsReview ? 'notice' : 'hint';
  $('ai-vocabulary-details').hidden = !info || mode === 'spelling';
  $('ai-vocabulary-words').textContent = [['Approved', approved], ['Needs review', drafts], ['No vocabulary', missing]]
   .filter(([, words]) => words.length).map(([label, words]) => label + ': ' + words.join(', ')).join('\n');
  $('ai-publish-review').hidden = !needsReview;
  $('ai-publish-review').textContent = drafts.length ? 'Review drafts' : 'Add vocabulary';
+ $('ai-publish-readiness').hidden = hasLink;
+ $('ai-share-help').hidden = hasLink;
+ $('ai-publish').hidden = hasLink;
  $('ai-publish').disabled = !shareReady;
  $('ai-preview').disabled = entryPage === 'teacher' ? !shareReady : !hasLink;
  $('ai-link-actions').hidden = !hasLink;
+ $('ai-publish-options').hidden = !ai.config.draftingAvailable;
  $('ai-student-link').value = hasLink ? ai.published : '';
  $('ai-share').disabled = !hasLink;
  $('ai-qr').disabled = !hasLink;
- $('ai-prepare-audio').hidden = !ai.config.dictationEnabled;
+ $('ai-share-audio').hidden = !ai.config.dictationEnabled;
  $('ai-prepare-audio').disabled = preparingAudio || !hasLink;
  $('shared-mode').disabled = publishing;
  $('shared-hints').disabled = publishing || mode === 'spelling';
+ $('shared-hints-row').hidden = mode === 'spelling';
 }
 
 async function showTeacherTools(view = 'tools') {
@@ -5099,9 +5172,9 @@ async function showTeacherTools(view = 'tools') {
  const dialog = $('teacher-dialog');
  dialog.dataset.view = view;
  $('teacher-title').textContent = view === 'share' && list ? 'Share “' + list.name + '”' :
-  view === 'admin' ? 'Generation and administration' : 'Online vocabulary tools';
- if (view !== 'share') teacherStatus(!ai.config.generationEnabled && view === 'admin' ?
-  'Online generation is currently unavailable.' : 'Select the words you want to generate before opening these tools.');
+  view === 'admin' && ai.config.generationEnabled ? 'Draft vocabulary with AI' : 'Online vocabulary tools';
+ dialog.querySelector('#teacher-operations').open = false;
+ if (view !== 'share') teacherStatus('');
  refreshTeacher();
  dialog.showModal();
  try {
@@ -5121,15 +5194,14 @@ function showTeacherEntry() {
   $('open-report').hidden = true;
   $('teacher-workspace-actions').hidden = false;
   $('teacher-workspace-logout').hidden = false;
-  $('setup-word-selection-title').textContent = 'Select words for generation';
-  $('setup-word-selection-help').textContent = 'Generate content for selected words. Publishing shares the whole set.';
+  $('setup-word-selection-title').textContent = 'Words for AI drafting';
+  $('setup-word-selection-help').textContent = 'Choose which words need AI-written vocabulary. When you publish, students get the whole set.';
   renderSetup();
   show('setup-screen');
   $('setup-list-label').textContent = 'Practice set';
   $('new-list').textContent = 'Create a set';
   $('edit-list').textContent = 'Edit words';
-  $('open-vocabulary').textContent = 'Edit content';
-  $('open-teacher').textContent = 'Generation and administration';
+  $('open-vocabulary').textContent = 'Edit vocabulary';
   $(selectedList() ? 'list-select' : 'new-list').focus();
   return;
  }
@@ -5149,6 +5221,18 @@ function showTeacherEntry() {
 function initTeacher() {
  $('open-teacher').onclick = () => showTeacherTools(entryPage === 'teacher' ? 'admin' : 'tools');
  $('teacher-open-publishing').onclick = () => showTeacherTools('share');
+ $('teacher-write-vocabulary').onclick = () => {
+  $('teacher-dialog').close();
+  openVocabularyEditor();
+ };
+ $('ai-review-saved').onclick = async () => {
+  const list = state.lists.find(row => row.id === ai.listId);
+  if (!list) { teacherStatus('This set was deleted.'); return; }
+  $('teacher-dialog').close();
+  listId = list.id;
+  renderSetup();
+  await openVocabularyEditor('draft');
+ };
  for (const id of ['shared-mode', 'shared-hints']) $(id).onchange = () => {
   $('ai-publish-status').textContent = '';
   $('ai-qr-result').hidden = true;
@@ -5166,7 +5250,7 @@ function initTeacher() {
   } else showTeacherTools(view);
  };
  $('vocab-dialog').addEventListener('close', () => {
-  if (!returnToSharing) return;
+  if (!returnToSharing || $('vocab-dialog').open) return;
   const view = returnToSharing; returnToSharing = '';
   $('vocab-close').textContent = 'Close';
   $('ai-publish-status').textContent = '';
@@ -5191,7 +5275,7 @@ function initTeacher() {
    root, token: '', method: 'POST', body: role === 'teacher' ? {secret: password} : {code: password, previousToken}
   });
   ai = {...ai, root, role, token: response.token, config, job: null, listId: '', published: ''};
-  teacherStatus('Signed in. ' + (config.generationEnabled ? '' : 'Generation is disabled on this service.'));
+  teacherStatus('Signed in.');
   refreshTeacher();
   if (role === 'class') await getStore().then(store => store.put(CLASS_RECOVERY, {root, token: response.token})).catch(() => teacherStatus('Signed in. This browser could not save private job recovery.'));
   const reference = JSON.parse(localStorage.getItem(GENERATION_KEY) || 'null');
@@ -5223,8 +5307,8 @@ function initTeacher() {
  };
  $('ai-generate').onclick = teacherAction(async () => {
   const list = selectedList();
-  const words = ( $('ai-only-missing').checked ? selectedRecords().filter(row => !row.vocabulary) : selectedRecords()).map(row => row.word);
-  if (!list || !words.length) throw Error('Selected words already have vocabulary. Clear “Generate only missing” to request new drafts.');
+  const words = ($('ai-only-missing').checked ? selectedRecords().filter(row => !row.vocabulary) : selectedRecords()).map(row => row.word);
+  if (!list || !words.length) throw Error('The selected words already have vocabulary. To draft them again, clear “Skip words with vocabulary” under More drafting options.');
   $('ai-generate').disabled = true;
   try {
    ai.listId = list.id;
@@ -5243,7 +5327,9 @@ function initTeacher() {
    return generated && row.vocabulary?.status !== 'approved' ? {...row, vocabulary: generated} : row;
   });
   await saveVocabulary(list, records, {packVersion: (list.packVersion || 0) + 1});
-  teacherStatus('Saved completed content. Review drafts in Vocabulary content. Existing approved records were kept.');
+  ai.reviewDrafts = lookup.size;
+  refreshTeacher();
+  teacherStatus('Drafts saved to “' + list.name + '”. Review and approve them before sharing.');
  });
  $('vocab-regenerate').onclick = teacherAction(async () => {
   if (ai.role !== 'teacher') { editorStatusText('Sign in to the generation service through Tools.'); return; }
@@ -5292,9 +5378,10 @@ function initTeacher() {
    ai.publishedListId = list.id;
    ai.publishedMode = mode;
    ai.publishedHints = allowHints;
+   ai.publishedUpdatedAt = list.updatedAt;
    $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
    refreshTeacher();
-   status.textContent = 'Published “' + published.name + '”. Preview or copy the student link.';
+   status.textContent = 'Set published. You can now copy the student link.';
   } catch (error) {
    if (ai.token === token) status.textContent = error.status === 401 ? 'Your sign-in expired. Sign out, sign back in, and try again.' : error.message;
   } finally { publishing = false; renderSharing(); }
@@ -5316,19 +5403,19 @@ function initTeacher() {
    for (const prompt of prompts) {
     if (ai.token !== token || ai.published !== published || ai.publishedMode !== publishedMode) return;
     if (saved.has(prompt.key)) continue;
-    status.textContent = 'Preparing Troy audio. ' + ready + ' of ' + prompts.length + ' recordings ready.';
+    status.textContent = 'Preparing practice audio. ' + ready + ' of ' + prompts.length + ' recordings ready.';
     await service('/admin/packaudio', {root, token, method:'POST', body:{packId:pack.id,version:pack.version,prompt:prompt.key}});
     ready++;
    }
-   status.textContent = 'Troy audio is ready for this set.';
+   status.textContent = 'Practice audio is ready.';
   } catch (error) {
-   if (ai.token === token) status.textContent = error.message + ' Prepare Troy audio again to resume.';
+   if (ai.token === token) status.textContent = error.message + ' Select Prepare practice audio again to resume.';
   } finally { preparingAudio = false; renderSharing(); }
  };
  $('ai-preview').onclick = () => {
   try {
    let url;
-   if (entryPage === 'teacher') {
+   if (entryPage === 'teacher' && $('ai-link-actions').hidden) {
     const mode = $('shared-mode').value;
     const {ready, words} = SharedReview.sharingContent(sharing.records, mode);
     if (!ready) return;
@@ -5371,8 +5458,12 @@ function initTeacher() {
   }
  });
  $('ai-stop').onclick = teacherAction(async () => {
-  ai.config = await service('/admin/settings', {method: 'PUT', body: {generationEnabled: !ai.config.generationEnabled}});
-  refreshTeacher();
+  const button = $('ai-stop');
+  button.disabled = true;
+  try {
+   ai.config = await service('/admin/settings', {method: 'PUT', body: {generationEnabled: !ai.config.generationEnabled}});
+   refreshTeacher();
+  } finally { button.disabled = false; }
  });
  $('ai-classes').onclick = teacherAction(async () => {
   const {classes} = await service('/admin/classes');
@@ -5723,7 +5814,7 @@ function textDiff(d){return'<div>'+d.x.map(x=>'<span class="'+x.k+'">'+esc(x.c)+
 function renderSetup(){
  const sel=$('list-select');sel.innerHTML='';
  if(!state.lists.length){sel.add(new Option('No saved lists',''));listId='';}else{state.lists.forEach(l=>sel.add(new Option(l.name,l.id)));if(!state.lists.some(l=>l.id===listId))listId=state.lists[0].id;sel.value=listId;}
- const l=selectedList();$('setup-intro').textContent=state.lists.length?(entryPage==='teacher'?'Choose a set to edit its content or share it with students.':'Choose a word list and select the words you want to practice.'):'Create a list to get started. Give it a name and add one word or phrase per line.';$('list-actions-help').hidden=!!l;
+ const l=selectedList();$('setup-intro').textContent=state.lists.length?(entryPage==='teacher'?'Choose a set, check its words and vocabulary, then share it with students.':'Choose a word list and select the words you want to practice.'):'Create a list to get started. Give it a name and add one word or phrase per line.';$('list-actions-help').hidden=!!l;
  ['edit-list','delete-list','reset-progress','shuffle-words','select-all','select-none','select-next-group'].forEach(id=>$(id).disabled=!l);
  const host=$('word-chips');host.innerHTML='';
  if(l){const chosen=new Set(selectedWords());l.words.forEach(w=>{const label=document.createElement('label');label.className='chip';const cb=document.createElement('input');cb.type='checkbox';cb.checked=chosen.has(w);cb.setAttribute('aria-label','Include '+w);cb.onchange=()=>{const a=selectedWords();state.settings.selected[l.id]=l.words.filter(x=>x===w?cb.checked:a.includes(x));save();countSelected();};const span=document.createElement('span');span.textContent=w;label.append(cb,span);host.append(label);});}
