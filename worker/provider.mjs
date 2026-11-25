@@ -127,7 +127,7 @@ export async function requestVocabulary({
   let tokens;
   try {
     response = await fetchRequest(target.endpoint, {
-      method: 'POST', redirect: 'error', signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+      method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + target.key },
       body: JSON.stringify(body)
     });

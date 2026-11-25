@@ -178,6 +178,7 @@ test('provider routing is fail closed and requests use the fixed schema and targ
     target, words: ['textile'], settings: { readingLevel: 5, practiceSentences: 5, exampleSentences: 2 }, maxCompletionTokens: 2000,
     fetchRequest: async (url, init) => {
       assert.equal(url, 'https://api.groq.com/openai/v1/chat/completions');
+      assert.equal(init.redirect, 'manual');
       const body = JSON.parse(init.body);
       assert.equal(body.model, 'openai/gpt-oss-120b');
       assert.equal(body.response_format.json_schema.strict, true);
