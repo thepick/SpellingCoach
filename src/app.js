@@ -180,18 +180,8 @@ function runTests(){
 }
 if(SELFTEST){runTests();return;}
 
-function renderTheme(){
- const dark=document.documentElement.dataset.theme==='dark';
- $('theme-toggle').setAttribute('aria-pressed',String(dark));
- $('theme-toggle').title=dark?'Switch to light mode':'Switch to dark mode';
- $('theme-label').textContent=dark?'Dark mode':'Light mode';
-}
-$('theme-toggle').onclick=()=>{
- const theme=document.documentElement.dataset.theme==='dark'?'light':'dark';
- document.documentElement.dataset.theme=theme;
- try{localStorage.setItem('spell.theme',theme);}catch(e){}
- renderTheme();
-};
+function renderTheme(){$('theme-select').value=themePreference.value;}
+$('theme-select').onchange=event=>themePreference.set(event.target.value);
 renderTheme();
 
 function settingsChanged(){state.settings.roundSize=clamp($('round-size').value,1,20,7);state.settings.retypeOnMiss=$('retype-toggle').checked;state.settings.autoAdvanceMs=clamp($('auto-advance').value,0,5000,600);state.settings.feedbackMs=clamp($('feedback-delay').value,300,10000,1800);state.settings.voiceURI=$('voice-select').value;state.settings.rate=Math.max(.5,Math.min(1.2,Number($('speech-rate').value)||.85));state.settings.pin=/^\d{4}$/.test($('pin-entry').value)?$('pin-entry').value:'';state.settings.allowVariants=$('allow-variants').checked;save();}

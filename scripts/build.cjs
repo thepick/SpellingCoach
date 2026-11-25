@@ -9,7 +9,8 @@ const code = read('src/app.js')
   .replace('// BUILD:MODULES', () => 'const SAMPLE_PACK = ' + sample + ';\n' + modules)
   .replace('// BUILD:STARTUP', 'initCoach();');
 const page = read('src/page.html').replace('<!-- BUILD:STYLE -->', () => read('src/styles.css'))
-  .replace('<!-- BUILD:SCRIPT -->', () => code);
+  .replace('<!-- BUILD:SCRIPT -->', () => code)
+  .replace('@@BRAND_ICON@@', () => fs.readFileSync(path.join(root, 'favicon.ico')).toString('base64'));
 const offline = page.replace(/^<link rel="(?:icon|apple-touch-icon|manifest)"[^\n]*\n/gm, '');
 const outputs = { 'index.html': page, 'Spelling Coach v0.2.0.html': offline };
 for (const [file, contents] of Object.entries(outputs)) {

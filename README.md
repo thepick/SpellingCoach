@@ -13,6 +13,8 @@ Choose **Test** for a fixed set of questions with results at the end. Only appro
 
 The live site is [spellingcoach.mtomlinson.ca](https://spellingcoach.mtomlinson.ca/). For the v0.2.0 offline build, open `Spelling Coach v0.2.0.html` in a current browser. Offline speech depends on the installed voice. The v0.1.0 file remains in the repository for rollback.
 
+The **Theme** menu defaults to **System** and follows device appearance changes. Choose **Light** or **Dark** to save a manual preference.
+
 Use **Try the sample list** for a Grade 5 vocabulary draft. Its definitions use selected senses because the source passage was unavailable. Review them against the intended text before using the pack for a test.
 
 Use **Tools → Export full backup** before clearing browser data or moving between the site and a downloaded copy. The app accepts older list-only JSON files, new vocabulary packs, and full backups. The first upgrade keeps a copy of the original spelling state in the browser under `spell.state.v1.backup`.

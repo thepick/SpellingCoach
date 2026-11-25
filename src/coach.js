@@ -540,7 +540,7 @@ async function exportFullBackup() {
  const snapshot = {...state};
  delete snapshot.learningCheckpoint;
  const contents = JSON.stringify({kind: 'spellingcoach-backup', v: 1, state: snapshot, packs, questionHistory: archived,
-  theme: document.documentElement.dataset.theme});
+  theme: themePreference.value});
  if (new Blob([contents]).size > MAX_IMPORT) throw Error('The backup is too large. Export individual vocabulary packs first.');
  download('Spelling Coach full backup.json', contents, 'application/json');
 }
@@ -600,11 +600,8 @@ async function restoreFullBackup(backup) {
   }).catch(() => {});
  }
  for (const list of old.lists) removeVocabulary(list);
- if (['dark', 'light'].includes(backup.theme)) {
-  document.documentElement.dataset.theme = backup.theme;
-  try { localStorage.setItem('spell.theme', backup.theme); } catch (error) {}
-  renderTheme();
- }
+ themePreference.set(backup.theme);
+ renderTheme();
  listId = (state.session || state.learningSession || {}).listId || state.lists[0]?.id || '';
  vocabCache = {key: null, records: null};
  renderSetup();

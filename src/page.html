@@ -12,18 +12,37 @@
 <meta name="apple-mobile-web-app-title" content="Spelling Coach">
 <link rel="manifest" href="site.webmanifest">
 
-<script>
-(function(){
- let theme;
- try{if(!new URLSearchParams(location.search).has('selftest'))theme=localStorage.getItem('spell.theme');}catch(e){}
- if(theme!=='light'&&theme!=='dark')theme=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
- document.documentElement.dataset.theme=theme;
+<script id="theme-preferences">
+const themePreference = (() => {
+ const media = window.matchMedia('(prefers-color-scheme: dark)');
+ const options = ['system', 'light', 'dark'];
+ const selfTest = new URLSearchParams(location.search).has('selftest');
+ let preference = 'system';
+ try {
+  const saved = selfTest ? null : localStorage.getItem('spell.theme');
+  if (options.includes(saved)) preference = saved;
+ } catch (error) {}
+ function apply() {
+  document.documentElement.dataset.theme = preference === 'system'
+   ? (media.matches ? 'dark' : 'light') : preference;
+ }
+ apply();
+ media.addEventListener('change', apply);
+ return {
+  get value() { return preference; },
+  set(value) {
+   if (!options.includes(value)) return;
+   preference = value;
+   apply();
+   try { if (!selfTest) localStorage.setItem('spell.theme', preference); } catch (error) {}
+  }
+ };
 })();
 </script>
 <style>
 <!-- BUILD:STYLE -->
 </style></head><body>
-<div class="app"><header class="topbar"><div class="brand">Spelling Coach <span class="version">v0.2.0</span></div><button id="theme-toggle" class="theme-toggle" type="button" aria-label="Dark mode" aria-pressed="false"><span class="theme-track" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><svg viewBox="0 0 24 24"><path d="M20.5 14.5A9 9 0 0 1 9.5 3.5a9 9 0 1 0 11 11Z"/></svg></span><span id="theme-label">Light mode</span></button><div id="storage-warning" class="notice" hidden role="status">Your progress will not be saved in this browser.</div></header><main>
+<div class="app"><header class="topbar"><div class="brand"><img class="brand-icon" src="data:image/x-icon;base64,@@BRAND_ICON@@" width="32" height="32" alt=""><span>Spelling Coach <span class="version">v0.2.0</span></span></div><label class="theme-control" for="theme-select"><span>Theme</span><select id="theme-select"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label><div id="storage-warning" class="notice" hidden role="status">Your progress will not be saved in this browser.</div></header><main>
 <section id="resume-screen" class="screen resume panel" hidden><h1>Continue your session?</h1><p class="subhead">An unfinished session is saved in this browser.</p><div class="actions"><button id="resume-button">Resume session</button><button id="end-saved-button" class="secondary">End session</button></div></section>
 <section id="setup-screen" class="screen panel" hidden><div class="row between setup-heading"><div><h1>Spelling &amp; vocabulary</h1><p id="setup-intro" class="subhead">Create a list to get started. Give it a name and add one word or phrase per line.</p></div><button id="open-tools" class="secondary">Tools</button></div><div id="setup-status" class="status" role="status" aria-live="polite"></div>
 <div class="grid"><div class="stack"><div><label for="list-select">Word list</label><select id="list-select"></select></div><div class="actions"><button id="new-list">Create a word list</button><button id="edit-list" class="secondary small">Edit list</button><button id="delete-list" class="danger small">Delete</button><button id="reset-progress" class="ghost small">Reset progress</button></div><div class="actions"><button id="sample-pack" type="button" class="ghost small">Try the sample list</button><button id="open-vocabulary" type="button" class="secondary small" disabled>Vocabulary content</button><button id="open-report" type="button" class="ghost small" disabled>Learning progress</button></div><p id="list-actions-help" class="hint">Create or import a list first. List actions become available afterward.</p>
