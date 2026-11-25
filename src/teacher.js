@@ -128,6 +128,7 @@ function publicPackLink(id) {
  const site = new URL(location.protocol === 'file:' ? 'https://wordlab.mtomlinson.ca/' : location.href);
  site.search = ''; site.hash = '';
  const args = new URLSearchParams({pack: id, service: ai.root, mode: $('shared-mode').value});
+ if (!$('shared-hints').checked) args.set('hints', 'off');
  site.hash = args.toString();
  return site.href;
 }

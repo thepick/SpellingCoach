@@ -91,6 +91,15 @@ test('a vocabulary mistake does not harm spelling and assisted retyping cannot e
   assert.equal(s.progress.wearily.vocabulary.streak, 0);
 });
 
+test('practice can disable hints without changing how answers are scored', () => {
+  const session = start({allowHints: false});
+  assert.equal(L.hint(session), null);
+  assert.equal(session.hintStage, 0);
+  assert.equal(L.submit(session, L.current(session).answer).assisted, false);
+  const defaultSession = start();
+  assert.ok(L.hint(defaultSession));
+});
+
 test('skip locks an unanswered test item and practice can disable correction retyping', () => {
   const exam = start({mode: 'spelling', type: 'test'});
   assert.equal(L.submit(exam, ''), null);

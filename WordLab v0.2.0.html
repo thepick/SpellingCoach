@@ -191,6 +191,7 @@ body:has(dialog.tools-dialog[open]) { overflow: hidden; }
  </div>
  <div id="teacher-admin" class="tool-section stack" hidden>
   <h2>Publishing and usage</h2><div><label for="shared-mode">Practice from the student link</label><select id="shared-mode"><option value="mixed">Mixed practice</option><option value="spelling">Spelling</option><option value="vocabulary">Vocabulary</option></select></div>
+  <label class="checkline"><input id="shared-hints" type="checkbox" checked> Allow hints in Mixed and Vocabulary practice</label>
   <div class="actions"><button type="button" id="ai-publish">Publish approved pack</button><button type="button" id="ai-share" class="secondary" disabled>Copy student link</button><button type="button" id="ai-qr" class="ghost" disabled>Show classroom QR code</button><button type="button" id="ai-usage" class="ghost">Refresh usage</button><button type="button" id="ai-stop" class="danger">Disable generation</button></div>
   <label class="checkline"><input id="ai-publish-cache" type="checkbox"> Reuse this pack’s approved content in generation</label><div id="ai-qr-result" hidden></div><p id="ai-usage-result" class="hint" role="status"></p>
   <details><summary>Recent generation jobs</summary><ol id="ai-job-history"></ol></details><details><summary>Class access codes</summary><div class="stack"><button type="button" id="ai-classes" class="ghost">Refresh class list</button><ul id="ai-class-status"></ul><div class="settings"><div><label for="ai-class-id">Class ID</label><input id="ai-class-id" maxlength="40"></div><div><label for="ai-class-name">Name</label><input id="ai-class-name" maxlength="80"></div><div><label for="ai-class-limit">Daily word allowance</label><input id="ai-class-limit" type="number" min="1" value="200"></div><div><label for="ai-class-expiry">Expires on</label><input id="ai-class-expiry" type="date"></div></div><div class="actions"><button type="button" id="ai-class-save" class="secondary">Save class</button><button type="button" id="ai-class-rotate" class="ghost">Rotate code</button><button type="button" id="ai-class-revoke" class="ghost">Revoke access</button></div></div></details>
@@ -3157,14 +3158,14 @@ const Learning = (() => {
 
   function lastHint(session) {
     const question = current(session);
-    if (!question || !session.hintStage) return null;
+    if (!question || !session.hintStage || session.settings.allowHints === false) return null;
     const text = hintDetails(question)[session.hintStage - 1];
     return text ? {stage: session.hintStage, text, revealed: session.revealed} : null;
   }
 
   function hint(session) {
     const question = current(session);
-    if (!question || session.type === 'test' || session.feedback || session.revealed) return null;
+    if (!question || session.type === 'test' || session.settings.allowHints === false || session.feedback || session.revealed) return null;
     const stages = hintDetails(question);
     session.hintStage++;
     session.revealed = session.hintStage === stages.length;
@@ -3319,6 +3320,7 @@ const Learning = (() => {
         !['adaptive', 'beginner', 'intermediate', 'advanced'].includes(settings.difficulty) ||
         ![1, 2, 3].includes(settings.perWord) || !count(settings.choiceOffset) ||
         typeof settings.multipleChoice !== 'boolean' || typeof settings.audioReplay !== 'boolean' ||
+        settings.allowHints !== undefined && typeof settings.allowHints !== 'boolean' ||
         !Array.isArray(settings.reviewIntervals) || !settings.reviewIntervals.length ||
         !settings.reviewIntervals.every(days => Number.isFinite(days) && days > 0) ||
         ![records, questions, tasks, queue, results].every(Array.isArray) || !object(progress) ||
@@ -3863,9 +3865,10 @@ function renderLearning(play, corrected = false) {
  $('learning-submit').disabled = test && question.type === 'dictation' && !audioReady;
  $('learning-skip').disabled = $('learning-submit').disabled;
  $('learning-skip').hidden = !!result;
- $('learning-hint').hidden = test || !!result || session.revealed;
- $('learning-hint-text').hidden = !lastHint || !!result;
- $('learning-hint-text').textContent = lastHint?.text || '';
+ const hintsDisabled = test || session.settings.allowHints === false;
+ $('learning-hint').hidden = hintsDisabled || !!result || session.revealed;
+ $('learning-hint-text').hidden = hintsDisabled || !lastHint || !!result;
+ $('learning-hint-text').textContent = hintsDisabled ? '' : lastHint?.text || '';
  const box = $('learning-feedback');
  renderCorrection('learning-correction', 'learning-input', correction ? result.answer : null, result?.explanation);
  if (!correction) $('learning-input').setAttribute('aria-describedby', 'learning-prompt');
@@ -4427,7 +4430,9 @@ function initCoach() {
  };
  $('learning-hint').onclick = () => {
   const entry = learningEntry(); if (!entry) return;
-  lastHint = Learning.hint(entry.session); save();
+  const hint = Learning.hint(entry.session);
+  if (!hint) return;
+  lastHint = hint; save();
   $('learning-hint-text').textContent = lastHint?.text || '';
   $('learning-hint-text').hidden = !lastHint;
   if (entry.session.revealed) { $('learning-hint').hidden = true; $('learning-input').focus(); }
@@ -4855,6 +4860,7 @@ function publicPackLink(id) {
  const site = new URL(location.protocol === 'file:' ? 'https://wordlab.mtomlinson.ca/' : location.href);
  site.search = ''; site.hash = '';
  const args = new URLSearchParams({pack: id, service: ai.root, mode: $('shared-mode').value});
+ if (!$('shared-hints').checked) args.set('hints', 'off');
  site.hash = args.toString();
  return site.href;
 }
@@ -5145,14 +5151,18 @@ async function startSharedReview() {
  $('shared-ready-status').textContent = '';
  try {
   const oldList = findPackList(review.pack.id, review.origin);
-  if (SharedReview.matchingPractice(state, oldList?.id)) {
+  const activeMode = SharedReview.matchingPractice(state, oldList?.id);
+  if (activeMode) {
+   if (activeMode === 'learning') state.learningSession.session.settings.allowHints = review.allowHints;
    listId = oldList.id;
    resumeActivity();
    return;
   }
   const parked = await parkedActivity(oldList?.id);
   await parkCurrentActivity();
-  if (SharedReview.matchingPractice(parked || {}, oldList?.id)) {
+  const parkedMode = SharedReview.matchingPractice(parked || {}, oldList?.id);
+  if (parkedMode) {
+   if (parkedMode === 'learning') parked.learningSession.session.settings.allowHints = review.allowHints;
    await resumeParkedActivity(oldList, parked);
    return;
   }
@@ -5161,7 +5171,7 @@ async function startSharedReview() {
   const records = await loadVocabulary(list);
   if (sharedReview !== review) return;
   if (review.mode === 'spelling') await start(records.map(row => row.word), list);
-  else beginLearning(list, records, {...coachOptions(), mode:review.mode, type:'practice',
+  else beginLearning(list, records, {...coachOptions(), mode:review.mode, type:'practice', allowHints:review.allowHints,
    difficulty:'adaptive', audioReplay:true, masteryPractice:true});
  } catch (error) { $('shared-ready-status').textContent = error.message; }
  finally { button.disabled = false; }
@@ -5192,7 +5202,7 @@ async function openSharedReview() {
   const pack = Vocabulary.validatePack(response.pack);
   if (pack.id !== id) throw Error('Wrong review set.');
   if (load !== sharedLoad) return;
-  sharedReview = {pack, origin, mode:SharedReview.reviewMode(args.get('mode'), pack.words)};
+  sharedReview = {pack, origin, mode:SharedReview.reviewMode(args.get('mode'), pack.words), allowHints:args.get('hints') !== 'off'};
   await renderSharedReady();
  } catch (error) {
   if (load !== sharedLoad) return;

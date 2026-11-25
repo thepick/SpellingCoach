@@ -106,14 +106,18 @@ async function startSharedReview() {
  $('shared-ready-status').textContent = '';
  try {
   const oldList = findPackList(review.pack.id, review.origin);
-  if (SharedReview.matchingPractice(state, oldList?.id)) {
+  const activeMode = SharedReview.matchingPractice(state, oldList?.id);
+  if (activeMode) {
+   if (activeMode === 'learning') state.learningSession.session.settings.allowHints = review.allowHints;
    listId = oldList.id;
    resumeActivity();
    return;
   }
   const parked = await parkedActivity(oldList?.id);
   await parkCurrentActivity();
-  if (SharedReview.matchingPractice(parked || {}, oldList?.id)) {
+  const parkedMode = SharedReview.matchingPractice(parked || {}, oldList?.id);
+  if (parkedMode) {
+   if (parkedMode === 'learning') parked.learningSession.session.settings.allowHints = review.allowHints;
    await resumeParkedActivity(oldList, parked);
    return;
   }
@@ -122,7 +126,7 @@ async function startSharedReview() {
   const records = await loadVocabulary(list);
   if (sharedReview !== review) return;
   if (review.mode === 'spelling') await start(records.map(row => row.word), list);
-  else beginLearning(list, records, {...coachOptions(), mode:review.mode, type:'practice',
+  else beginLearning(list, records, {...coachOptions(), mode:review.mode, type:'practice', allowHints:review.allowHints,
    difficulty:'adaptive', audioReplay:true, masteryPractice:true});
  } catch (error) { $('shared-ready-status').textContent = error.message; }
  finally { button.disabled = false; }
@@ -153,7 +157,7 @@ async function openSharedReview() {
   const pack = Vocabulary.validatePack(response.pack);
   if (pack.id !== id) throw Error('Wrong review set.');
   if (load !== sharedLoad) return;
-  sharedReview = {pack, origin, mode:SharedReview.reviewMode(args.get('mode'), pack.words)};
+  sharedReview = {pack, origin, mode:SharedReview.reviewMode(args.get('mode'), pack.words), allowHints:args.get('hints') !== 'off'};
   await renderSharedReady();
  } catch (error) {
   if (load !== sharedLoad) return;

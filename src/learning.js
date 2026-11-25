@@ -324,14 +324,14 @@ const Learning = (() => {
 
   function lastHint(session) {
     const question = current(session);
-    if (!question || !session.hintStage) return null;
+    if (!question || !session.hintStage || session.settings.allowHints === false) return null;
     const text = hintDetails(question)[session.hintStage - 1];
     return text ? {stage: session.hintStage, text, revealed: session.revealed} : null;
   }
 
   function hint(session) {
     const question = current(session);
-    if (!question || session.type === 'test' || session.feedback || session.revealed) return null;
+    if (!question || session.type === 'test' || session.settings.allowHints === false || session.feedback || session.revealed) return null;
     const stages = hintDetails(question);
     session.hintStage++;
     session.revealed = session.hintStage === stages.length;
@@ -486,6 +486,7 @@ const Learning = (() => {
         !['adaptive', 'beginner', 'intermediate', 'advanced'].includes(settings.difficulty) ||
         ![1, 2, 3].includes(settings.perWord) || !count(settings.choiceOffset) ||
         typeof settings.multipleChoice !== 'boolean' || typeof settings.audioReplay !== 'boolean' ||
+        settings.allowHints !== undefined && typeof settings.allowHints !== 'boolean' ||
         !Array.isArray(settings.reviewIntervals) || !settings.reviewIntervals.length ||
         !settings.reviewIntervals.every(days => Number.isFinite(days) && days > 0) ||
         ![records, questions, tasks, queue, results].every(Array.isArray) || !object(progress) ||

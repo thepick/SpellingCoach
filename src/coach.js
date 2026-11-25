@@ -233,9 +233,10 @@ function renderLearning(play, corrected = false) {
  $('learning-submit').disabled = test && question.type === 'dictation' && !audioReady;
  $('learning-skip').disabled = $('learning-submit').disabled;
  $('learning-skip').hidden = !!result;
- $('learning-hint').hidden = test || !!result || session.revealed;
- $('learning-hint-text').hidden = !lastHint || !!result;
- $('learning-hint-text').textContent = lastHint?.text || '';
+ const hintsDisabled = test || session.settings.allowHints === false;
+ $('learning-hint').hidden = hintsDisabled || !!result || session.revealed;
+ $('learning-hint-text').hidden = hintsDisabled || !lastHint || !!result;
+ $('learning-hint-text').textContent = hintsDisabled ? '' : lastHint?.text || '';
  const box = $('learning-feedback');
  renderCorrection('learning-correction', 'learning-input', correction ? result.answer : null, result?.explanation);
  if (!correction) $('learning-input').setAttribute('aria-describedby', 'learning-prompt');
@@ -797,7 +798,9 @@ function initCoach() {
  };
  $('learning-hint').onclick = () => {
   const entry = learningEntry(); if (!entry) return;
-  lastHint = Learning.hint(entry.session); save();
+  const hint = Learning.hint(entry.session);
+  if (!hint) return;
+  lastHint = hint; save();
   $('learning-hint-text').textContent = lastHint?.text || '';
   $('learning-hint-text').hidden = !lastHint;
   if (entry.session.revealed) { $('learning-hint').hidden = true; $('learning-input').focus(); }
