@@ -218,7 +218,10 @@ export class VocabularyService {
       }
     });
     if (admin) {
-      if (!this.isTeacher(input.secret)) denied();
+      const passwordHash = this.env.TEACHER_PASSWORD_HASH;
+      const allowed = passwordHash === undefined ? this.isTeacher(input.secret) :
+        secureEquals(passwordHash, await this.signature('teacher-password:' + input.secret));
+      if (!allowed) denied();
       return this.session('teacher', now + 2 * HOUR);
     }
     const code = input.code.trim();

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { VocabularyService } from './service.mjs';
@@ -80,6 +81,20 @@ test('teacher access is authenticated and CORS has an exact origin allowlist', a
   const session = await call('POST', '/admin/access', { secret }, '');
   assert.equal(session.status, 200);
   assert.equal((await call('GET', '/admin/usage', undefined, session.data.token)).status, 200);
+});
+
+test('a configured teacher password is separate from the operator bearer secret', async () => {
+  const password = 'fixture-teacher-password';
+  const signingSecret = 'test-signing-secret-for-separate-password';
+  const hash = createHmac('sha256', signingSecret).update('teacher-password:' + password).digest('base64url');
+  const { call } = fixture({ SESSION_SIGNING_SECRET: signingSecret, TEACHER_PASSWORD_HASH: hash });
+  assert.equal((await call('POST', '/admin/access', { secret }, '')).status, 401);
+  assert.equal((await call('POST', '/admin/access', { secret: 'wrong' }, '')).status, 401);
+  assert.equal((await call('GET', '/admin/usage', undefined, password)).status, 401);
+  const session = await call('POST', '/admin/access', { secret: password }, '');
+  assert.equal(session.status, 200);
+  assert.equal((await call('GET', '/admin/usage', undefined, session.data.token)).status, 200);
+  assert.equal((await call('GET', '/admin/usage')).status, 200);
 });
 
 test('class codes are revocable and student generation defaults to disabled', async () => {
