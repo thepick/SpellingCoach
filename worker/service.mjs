@@ -3,9 +3,10 @@ import {
   normalizedWords, parseSettings, requireInput, shape, shortId, validatePack, validatedRecord, vocabularyWord, wordKey
 } from './validation.mjs';
 import { GROQ_MODELS, providerChoices, requestVocabulary, tokenBudget } from './provider.mjs';
-import { hasSpeechSignal, synthesizeDictation } from './dictation.mjs';
+import { hasSpeechSignal, synthesizeDictation, synthesizeAlternateAudio } from './dictation.mjs';
 import Learning from '../src/learning.js';
 import Dictation from '../src/dictation.js';
+import { TeacherAccounts } from './accounts.mjs';
 
 const DAY = 86_400_000;
 const HOUR = 3600_000;
@@ -121,7 +122,7 @@ function secureEquals(first, second) {
 }
 
 export class VocabularyService {
-  constructor(storage, env, { now = Date.now, fetcher = requestVocabulary, speechFetcher = synthesizeDictation } = {}) {
+  constructor(storage, env, { now = Date.now, fetcher = requestVocabulary, speechFetcher = synthesizeDictation, alternateSpeechFetcher = synthesizeAlternateAudio, connectionFetcher = fetch } = {}) {
     this.storage = storage;
     this.sql = storage.sql;
     this.atomic = (work) => storage.transactionSync(work);
@@ -129,10 +130,13 @@ export class VocabularyService {
     this.now = now;
     this.fetcher = fetcher;
     this.speechFetcher = speechFetcher;
+    this.connectionFetcher = connectionFetcher;
+    this.alternateSpeechFetcher = alternateSpeechFetcher;
     this.audioInFlight = new Map();
     this.origins = new Set((env.ALLOWED_ORIGINS ?? '').split(',').map((origin) => origin.trim())
       .filter((origin) => /^https?:\/\/[^/]+$/i.test(origin)));
     for (const statement of schema) this.sql.exec(statement);
+    this.accounts = new TeacherAccounts(this);
     this.atomic(() => {
       const {legacyDemoPackId, demoPackId} = Dictation;
       const old = this.one('SELECT value FROM packs WHERE id = ?', legacyDemoPackId);
@@ -167,6 +171,13 @@ export class VocabularyService {
   }
 
   providers(teacher) {
+    if (teacher && typeof teacher === 'object' && teacher.role === 'teacher' && (!teacher.isAdmin || teacher.personalKeys)) {
+      if (!this.accounts.unchanged(teacher)) return [];
+      return providerChoices({...this.env,GROQ_API_KEY:teacher.credentials.groq,
+        GROQ_FREE_TIER_CONFIRMED:'true',OPENROUTER_API_KEY:teacher.credentials.openrouter,
+        OPENROUTER_FREE_TIER_CONFIRMED:'true',OPENROUTER_FREE_MODEL:'openrouter/free',
+        OPENROUTER_APPROVED_PROVIDER:undefined,PERSONAL_KEYS:true,ALLOW_PAID_TEXT:teacher.settings.allowPaidText},true,this.saved('groqModels'));
+    }
     return providerChoices(this.env, teacher, this.saved('groqModels'));
   }
 
@@ -196,7 +207,7 @@ export class VocabularyService {
   async session(role, expiresAt, classRecord, sid = randomId()) {
     const identity = {
       role, sid, expiresAt,
-      ...(classRecord ? { classId: classRecord.classId, epoch: classRecord.epoch } : {})
+      ...(classRecord ? classRecord.teacherId ? {teacherId:classRecord.teacherId,epoch:classRecord.epoch} : { classId: classRecord.classId, epoch: classRecord.epoch } : {})
     };
     const payload = base64(ENCODER.encode(JSON.stringify(identity)));
     return { token: payload + '.' + await this.signature('session:' + payload), expiresAt, ...(classRecord ? { classId: classRecord.classId } : {}) };
@@ -218,11 +229,11 @@ export class VocabularyService {
   async principal(request) {
     const token = /^Bearer ([^\s]{1,700})$/.exec(request.headers.get('Authorization') ?? '')?.[1];
     if (!token) denied();
-    if (this.isTeacher(token)) return { role: 'teacher', sid: 'operator' };
+    if (this.isTeacher(token)) return this.accounts.authenticate({ role: 'teacher', sid: 'operator', teacherId:'operator', isAdmin:true });
     const identity = await this.verifiedSession(token);
     if (identity.expiresAt <= this.now()) denied();
     if (identity.role === 'class' && !this.validClass(this.readClass(identity.classId), identity.epoch)) denied();
-    return identity;
+    return this.accounts.authenticate(identity);
   }
 
   async verifiedSession(token) {
@@ -259,7 +270,7 @@ export class VocabularyService {
       const allowed = passwordHash === undefined ? this.isTeacher(input.secret) :
         secureEquals(passwordHash, await this.signature('teacher-password:' + input.secret));
       if (!allowed) denied();
-      return this.session('teacher', now + 2 * HOUR);
+      return {...await this.session('teacher', now + 2 * HOUR),...this.accounts.profile(await this.accounts.authenticate({role:'teacher',teacherId:'operator',isAdmin:true}))};
     }
     const code = input.code.trim();
     const hash = await this.signature('class-code:' + code);
@@ -314,9 +325,10 @@ export class VocabularyService {
     this.sql.exec('INSERT INTO meter VALUES (?, ?, ?) ON CONFLICT(day, key) DO UPDATE SET value = value + excluded.value', day, key, amount);
   }
 
-  readJob(id, identity) {
+  readJob(id, identity, mutation = false) {
     const entry = this.one('SELECT owner, value FROM jobs WHERE id = ? AND created > ?', id, this.now() - JOB_LIFETIME);
-    if (!entry || (identity.role !== 'teacher' && entry.owner !== identity.sid)) notFound();
+    if (!entry || (!identity.isAdmin && entry.owner !== identity.sid)) notFound();
+    if (mutation && identity.isAdmin && entry.owner !== 'operator' && this.accounts.read(entry.owner)) notFound();
     return JSON.parse(entry.value);
   }
 
@@ -384,7 +396,7 @@ export class VocabularyService {
       const cached = entries.length - uncached;
       const owner = 'session:' + identity.sid + ':';
       if (uncached) {
-        if (!this.enabled(teacher) || !this.providers(teacher).length) fail(503, 'generation_offline', 'AI generation is unavailable. Import approved content to practice offline.');
+        if (!this.enabled(teacher) || !this.providers(teacher ? identity : false).length) fail(503, 'generation_offline', 'AI generation is unavailable. Connect your provider key or import approved content.');
         const active = jobs.find((job) => !terminal(job));
         if (active) {
           if (active.fingerprint === fingerprint) return { detail: this.jobDetail(active), existing: true };
@@ -424,7 +436,7 @@ export class VocabularyService {
 
   adjustJob(id, identity, action) {
     return this.atomic(() => {
-      const job = this.readJob(id, identity);
+      const job = this.readJob(id, identity,true);
       if (job.status === 'cancelled') return this.jobDetail(job);
       if (action === 'resume' && job.status === 'complete') return this.jobDetail(job);
       if (action === 'pause' && job.status !== 'complete') {
@@ -453,7 +465,7 @@ export class VocabularyService {
 
   reserveBatch(id, identity) {
     return this.atomic(() => {
-      const job = this.readJob(id, identity);
+      const job = this.readJob(id, identity,true);
       const now = this.now();
       if (terminal(job) || job.manualPause || job.retryAt > now) return { detail: this.jobDetail(job) };
       this.sql.exec('DELETE FROM leases WHERE expires <= ?', now);
@@ -462,7 +474,7 @@ export class VocabularyService {
       if (!teacher && !this.validClass(this.readClass(job.classId), job.epoch)) {
         return { detail: this.defer(job, 'Classroom access to this job has expired or changed.') };
       }
-      if (!this.enabled(teacher) || !this.providers(teacher).length) {
+      if (!this.enabled(teacher) || !this.providers(teacher ? identity : false).length) {
         return { detail: this.defer(job, 'AI generation is unavailable. Your completed words are saved.') };
       }
       const batch = this.rows("SELECT position, word, attempts FROM job_words WHERE job = ? AND status = 'pending' ORDER BY attempts, position LIMIT ?", id, job.batchSize);
@@ -471,27 +483,30 @@ export class VocabularyService {
         this.writeJob(job);
         return { detail: this.jobDetail(job) };
       }
-      const nextLease = this.one('SELECT MIN(expires) AS expires, COUNT(*) AS count FROM leases');
+      const nextLease = identity.role === 'teacher' && !identity.isAdmin
+        ? this.one('SELECT MIN(l.expires) AS expires, COUNT(*) AS count FROM leases l JOIN jobs j ON l.job = j.id WHERE j.owner = ?',identity.sid)
+        : this.one('SELECT MIN(expires) AS expires, COUNT(*) AS count FROM leases');
       if (nextLease.count >= LIMITS.concurrent) {
         return { detail: this.defer(job, 'The generation slots are busy.', Math.min(nextLease.expires, now + 3000)) };
       }
       const day = localDay(now);
       const words = batch.map(({ word }) => word);
       let budget = tokenBudget(words, job.settings, job.regeneration);
-      const tokensLeft = LIMITS.tokens - this.meter(day, 'tokens');
+      const prefix = identity.role === 'teacher' && !identity.isAdmin ? identity.teacherId + ':' : '';
+      const tokensLeft = LIMITS.tokens - this.meter(day, prefix + 'tokens');
       while (words.length > 1 && budget.reservedTokens > tokensLeft) {
         words.pop();
         batch.pop();
         budget = tokenBudget(words, job.settings, job.regeneration);
       }
-      if (this.meter(day, 'calls') >= LIMITS.calls || budget.reservedTokens > tokensLeft) {
+      if (this.meter(day, prefix + 'calls') >= LIMITS.calls || budget.reservedTokens > tokensLeft) {
         return { detail: this.defer(job, 'The daily AI budget is used up.', nextDay(now)) };
       }
-      const routerAvailable = this.meter(day, 'openRouterCalls') < LIMITS.openRouterCalls;
-      const providers = this.providers(teacher).filter((target) => target.provider !== 'openrouter' || routerAvailable);
+      const routerAvailable = this.meter(day, prefix + 'openRouterCalls') < LIMITS.openRouterCalls;
+      const providers = this.providers(teacher ? identity : false).filter((target) => target.provider !== 'openrouter' || routerAvailable);
       const offset = providers.length ? (job.providerOffset ?? 0) % providers.length : 0;
       const order = [...providers.slice(offset), ...providers.slice(0, offset)];
-      const delay = (target) => this.one('SELECT until FROM provider_delay WHERE key = ?', target.model)?.until ?? 0;
+      const delay = (target) => this.one('SELECT until FROM provider_delay WHERE key = ?', prefix + target.model)?.until ?? 0;
       const target = order.find((option) => delay(option) <= now);
       if (!target) {
         return { detail: this.defer(job, 'Free AI capacity is temporarily unavailable.', order.length
@@ -505,14 +520,14 @@ export class VocabularyService {
       }
       const lease = randomId();
       this.sql.exec('INSERT INTO leases VALUES (?, ?, ?)', lease, id, now + LEASE);
-      this.charge(day, 'calls', 1);
-      this.charge(day, 'tokens', budget.reservedTokens);
-      if (target.provider === 'openrouter') this.charge(day, 'openRouterCalls', 1);
+      this.charge(day, prefix + 'calls', 1);
+      this.charge(day, prefix + 'tokens', budget.reservedTokens);
+      if (target.provider === 'openrouter') this.charge(day, prefix + 'openRouterCalls', 1);
       job.status = 'ready';
       job.retryAt = 0;
       job.message = '';
       this.writeJob(job);
-      return { job, lease, batch, words, target, day, budget, now, providerOffset: providers.indexOf(target) };
+      return { job, lease, batch, words, target, day, budget, now, prefix, providerOffset: providers.indexOf(target) };
     });
   }
 
@@ -527,7 +542,7 @@ export class VocabularyService {
   async runBatch(id, identity) {
     const reservation = this.reserveBatch(id, identity);
     if (reservation.detail) return reservation.detail;
-    const { job: reservedJob, lease, batch, words, target, day, budget, now, providerOffset } = reservation;
+    const { job: reservedJob, lease, batch, words, target, day, budget, now, prefix, providerOffset } = reservation;
     let result;
     try {
       result = await this.fetcher({
@@ -543,11 +558,15 @@ export class VocabularyService {
       // An expired reservation stays charged when its outcome is unknown.
       if (!this.one('SELECT id FROM leases WHERE id = ?', lease)) return this.jobDetail(job);
       this.sql.exec('DELETE FROM leases WHERE id = ?', lease);
+      if (identity.role === 'teacher' && !this.accounts.unchanged(identity)) {
+        if (!this.accounts.current(identity)) return this.jobDetail(job);
+        return this.defer(job,'Teacher access or provider settings changed. Reload and retry.');
+      }
       const used = integer(result.tokens, 1, 1_000_000) ? result.tokens : result.rateLimited ? 0 : budget.reservedTokens;
-      this.charge(day, 'tokens', used - budget.reservedTokens);
+      this.charge(day, prefix + 'tokens', used - budget.reservedTokens);
       if (result.retryInMs) {
         const retryAt = now + result.retryInMs;
-        this.sql.exec('INSERT INTO provider_delay VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET until = MAX(until, excluded.until)', target.model, retryAt);
+        this.sql.exec('INSERT INTO provider_delay VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET until = MAX(until, excluded.until)', prefix + target.model, retryAt);
       }
       if (job.status === 'cancelled') return this.jobDetail(job);
       if (result.rateLimited) {
@@ -584,7 +603,7 @@ export class VocabularyService {
     });
   }
 
-  async publish(input) {
+  async publish(input, identity = {isAdmin:true,teacherId:'operator'}) {
     requireInput(shape(input, ['pack', 'visibility', 'classId', 'cacheSettings', 'mode', 'allowHints'])
       && ['public', 'class', 'private'].includes(input.visibility), 'Choose a valid pack visibility.');
     requireInput(input.mode === undefined || ['spelling', 'vocabulary', 'mixed'].includes(input.mode), 'Choose a valid practice mode.');
@@ -593,6 +612,7 @@ export class VocabularyService {
     const pack = validatePack(input.pack, { allowSpellingOnly: input.mode === 'spelling' });
     pack.id = Dictation.canonicalPackId(pack.id);
     const classId = input.classId;
+    if (!identity.isAdmin && (visibility === 'class' || input.cacheSettings !== undefined)) fail(403,'forbidden','Only the owner manages classrooms and the shared vocabulary cache.');
     requireInput(visibility === 'class' ? shortId(classId) && this.readClass(classId) : classId == null || classId === '',
       'Class packs must have a valid classroom.');
     const settings = input.cacheSettings === undefined ? null : parseSettings(input.cacheSettings, true);
@@ -600,17 +620,31 @@ export class VocabularyService {
     requireInput(!settings || (visibility === 'public' && vocabularyEntries.length > 0 && !settings.context && !settings.sense
       && vocabularyEntries.every((entry) => cacheEligible(entry, settings))), 'Reusable packs must be public and match the declared settings.');
     const practice = {mode:input.mode || 'mixed', allowHints:input.allowHints !== false};
-    const info = {pack, visibility, practice, ...(visibility === 'class' ? {classId} : {})};
-    const storage = { ...info, ...(settings ? { cacheSettings: settings } : {}) };
+    const privateSet = this.accounts.readSet(identity.teacherId,pack.id);
+    const info = {pack, visibility, practice, ...(privateSet ? {preparedAudio:true} : {}), ...(visibility === 'class' ? {classId} : {})};
+    const storage = { ...info, owner:identity.teacherId, ...(settings ? { cacheSettings: settings } : {}) };
     return this.atomic(() => {
       const existing = this.one('SELECT version, value FROM packs WHERE id = ?', pack.id);
+      if (!this.accounts.unchanged(identity)) fail(409,'account_changed','Teacher access or provider settings changed.');
+      if (existing && !identity.isAdmin && (JSON.parse(existing.value).owner ?? 'operator') !== identity.teacherId) notFound();
+      if (!identity.isAdmin && !privateSet) fail(409,'private_set_required','Save this set privately and prepare its recordings before sharing.');
+      if (privateSet && canonical(this.accounts.publishedSnapshot(privateSet.pack,practice.mode)) !== canonical(pack)) fail(409,'pack_version','The private set changed. Reload before sharing.');
+      if (privateSet) {
+        const prompts = pack.words.flatMap((word,index) => Learning.practiceAudioPrompts(word,index)).filter(prompt => practice.mode !== 'spelling' || prompt.skill === 'spelling');
+        const ready = prompts.every(prompt => privateSet.recordings.some(r => r.key === prompt.key && r.text === prompt.text && r.skill === prompt.skill && r.status === 'ready'
+          && this.one('SELECT key FROM teacher_audio WHERE owner = ? AND key = ?',identity.teacherId,r.cacheKey)));
+        if (!ready) fail(409,'audio_not_ready','Prepare all recordings for this practice mode before sharing.');
+      }
       if (existing && existing.version >= pack.version) {
-        const {practice: previousPractice, ...previous} = JSON.parse(existing.value);
-        const {practice: currentPractice, ...current} = storage;
+        const {practice: previousPractice, preparedAudio:previousPrepared, ...previous} = {owner:'operator',...JSON.parse(existing.value)};
+        const {practice: currentPractice, preparedAudio:currentPrepared, ...current} = storage;
         if (existing.version !== pack.version || canonical(previous) !== canonical(current)) {
           fail(409, 'pack_version', 'Increase the pack version to publish changes.');
         }
-        if (canonical(previousPractice) === canonical(currentPractice)) return info;
+        if (canonical(previousPractice) === canonical(currentPractice) && previousPrepared === currentPrepared) {
+          this.accounts.copyPublished(identity,pack,practice.mode);
+          return info;
+        }
       }
       this.sql.exec('INSERT INTO packs VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET version = excluded.version, value = excluded.value',
         pack.id, pack.version, JSON.stringify(storage));
@@ -621,6 +655,7 @@ export class VocabularyService {
         this.sql.exec('INSERT INTO cache VALUES (?, ?, ?, ?) ON CONFLICT(key) DO UPDATE SET pack = excluded.pack, content = excluded.content',
           cacheKey(entry.word, settings), pack.id, wordKey(entry.word), JSON.stringify(entry));
       }
+      this.accounts.copyPublished(identity,pack,practice.mode);
       return info;
     });
   }
@@ -628,12 +663,12 @@ export class VocabularyService {
   async pack(id, request) {
     const record = this.one('SELECT value FROM packs WHERE id = ?', id);
     if (!record) notFound();
-    const { cacheSettings, ...info } = JSON.parse(record.value);
+    const { cacheSettings, owner = 'operator', ...info } = JSON.parse(record.value);
     info.practice ??= {mode:info.pack.words.some(row => row.vocabulary) ? 'mixed' : 'spelling', allowHints:true};
     if (info.visibility === 'public') return info;
     if (!request.headers.has('Authorization')) notFound();
     const identity = await this.principal(request);
-    if (identity.role !== 'teacher' && !(info.visibility === 'class' && identity.classId === info.classId)) notFound();
+    if (!(identity.isAdmin || identity.role === 'teacher' && identity.teacherId === owner || info.visibility === 'class' && identity.classId === info.classId)) notFound();
     return info;
   }
 
@@ -677,7 +712,7 @@ export class VocabularyService {
     const input = await bodyOf(request, 2048);
     requireInput(shape(input, ['packId', 'version', 'prompt']) && shortId(input.packId) &&
       integer(input.version, 1, Number.MAX_SAFE_INTEGER) && typeof input.prompt === 'string' &&
-      /^\d{1,3}-(?:s|v\d)$/.test(input.prompt), 'Choose a valid saved audio prompt.');
+      /^\d{1,3}-(?:s|[ve]\d)$/.test(input.prompt), 'Choose a valid saved audio prompt.');
     const { pack } = await this.pack(Dictation.canonicalPackId(input.packId), request);
     if (pack.version !== input.version) fail(409, 'pack_version', 'Publish the latest set before preparing its audio.');
     const wordIndex = Number(input.prompt.split('-')[0]);
@@ -689,18 +724,24 @@ export class VocabularyService {
   }
 
   async savePackPrompt(pack, prompt) {
+    requireInput(typeof prompt.text === 'string' && prompt.text.length > 0 && prompt.text.length <= 200,'Audio text must contain 1–200 characters.');
     const args = [pack.id, pack.version, prompt.key];
     if (this.one('SELECT prompt FROM pack_audio WHERE pack = ? AND version = ? AND prompt = ?', ...args)) return;
     const id = JSON.stringify(args);
     if (!this.audioInFlight.has(id)) {
-      const pending = this.generateSpeech(prompt.text).then(bytes => {
+      const pending = (async () => {
+        const publication = this.one('SELECT value FROM packs WHERE id = ?',pack.id);
+        if (!publication || (JSON.parse(publication.value).owner ?? 'operator') !== 'operator') fail(403,'pack_owner','Prepare this teacher’s recordings through their own private set.');
+        const ownerIdentity = await this.accounts.authenticate({role:'teacher',teacherId:'operator',isAdmin:true});
+        const {bytes} = await this.accounts.speech(ownerIdentity,prompt);
         if (!hasSpeechSignal(bytes)) fail(502, 'audio_quality', 'The recording was mostly silent.');
+        if (!this.accounts.unchanged(ownerIdentity)) fail(409,'account_changed','Provider settings changed. Retry the recording.');
         if (this.one('SELECT version FROM packs WHERE id = ?', pack.id)?.version !== pack.version) {
           fail(409, 'pack_version', 'The set changed while generating audio. Publish and try again.');
         }
         this.sql.exec('INSERT OR IGNORE INTO pack_audio VALUES (?, ?, ?, ?)', ...args,
           bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
-      }).finally(() => this.audioInFlight.delete(id));
+      })().finally(() => this.audioInFlight.delete(id));
       this.audioInFlight.set(id, pending);
     }
     await this.audioInFlight.get(id);
@@ -710,27 +751,37 @@ export class VocabularyService {
     const saved = this.rows('SELECT prompt FROM pack_audio WHERE pack = ? AND version = ?', pack.id, pack.version).map(row => row.prompt);
     const ready = new Set(saved);
     const prompts = pack.words.flatMap((record, index) => Learning.practiceAudioPrompts(record, index)
-      .filter(prompt => mode === 'mixed' || prompt.skill === mode)
+      .filter(prompt => mode !== 'spelling' || prompt.skill === 'spelling')
       .map(prompt => {
         const type = prompt.skill === 'spelling' ? 'dictation' : 'word-bank';
         if (Dictation.publishedClip(pack, record.word, type, prompt.text)) ready.add(prompt.key);
         return prompt;
       }));
+    const published = this.one('SELECT value FROM packs WHERE id = ?',pack.id);
+    const owner = published && (JSON.parse(published.value).owner ?? 'operator');
+    const privateSet = owner && this.accounts.readSet(owner,pack.id);
+    const privateQueue = privateSet && canonical(this.accounts.publishedSnapshot(privateSet.pack,mode)) === canonical(pack)
+      ? this.one('SELECT due FROM teacher_audio_queue WHERE owner = ? AND id = ? AND version = ?',owner,pack.id,pack.version) : null;
     return {prompts, saved, ready, audioStatus: {
       ready: prompts.filter(prompt => ready.has(prompt.key)).length,
       total: prompts.length,
-      pending: this.one('SELECT due FROM audio_queue WHERE pack = ? AND version = ?', pack.id, pack.version)?.due != null
+      pending: this.one('SELECT due FROM audio_queue WHERE pack = ? AND version = ?', pack.id, pack.version)?.due != null || privateQueue?.due != null && prompts.some(prompt => !ready.has(prompt.key)),
+      recordings:prompts.map(prompt => ({key:prompt.key,word:pack.words[Number(prompt.key.split('-')[0])].word,text:prompt.text,status:ready.has(prompt.key) ? 'ready' : 'pending'}))
     }};
   }
 
   async scheduleAudio() {
-    const next = this.one('SELECT MIN(due) AS due FROM audio_queue')?.due;
+    const next = this.one('SELECT MIN(due) AS due FROM (SELECT due FROM audio_queue UNION ALL SELECT due FROM teacher_audio_queue)')?.due;
     if (next != null) await this.storage.setAlarm(Math.max(this.now() + 1000, next));
   }
 
-  async queueAudio({pack, practice}, retry = false) {
+  async queueAudio({pack, practice}, retry = false, identity = {isAdmin:true}) {
     const {audioStatus} = this.audioPlan(pack, practice.mode);
-    if (this.dictationEnabled() && audioStatus.ready < audioStatus.total && !audioStatus.pending) {
+    if (!identity.isAdmin) return audioStatus;
+    const publication = this.one('SELECT value FROM packs WHERE id = ?',pack.id);
+    if (publication && (JSON.parse(publication.value).owner ?? 'operator') !== 'operator') return audioStatus;
+    const audioEnabled = identity.credentials ? this.accounts.config(identity).dictationEnabled : this.dictationEnabled();
+    if (audioEnabled && audioStatus.ready < audioStatus.total && !audioStatus.pending) {
       const existing = this.one('SELECT pack FROM audio_queue WHERE pack = ? AND version = ?', pack.id, pack.version);
       if (!existing || retry) {
         this.sql.exec('INSERT OR REPLACE INTO audio_queue VALUES (?, ?, ?, 0, 0, ?)', pack.id, pack.version, practice.mode, this.now());
@@ -742,6 +793,7 @@ export class VocabularyService {
   }
 
   async processAudioQueue() {
+    await this.accounts.processQueue();
     const now = this.now();
     const job = this.one('SELECT * FROM audio_queue WHERE due <= ? ORDER BY due LIMIT 1', now);
     if (!job) { await this.scheduleAudio(); return; }
@@ -750,7 +802,8 @@ export class VocabularyService {
     const current = row && JSON.parse(row.value).pack;
     const plan = current && this.audioPlan(current, mode);
     const index = plan?.prompts.findIndex((prompt, i) => i >= cursor && !plan.ready.has(prompt.key)) ?? -1;
-    if (index < 0 || !this.dictationEnabled()) {
+    const ownerIdentity = await this.accounts.authenticate({role:'teacher',teacherId:'operator',isAdmin:true});
+    if (index < 0 || !this.accounts.config(ownerIdentity).dictationEnabled) {
       this.sql.exec('UPDATE audio_queue SET due = NULL WHERE pack = ?', pack);
       await this.scheduleAudio();
       return;
@@ -778,23 +831,38 @@ export class VocabularyService {
     if (route === 'access' && method === 'POST') return json(await this.login(request, true));
     const identity = await this.principal(request);
     if (identity.role !== 'teacher') fail(403, 'forbidden', 'Teacher access is required.');
+    if (['invitations','teachers','revokeinvite','revoketeacher'].includes(route)) {
+      if (!identity.isAdmin) fail(403,'forbidden','Administrator access is required.');
+      return json(await this.accounts.admin(route,method,method === 'POST' ? await bodyOf(request,2048) : undefined));
+    }
+    if (!identity.isAdmin && !['publish','packaudioqueue','packs'].includes(route)) fail(403,'forbidden','Administrator access is required.');
     if (route === 'dictation' && method === 'POST') {
-      const bytes = await this.generateSpeech(dictationText(await bodyOf(request, 2048)));
+      const {bytes} = await this.accounts.speech(identity,{text:dictationText(await bodyOf(request,2048)),skill:'custom'});
       return new Response(bytes, {headers: {'Content-Type': 'audio/wav'}});
     }
     if (route === 'packaudio' && method === 'POST') return this.preparePackAudio(request);
     if (route === 'usage' && method === 'GET') return json(this.usage());
     if (route === 'publish' && method === 'POST') {
-      const info = await this.publish(await bodyOf(request, 1_500_000));
-      return json({...info, audioStatus: await this.queueAudio(info)});
+      const info = await this.publish(await bodyOf(request, 1_500_000),identity);
+      return json({...info, audioStatus: await this.queueAudio(info,false,identity)});
     }
     if (route === 'packaudioqueue' && method === 'POST') {
       const {id} = await bodyOf(request, 2048);
       requireInput(shortId(id), 'Choose a published set.');
-      return json({audioStatus: await this.queueAudio(await this.pack(Dictation.canonicalPackId(id), request), true)});
+      const canonicalId = Dictation.canonicalPackId(id);
+      const row = this.one('SELECT value FROM packs WHERE id = ?',canonicalId);
+      if (!row || !identity.isAdmin && (JSON.parse(row.value).owner ?? 'operator') !== identity.teacherId) notFound();
+      if (!identity.isAdmin) {
+        const info = JSON.parse(row.value);
+        const privateSet = this.accounts.readSet(identity.teacherId,canonicalId);
+        if (!privateSet || canonical(this.accounts.publishedSnapshot(privateSet.pack,info.practice.mode)) !== canonical(info.pack)) fail(409,'pack_version','Reload and share the current private set before retrying.');
+        await this.accounts.retry(identity,canonicalId);
+        this.accounts.copyPublished(identity,info.pack,info.practice.mode);
+      }
+      return json({audioStatus: await this.queueAudio(await this.pack(canonicalId, request), true,identity)});
     }
     if (route === 'packs' && method === 'GET') {
-      const packs = this.rows('SELECT value FROM packs ORDER BY id LIMIT 200').map(({ value }) => {
+      const packs = this.rows('SELECT value FROM packs ORDER BY id LIMIT 200').filter(({value}) => identity.isAdmin || (JSON.parse(value).owner ?? 'operator') === identity.teacherId).map(({ value }) => {
         const { pack, visibility, classId } = JSON.parse(value);
         return { id: pack.id, version: pack.version, name: pack.name, wordCount: pack.words.length, visibility, classId };
       });
@@ -834,9 +902,44 @@ export class VocabularyService {
     if (pathname === '/api/health' && method === 'GET') return json({ ok: true, apiVersion: 1 });
     if (pathname === '/api/config' && method === 'GET') return json(this.publicConfig());
     if (pathname === '/api/access' && method === 'POST') return json(await this.login(request, false));
+    const teacherRoute = pathname.match(/^\/api\/teacher\/(login|accept|profile|keys|testkeys|sets)(?:\/([^/]{1,288})(?:\/(retry|audio)(?:\/(\d{1,3}-(?:s|[ve]\d)))?)?)?$/);
+    if (teacherRoute) {
+      let [,action,id,operation,prompt] = teacherRoute;
+      if (id) { try { id = decodeURIComponent(id); } catch { notFound(); } if (!shortId(id)) notFound(); }
+      if (['login','accept'].includes(action) && method === 'POST' && !id) return json(await this.accounts.access(request,await bodyOf(request,2048),action === 'accept'));
+      const identity = await this.principal(request);
+      if (identity.role !== 'teacher') fail(403,'forbidden','Teacher access is required.');
+      if (action === 'profile' && method === 'GET' && !id) return json(this.accounts.profile(identity));
+      if (action === 'keys' && method === 'PUT' && !id) return json(await this.accounts.updateKeys(identity,await bodyOf(request,2048)));
+      if (action === 'testkeys' && method === 'POST' && !id) return json(await this.accounts.testKeys(identity));
+      if (action === 'sets') {
+        if (!id && method === 'POST') return json(await this.accounts.saveSet(identity,await bodyOf(request,1500000)));
+        if (!id && method === 'GET') return json({sets:this.rows('SELECT value FROM teacher_sets WHERE owner = ? ORDER BY id',identity.teacherId).map(({value}) => this.accounts.setDetail(identity.teacherId,JSON.parse(value)))});
+        const record = this.accounts.readSet(identity.teacherId,id);
+        if (!record) notFound();
+        if (!operation && method === 'DELETE') {
+          this.atomic(() => {
+            if (!this.accounts.unchanged(identity)) fail(409,'account_changed','Your account changed. Reload and try again.');
+            this.sql.exec('DELETE FROM teacher_audio_queue WHERE owner = ? AND id = ?',identity.teacherId,id);
+            this.sql.exec('DELETE FROM teacher_sets WHERE owner = ? AND id = ?',identity.teacherId,id);
+          });
+          await this.scheduleAudio();
+          return json({deleted:true});
+        }
+        if (operation === 'retry' && method === 'POST') return json(await this.accounts.retry(identity,id));
+        if (operation === 'audio' && prompt && method === 'GET') {
+          const entry = record.recordings.find(r => r.key === prompt && r.status === 'ready');
+          const clip = entry && this.one('SELECT bytes FROM teacher_audio WHERE owner = ? AND key = ?',identity.teacherId,entry.cacheKey);
+          if (!clip) notFound();
+          return audioResponse(clip.bytes,request.headers.get('Range'));
+        }
+        if (!operation && method === 'GET') return json(this.accounts.setDetail(identity.teacherId,record));
+      }
+      notFound();
+    }
     const admin = pathname.match(/^\/api\/admin\/([a-z]+)$/);
     if (admin) return this.admin(request, admin[1], method);
-    const pack = pathname.match(/^\/api\/packs\/([^/]{1,288})(?:\/audio\/(\d{1,16})\/(\d{1,3}-(?:s|v\d)))?$/);
+    const pack = pathname.match(/^\/api\/packs\/([^/]{1,288})(?:\/audio\/(\d{1,16})\/(\d{1,3}-(?:s|[ve]\d)))?$/);
     if (pack && method === 'GET') {
       let id;
       try { id = decodeURIComponent(pack[1]); } catch { notFound(); }

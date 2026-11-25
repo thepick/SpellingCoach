@@ -8,7 +8,7 @@
   "assets": { "directory": ".wrangler/site", "run_worker_first": ["/api/*"] },
   "vars": {
     "ALLOWED_ORIGINS": "https://wordlab.mtomlinson.ca",
-    "AI_ENABLED": "false",
+    "AI_ENABLED": "true",
     "STUDENT_AI_ENABLED": "false",
     "GROQ_FREE_TIER_CONFIRMED": "true",
     "TROY_AUDIO_ENABLED": "true",

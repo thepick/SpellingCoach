@@ -196,13 +196,13 @@ function mergeRegenerated(record, settings, { item, questionId, previous }) {
   return validatedRecord({ ...previous, vocabulary });
 }
 
-export function validatePack(pack, { allowSpellingOnly = false } = {}) {
+export function validatePack(pack, { allowSpellingOnly = false, allowDraft = false } = {}) {
   requireInput(shape(pack, ['kind', 'v', 'id', 'name', 'version', 'words'])
     && pack.kind === 'spellingcoach-pack' && pack.v === 1 && shortId(pack.id) && safeContent(pack.name, 120)
     && integer(pack.version, 1, Number.MAX_SAFE_INTEGER) && list(pack.words, MAX_WORDS) && pack.words.length > 0, 'Invalid vocabulary pack.');
   for (const entry of pack.words) {
     requireInput(shape(entry, ['word', 'vocabulary']) && displayWord(entry.word) && Object.hasOwn(entry, 'vocabulary'), 'Invalid vocabulary pack word.');
-    if (entry.vocabulary !== null) validatedRecord(entry, true);
+    if (entry.vocabulary !== null) validatedRecord(entry, !allowDraft);
   }
   requireInput(allowSpellingOnly || pack.words.some((entry) => entry.vocabulary !== null), 'Add approved vocabulary before publishing this pack.');
   requireInput(unique(pack.words.map(({ word }) => word)), 'Vocabulary packs cannot contain duplicate words.');

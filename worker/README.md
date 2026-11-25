@@ -21,6 +21,32 @@ For local login testing, define distinct dummy values of at least 32 characters 
 
 ## Production setup
 
+### Invited teachers and personal provider keys
+
+The WordLab deployment enables teacher vocabulary drafting (`AI_ENABLED=true`) and leaves student generation disabled. An owner can pause drafting in the operator settings. To stop all future provider calls at deployment, set both `AI_ENABLED` and `TROY_AUDIO_ENABLED` to false. Calls already accepted by a provider cannot be recalled.
+
+Before teachers save keys, configure `TEACHER_KEY_ENCRYPTION_SECRET` as a Cloudflare Worker secret with at least 32 securely generated characters. Keep it distinct from `SESSION_SIGNING_SECRET` and `ADMIN_AUTH_SECRET`. Use the already installed Wrangler command with `--config wrangler.wordlab.jsonc` to set it; do not put its value in a command, source file, or shared log. Back up the encryption secret securely. Changing or losing it makes saved keys unreadable: profiles report `reconnect` and teachers must enter their keys again. There is no automatic migration across encryption secrets.
+
+The existing owner password and operator bearer secret retain administrator access and ownership of legacy packs. The owner creates invitations in the teacher account panel and copies each link manually. Invitations expire after seven days, can be revoked, and can be redeemed once. Teachers choose a unique case-insensitive username and a password of at least 12 characters. Passwords are stored with a random salt and PBKDF2-SHA-256 (100,000 iterations). Teacher sessions last seven days; revoking a teacher invalidates their sessions, cancels pending text jobs, and stops future audio calls. Published student links remain readable after teacher revocation.
+
+Provider keys are encrypted with AES-GCM and authenticated against the stable teacher ID and provider name. Keys are never included in profile responses, packs, jobs, exports, or student links. Ordinary teachers only use their own keys. The host can decrypt those keys for requests and remains responsible for hosting and storage costs. Key replacement, deletion, settings changes, revocation, and set changes are checked again before accepting an in-flight result.
+
+The owner can also replace, remove, and test keys in the account panel. Until a provider is explicitly configured there, the owner's legacy environment key remains its default. Explicitly deleting an owner provider key disables it and does not restore the environment key. Encrypted owner configuration uses the same encryption secret as invited teachers.
+
+Saved/decryptable key status does not prove provider authentication. The connection test uses only Groq's unbilled `GET /openai/v1/models` and OpenRouter's `GET /api/v1/key`, returning `connected`, `missing`, `invalid`, or `unavailable` without provider response details. It generates no text or audio and makes no paid validation requests.
+
+Private saves automatically queue missing word, full-example, and blank-question WAVs. Cache entries are scoped to teacher and exact spoken text, prompt kind, provider, model, and voice; reordering a set reuses matching clips. Save requests use `{pack, expectedVersion}`: send 0 for a new set and the last server version for an edit. Changed content also requires an increased `pack.version`; identical same-version saves are idempotent. A stale `expectedVersion` returns 409 even if the proposed version jumps ahead. Failed recordings remain visible and can be retried. Invalid or missing keys pause the remaining recordings; replacing a key resumes recoverable failures while preserving successful clips and daily charges. Deleting a private set removes its queue and cannot resurrect an in-flight result; it preserves already published links and recordings.
+
+New publications backed by private sets require every recording for the selected mode and carry `preparedAudio:true`. A spelling share excludes unapproved vocabulary. Existing packs without this flag retain their previous playback behavior. Publishing copies only recordings matching the saved snapshot; student playback never generates a provider request.
+
+Groq Troy is the primary audio voice. Waiting/retrying preserves Troy by default. OpenRouter vocabulary fallback uses `openrouter/free` with zero-price ceilings and validates the returned JSON locally; an explicitly enabled paid text fallback uses `openai/gpt-4.1-mini`. Alternate audio is separately off by default. When explicitly enabled, transient Groq failures may use the paid OpenRouter speech endpoint with `mistralai/voxtral-mini-tts-2603`, voice `en_paul_neutral`; this is a different Mistral voice, not Troy. Invalid credentials, rejected input/account/balance, and WordLab quota failures do not trigger paid audio fallback. Successful PCM responses are checked and wrapped as 24 kHz mono 16-bit WAVs. Audio input over 200 characters fails with an editable error and is never truncated.
+
+WordLab's application caps are separate from provider limits: ordinary text generation has per-teacher reservations, daily meters and model delays; audio has a per-teacher allowance of 100 calls per UTC day and 10 per minute. An alternate audio attempt consumes its own audio call. Provider availability, billing, key validity, production Worker CPU/storage limits, and live voice quality still require a deployment pilot. The local suite uses simulated providers and stored WAV fixtures.
+
+Provider references checked for this implementation: [OpenRouter free router](https://openrouter.ai/docs/guides/routing/model-variants/free), [OpenRouter speech API](https://openrouter.ai/docs/guides/overview/multimodal/tts), and the [current speech model/voice catalog](https://openrouter.ai/api/v1/audio/speech/models). The catalog listed Voxtral with `en_paul_neutral` and PCM; it did not list the initially considered OpenAI TTS model, so that model is not used. PCM's pinned sample rate follows Mistral's [Voxtral TTS demo](https://huggingface.co/spaces/mistralai/voxtral-tts-demo/commit/478642e0819b005da9fce821e43745194dfa895a). Live paid synthesis was not exercised.
+
+### Legacy operator setup
+
 The `wrangler.wordlab.jsonc` configuration connects the WordLab website and API to the same custom domain. Use `node scripts/build.cjs --stage` from the repository root before deploying it. Run the deployment and secret commands below from `worker/` with `--config wrangler.wordlab.jsonc` for that combined deployment. The default Wrangler configuration runs the API separately.
 
 1. Choose a Cloudflare Workers Free account and the approved Worker name. The SQLite migration in wrangler.jsonc creates the vocabulary coordinator. Keep its class name and singleton name stable to retain published packs and job data.
@@ -52,6 +78,19 @@ Every path below starts with /api. Send a JSON body where specified. Signed teac
 | GET /health | Basic availability and API version |
 | GET /config | Read public feature flags, input limits and defaults |
 | POST /admin/access | Exchange a teacher secret for a signed session |
+| POST /teacher/login | Sign in an invited teacher with username and password |
+| POST /teacher/accept | Redeem a single-use invitation and choose teacher credentials |
+| GET /teacher/profile | Read stable identity, effective key presence, settings and feature availability |
+| PUT /teacher/keys | Replace or delete encrypted personal keys and set explicit fallback options |
+| POST /teacher/testkeys | Check effective keys using unbilled provider authentication endpoints |
+| GET or POST /teacher/sets | List full owned private sets or save a versioned pack and queue missing recordings |
+| GET or DELETE /teacher/sets/{id} | Load or delete an owned private set; published links are preserved |
+| POST /teacher/sets/{id}/retry | Retry only recordings that are not ready |
+| GET /teacher/sets/{id}/audio/{prompt} | Authenticated playback of a current owned manifest recording |
+| GET or POST /admin/invitations | Owner-only invitation listing and issuance |
+| POST /admin/revokeinvite | Owner-only invitation revocation |
+| GET /admin/teachers | Owner-only account listing without credentials |
+| POST /admin/revoketeacher | Owner-only teacher revocation |
 | POST /access | Exchange a classroom code for a signed session. Supply the previousToken from the same class to reopen the session's private jobs after expiry. |
 | POST /generate | Create a job with words and settings |
 | POST /regenerate | Regenerate a word or selected definition, examples, distractors or cloze question |

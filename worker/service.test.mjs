@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { VocabularyService } from './service.mjs';
-import { finishStreamedWav } from './dictation.mjs';
+import { finishStreamedWav, synthesizeAlternateAudio } from './dictation.mjs';
 import { providerChoices, requestVocabulary } from './provider.mjs';
 import { ApiError } from './validation.mjs';
 
@@ -76,7 +76,7 @@ function fixture(vars = {}, fetcher = async ({ words }) => ({ records: words.map
     assert.equal(access.status, 200);
     return access.data.token;
   };
-  return { call, createClass, env, advance: (ms) => { clock += ms; },
+  return { call, createClass, env, db, service, advance: (ms) => { clock += ms; },
     runAudioAlarm: async () => {
       assert(alarm >= clock);
       clock = alarm;
@@ -247,14 +247,14 @@ test('publishing queues practice recordings and alarms finish them without a tea
   });
   const pack = {kind:'spellingcoach-pack',v:1,version:1,id:'auto-audio',name:'Automatic audio',words:[{word:'solid',vocabulary:null}]};
   const published = await call('POST','/admin/publish',{pack,visibility:'public',mode:'spelling'});
-  assert.deepEqual(published.data.audioStatus,{ready:0,total:1,pending:true});
+  assert.deepEqual(published.data.audioStatus,{ready:0,total:1,pending:true,recordings:[{key:"0-s",word:"solid",text:"solid",status:"pending"}]});
   assert.equal((await call('POST','/admin/packaudioqueue',{id:pack.id},'')).status,401);
   await runAudioAlarm();
   assert.equal((await call('GET','/packs/auto-audio',undefined,'')).data.audioStatus.pending,true);
   await runAudioAlarm();
   await runAudioAlarm();
   const student = await call('GET','/packs/auto-audio',undefined,'');
-  assert.deepEqual(student.data.audioStatus,{ready:1,total:1,pending:false});
+  assert.deepEqual(student.data.audioStatus,{ready:1,total:1,pending:false,recordings:[{key:"0-s",word:"solid",text:"solid",status:"ready"}]});
   assert.deepEqual(student.data.audio,['0-s']);
   assert.deepEqual((await call('GET','/packs/auto-audio/audio/1/0-s',undefined,'')).data,new Uint8Array(wav));
   assert.deepEqual(spoken,['solid','solid']);
@@ -267,7 +267,7 @@ test('the old demo link returns the canonical pack ID', async () => {
   for (const id of [pack.id, 'matter-mixed']) {
     const {data} = await call('GET','/packs/' + id,undefined,'');
     assert.equal(data.pack.id,'matter-mixed');
-    assert.deepEqual(data.audioStatus,{ready:1,total:1,pending:false});
+    assert.deepEqual(data.audioStatus,{ready:1,total:1,pending:false,recordings:[{key:"0-s",word:"solid",text:"solid",status:"ready"}]});
   }
 });
 
@@ -407,7 +407,7 @@ test('the site can offer Troy while AI vocabulary drafting is off at deployment'
 
 test('Troy audio requires teacher access and a sentence containing the exact word', async () => {
   let spoken;
-  const bytes = Uint8Array.of(82, 73, 70, 70);
+  const bytes = new Uint8Array(readFileSync(new URL('../demo-audio/matter-mixed/words/solid.wav',import.meta.url)));
   const { call, createClass } = fixture({ STUDENT_AI_ENABLED: 'true' }, undefined, async (key, sentence) => {
     assert.equal(key, 'fake');
     spoken = sentence;
@@ -444,7 +444,7 @@ test('Troy WAV streaming headers are finalized without altering the PCM samples'
 });
 
 test('Troy generation has its own minute budget', async () => {
- const { call, advance } = fixture({}, undefined, async () => Uint8Array.of(1));
+ const { call, advance } = fixture({}, undefined, async () => readFileSync(new URL('../demo-audio/matter-mixed/words/solid.wav',import.meta.url)));
  const body = {word: 'contracts', sentence: 'Metal contracts as it cools.'};
  const calls = await Promise.all(Array.from({length:11}, () => call('POST', '/admin/dictation', body)));
  assert.equal(calls.filter(result => result.status === 200).length, 10);
@@ -452,4 +452,469 @@ test('Troy generation has its own minute budget', async () => {
  assert.equal((await call('GET', '/admin/usage')).data.dictationCalls, 10);
  advance(60000);
  assert.equal((await call('POST', '/admin/dictation', body)).status, 200);
+});
+
+const invited = async (f, username = 'teacher-one') => {
+  const invitation = await f.call('POST', '/admin/invitations', {label:username});
+  assert.equal(invitation.status, 200);
+  const access = await f.call('POST', '/teacher/accept', {invite:invitation.data.invite, username, name:username, password:'correct horse school battery'}, '');
+  assert.equal(access.status, 200);
+  return {...access.data, invite:invitation.data.invite};
+};
+
+test('teacher invitations are single use, expiring, revocable, and passwords permit stable isolated sessions', async () => {
+  const f = fixture({TEACHER_KEY_ENCRYPTION_SECRET:'a-test-only-encryption-secret-32-bytes'});
+  const one = await invited(f);
+  assert.equal((await f.call('POST', '/teacher/accept', {invite:one.invite, username:'duplicate', name:'Duplicate', password:'correct horse school battery'}, '')).status, 401);
+  const again = await f.call('POST','/teacher/login',{username:'TEACHER-ONE',password:'correct horse school battery'},'');
+  assert.equal(again.data.teacher.id, one.teacher.id);
+  assert.equal((await f.call('GET','/admin/teachers',undefined,one.token)).status,403);
+  assert.equal((await f.call('GET','/admin/usage',undefined,one.token)).status,403);
+  const invitation = await f.call('POST','/admin/invitations',{label:'revoked'});
+  await f.call('POST','/admin/revokeinvite',{id:invitation.data.id});
+  assert.equal((await f.call('POST','/teacher/accept',{invite:invitation.data.invite,username:'revoked',name:'Revoked',password:'correct horse school battery'},'')).status,401);
+  await f.call('POST','/admin/revoketeacher',{id:one.teacher.id});
+  assert.equal((await f.call('GET','/teacher/profile',undefined,again.data.token)).status,401);
+});
+
+test('personal keys never fall back to owner keys; teachers only see their own jobs', async () => {
+  const targets = [];
+  const f = fixture({TEACHER_KEY_ENCRYPTION_SECRET:'a-test-only-encryption-secret-32-bytes'}, async input => { targets.push(input.target); return {records:input.words.map(draft),tokens:100}; });
+  const one = await invited(f), two = await invited(f,'teacher-two');
+  assert.equal((await f.call('POST','/generate',{words:['textile']},one.token)).status,503);
+  const connected = await f.call('PUT','/teacher/keys',{groq:'personal-groq-test-key'},one.token);
+  assert.equal(connected.data.keys.groq,true);
+  assert(!JSON.stringify(connected.data).includes('personal-groq-test-key'));
+  const job = await f.call('POST','/generate',{words:['textile']},one.token);
+  assert.equal(job.status,201);
+  assert.equal((await f.call('GET',`/jobs/${job.data.id}`,undefined,two.token)).status,404);
+  await f.call('POST',`/jobs/${job.data.id}/step`,undefined,one.token);
+  assert.equal(targets[0].key,'personal-groq-test-key');
+  const relogin = await f.call('POST','/teacher/login',{username:'teacher-one',password:'correct horse school battery'},'');
+  assert.equal((await f.call('GET',`/jobs/${job.data.id}`,undefined,relogin.data.token)).status,200);
+});
+
+test('private sets autoschedule, isolate playback, reuse exact audio across reorder and reject stale saves', async () => {
+  let calls = 0;
+  const f = fixture({TEACHER_KEY_ENCRYPTION_SECRET:'a-test-only-encryption-secret-32-bytes'},undefined,async () => { calls++; return readFileSync(new URL('../demo-audio/matter-mixed/words/solid.wav',import.meta.url)); });
+  const one = await invited(f), two = await invited(f,'teacher-two');
+  await f.call('PUT','/teacher/keys',{groq:'personal-groq-test-key'},one.token);
+  const pack = {kind:'spellingcoach-pack',v:1,id:'private-set',name:'My words',version:1,words:[{word:'textile',vocabulary:null},{word:'cloth',vocabulary:null}]};
+  const saved = await f.call('POST','/teacher/sets',{pack,expectedVersion:0},one.token);
+  assert.equal(saved.status,200);
+  assert.equal(saved.data.audioStatus.pending,true);
+  assert.equal((await f.call('GET','/teacher/sets/private-set',undefined,two.token)).status,404);
+  await f.runAudioAlarm(); await f.runAudioAlarm();
+  const ready = await f.call('GET','/teacher/sets/private-set',undefined,one.token);
+  assert.equal(ready.data.audioStatus.ready,2);
+  assert.equal((await f.call('GET','/teacher/sets/private-set/audio/0-s',undefined,one.token)).status,200);
+  assert.equal((await f.call('GET','/teacher/sets/private-set/audio/0-s',undefined,two.token)).status,404);
+  assert.equal((await f.call('POST','/teacher/sets',{pack:{...pack,name:'Stale'},expectedVersion:1},one.token)).status,409);
+  const reordered = {...pack,version:2,words:pack.words.slice().reverse()};
+  assert.equal((await f.call('POST','/teacher/sets',{pack:reordered,expectedVersion:1},one.token)).data.audioStatus.ready,2);
+  assert.equal(calls,2);
+  const pub = await f.call('POST','/admin/publish',{pack:reordered,visibility:'public',mode:'spelling'},one.token);
+  assert.equal(pub.status,200);
+  assert.equal(pub.data.audioStatus.ready,2);
+  assert.equal((await f.call('GET','/packs/private-set',undefined,'')).data.pack.name,'My words');
+  assert.equal((await f.call('POST','/admin/publish',{pack:{...reordered,version:3},visibility:'public',mode:'spelling'},two.token)).status,404);
+});
+
+
+const encryptionEnv = {TEACHER_KEY_ENCRYPTION_SECRET:'a-test-only-encryption-secret-32-bytes'};
+const privatePack = (id = 'private-regression',words = ['textile']) => ({kind:'spellingcoach-pack',v:1,id,name:'Regression',version:1,words:words.map(word=>({word,vocabulary:null}))});
+const audioFixture = () => readFileSync(new URL('../demo-audio/matter-mixed/words/solid.wav',import.meta.url));
+const deferred = () => { let resolve; const promise = new Promise(done => {resolve=done;}); return {promise,resolve}; };
+
+test('credentials are encrypted with teacher/provider binding and rotation fails closed with reconnect status',async () => {
+  const f = fixture(encryptionEnv);
+  const one = await invited(f);
+  await f.call('PUT','/teacher/keys',{groq:'private-key-never-in-sql',openrouter:'private-router-key-never-in-sql'},one.token);
+  const stored = f.db.prepare('SELECT value FROM teachers WHERE id = ?').get(one.teacher.id).value;
+  assert(!stored.includes('private-key-never-in-sql'));
+  assert(!stored.includes('private-router-key-never-in-sql'));
+  assert(!stored.includes('correct horse school battery'));
+  const record = JSON.parse(stored);
+  await assert.rejects(f.service.accounts.crypt('decrypt','another-teacher','groq',record.keys.groq));
+  await assert.rejects(f.service.accounts.crypt('decrypt',one.teacher.id,'openrouter',record.keys.groq));
+  f.env.TEACHER_KEY_ENCRYPTION_SECRET = 'a-new-encryption-secret-which-is-different';
+  const profile = await f.call('GET','/teacher/profile',undefined,one.token);
+  assert.equal(profile.status,200);
+  assert.deepEqual(profile.data.keys,{groq:false,openrouter:false});
+  assert.deepEqual(profile.data.reconnect,['groq','openrouter']);
+  assert.equal((await f.call('POST','/generate',{words:['textile']},one.token)).status,503);
+  assert.equal((await f.call('PUT','/teacher/keys',{groq:'new-personal-key'},one.token)).data.keys.groq,true);
+});
+
+test('owner supports encrypted keys and explicit deletion does not restore environment credentials',async () => {
+  const targets = [];
+  const f = fixture(encryptionEnv,async input => {targets.push(input.target);return {records:input.words.map(draft),tokens:100};});
+  const before = await f.call('GET','/teacher/profile');
+  assert.equal(before.data.keys.groq,true);
+  const profile = await f.call('PUT','/teacher/keys',{groq:'new-owner-private-key',allowPaidText:true,allowAlternateAudio:true});
+  assert.equal(profile.status,200);
+  assert.equal(profile.data.settings.allowAlternateAudio,true);
+  const job = await f.call('POST','/generate',{words:['textile']});
+  await f.call('POST',`/jobs/${job.data.id}/step`);
+  assert.equal(targets[0].key,'new-owner-private-key');
+  assert.equal((await f.call('PUT','/teacher/keys',{groq:null})).data.keys.groq,false);
+  assert.equal((await f.call('POST','/generate',{words:['cloth']})).status,503);
+  assert(!f.db.prepare("SELECT value FROM teachers WHERE id = 'operator'").get().value.includes('new-owner-private-key'));
+});
+
+test('invites expire, duplicate usernames stay unique and auth attempts are bounded',async () => {
+  const f = fixture(encryptionEnv);
+  const one = await invited(f);
+  const invitation = await f.call('POST','/admin/invitations',{label:'Second'});
+  const details = {invite:invitation.data.invite,username:'teacher-one',name:'Second',password:'correct horse school battery'};
+  assert.equal((await f.call('POST','/teacher/accept',details,'')).status,409);
+  f.advance(7*86400000+1);
+  assert.equal((await f.call('POST','/teacher/accept',{...details,username:'teacher-new'},'')).status,401);
+  for (let attempt=0; attempt<20; attempt++) assert.equal((await f.call('POST','/teacher/login',{username:'teacher-one',password:'incorrect long password'},'')).status,401);
+  assert.equal((await f.call('POST','/teacher/login',{username:'teacher-one',password:'correct horse school battery'},'')).status,429);
+  assert.equal((await f.call('GET','/teacher/profile',undefined,one.token)).status,401);
+});
+
+test('teacher provider delays and daily budgets are independent across accounts',async () => {
+  const f = fixture(encryptionEnv,async ({target,words}) => target.key === 'personal-one-key'
+    ? {records:[],rateLimited:true,retryInMs:60000} : {records:words.map(draft),tokens:100});
+  const one = await invited(f), two = await invited(f,'teacher-two');
+  await f.call('PUT','/teacher/keys',{groq:'personal-one-key'},one.token);
+  await f.call('PUT','/teacher/keys',{groq:'personal-two-key'},two.token);
+  const first = await f.call('POST','/generate',{words:['textile']},one.token);
+  assert.equal((await f.call('POST',`/jobs/${first.data.id}/step`,undefined,one.token)).data.status,'paused');
+  const second = await f.call('POST','/generate',{words:['textile']},two.token);
+  assert.equal((await f.call('POST',`/jobs/${second.data.id}/step`,undefined,two.token)).data.status,'complete');
+  const meters = f.db.prepare('SELECT key FROM meter').all().map(r=>r.key);
+  assert(meters.includes(one.teacher.id+':calls'));
+  assert(meters.includes(two.teacher.id+':calls'));
+  assert(!meters.includes('calls'));
+});
+
+test('key deletion while a text request is in flight prevents stale generated content writes',async () => {
+  const entered = deferred(), released = deferred();
+  const f = fixture(encryptionEnv,async ({words}) => {entered.resolve();await released.promise;return {records:words.map(draft),tokens:100};});
+  const one = await invited(f);
+  await f.call('PUT','/teacher/keys',{groq:'personal-one-key'},one.token);
+  const job = await f.call('POST','/generate',{words:['textile']},one.token);
+  const running = f.call('POST',`/jobs/${job.data.id}/step`,undefined,one.token);
+  await entered.promise;
+  await f.call('PUT','/teacher/keys',{groq:null},one.token);
+  released.resolve();
+  const result = await running;
+  assert.equal(result.data.counts.generated,0);
+  assert.equal(result.data.status,'paused');
+});
+
+test('revocation while audio is in flight discards the clip and stops subsequent calls',async () => {
+  const entered = deferred(), released = deferred();
+  let calls=0;
+  const f = fixture(encryptionEnv,undefined,async () => {calls++;entered.resolve();await released.promise;return audioFixture();});
+  const one = await invited(f);
+  await f.call('PUT','/teacher/keys',{groq:'personal-one-key'},one.token);
+  await f.call('POST','/teacher/sets',{pack:privatePack('revoked-audio',['textile','cloth']),expectedVersion:0},one.token);
+  const running = f.runAudioAlarm();
+  await entered.promise;
+  await f.call('POST','/admin/revoketeacher',{id:one.teacher.id});
+  released.resolve(); await running;
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM teacher_audio').get().n,0);
+  assert.equal(calls,1);
+  assert.equal(f.db.prepare('SELECT due FROM teacher_audio_queue WHERE owner = ?').get(one.teacher.id).due,null);
+});
+
+test('editing the set while audio is in flight prevents stale clips and removed manifest access',async () => {
+  const entered = deferred(), released = deferred();
+  let calls=0;
+  const f = fixture(encryptionEnv,undefined,async () => {calls++;if(calls===1){entered.resolve();await released.promise;}return audioFixture();});
+  const one = await invited(f);
+  await f.call('PUT','/teacher/keys',{groq:'personal-one-key'},one.token);
+  const pack = privatePack();
+  await f.call('POST','/teacher/sets',{pack,expectedVersion:0},one.token);
+  const running = f.runAudioAlarm(); await entered.promise;
+  await f.call('POST','/teacher/sets',{pack:{...pack,version:2,words:[{word:'cloth',vocabulary:null}]},expectedVersion:1},one.token);
+  released.resolve(); await running;
+  assert.equal((await f.call('GET','/teacher/sets/private-regression/audio/0-s',undefined,one.token)).status,404);
+  await f.runAudioAlarm();
+  const saved = await f.call('GET','/teacher/sets/private-regression',undefined,one.token);
+  assert.equal(saved.data.audioStatus.recordings[0].text,'cloth');
+  assert.equal(saved.data.audioStatus.ready,1);
+  const keys = f.db.prepare('SELECT key FROM teacher_audio').all().map(r=>r.key);
+  assert(keys.every(key=>!key.includes('textile')));
+});
+
+test('private draft vocabulary prepares full examples and blanks, while spelling publication strips drafts',async () => {
+  const f = fixture(encryptionEnv,undefined,async()=>audioFixture());
+  const one = await invited(f);
+  await f.call('PUT','/teacher/keys',{groq:'personal-one-key'},one.token);
+  const record = approved('textile'); record.vocabulary.status='draft';
+  const pack = {...privatePack(),words:[record]};
+  const saved = await f.call('POST','/teacher/sets',{pack,expectedVersion:0},one.token);
+  assert.equal(saved.status,200);
+  assert(saved.data.audioStatus.recordings.some(r=>r.key==='0-e0' && r.text===record.vocabulary.examples[0]));
+  assert(saved.data.audioStatus.recordings.some(r=>r.key==='0-v0' && r.text.includes('blank') && !r.text.includes('textile')));
+  await f.runAudioAlarm();
+  assert.equal((await f.call('POST','/admin/publish',{pack,visibility:'public',mode:'mixed'},one.token)).status,400);
+  const publicPack = {...pack,words:[{word:'textile',vocabulary:null}]};
+  const published = await f.call('POST','/admin/publish',{pack:publicPack,visibility:'public',mode:'spelling'},one.token);
+  assert.equal(published.status,200);
+  const student = await f.call('GET','/packs/'+pack.id,undefined,'');
+  assert.equal(student.data.pack.words[0].vocabulary,null);
+  assert.deepEqual(student.data.audio,['0-s']);
+  assert(!JSON.stringify(student.data).includes('provider'));
+});
+
+test('OpenRouter personal free-text fallback is zero-priced unless paid text is explicitly allowed',async () => {
+  const env = {OPENROUTER_API_KEY:'personal-router-key',OPENROUTER_FREE_TIER_CONFIRMED:'true',OPENROUTER_FREE_MODEL:'openrouter/free',PERSONAL_KEYS:true};
+  assert.equal(providerChoices(env).length,1);
+  const choices = providerChoices({...env,ALLOW_PAID_TEXT:true});
+  assert.equal(choices.length,2);
+  for (const target of choices) {
+    const result = await requestVocabulary({target,words:['textile'],settings:{readingLevel:5,practiceSentences:5,exampleSentences:2},maxCompletionTokens:2000,fetchRequest:async (_url,init)=>{
+      const body=JSON.parse(init.body);
+      assert.equal(body.response_format,undefined);
+      assert.equal(!!body.provider.max_price,!target.allowPaid);
+      if (!target.allowPaid) assert.equal(body.provider.max_price.completion,0);
+      return Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify({records:[draft('textile')]})}}]});
+    }});
+    assert.equal(result.records[0].word,'textile');
+  }
+});
+
+test('alternate speech rejects JSON and incorrect PCM types/rates without accepting garbage',async () => {
+  for (const type of ['application/json','audio/mpeg','audio/L16;rate=24000;channels=1','audio/pcm;rate=48000','audio/pcm;channels=2']) {
+    await assert.rejects(synthesizeAlternateAudio('fake-key','textile',async()=>new Response(new Uint8Array([1,2,3,4]),{headers:{'Content-Type':type}})));
+  }
+  await assert.rejects(synthesizeAlternateAudio('fake-key','x'.repeat(201),async()=>{throw Error('must not call');}));
+});
+
+test('connection tests use unbilled endpoints and return sanitized statuses for effective keys',async () => {
+  const f=fixture(encryptionEnv), one=await invited(f);
+  const requests=[];
+  f.service.connectionFetcher=async (url,init)=>{
+    requests.push({url,method:init.method});
+    assert.equal(init.redirect,'manual');
+    assert.equal(init.method,'GET');
+    if (url.includes('groq.com')) {assert.equal(init.headers.Authorization,'Bearer personal-groq-key');return Response.json({data:[]});}
+    assert.equal(init.headers.Authorization,'Bearer personal-router-key');
+    return Response.json({error:'secret internal provider error'}, {status:401});
+  };
+  assert.deepEqual((await f.call('POST','/teacher/testkeys',undefined,one.token)).data,{groq:'missing',openrouter:'missing'});
+  assert.equal(requests.length,0);
+  await f.call('PUT','/teacher/keys',{groq:'personal-groq-key',openrouter:'personal-router-key'},one.token);
+  assert.deepEqual((await f.call('POST','/teacher/testkeys',undefined,one.token)).data,{groq:'connected',openrouter:'invalid'});
+  assert.deepEqual(requests.map(r=>r.url),['https://api.groq.com/openai/v1/models','https://openrouter.ai/api/v1/key']);
+  f.service.connectionFetcher=async()=>{throw Error('secret exception');};
+  assert.deepEqual((await f.call('POST','/teacher/testkeys',undefined,one.token)).data,{groq:'unavailable',openrouter:'unavailable'});
+});
+
+test('alternate audio requires opt-in and only transient primary errors permit a fallback',async () => {
+  let alternate=0, primaryStatus=401, primaryCode='provider_auth';
+  const f=fixture(encryptionEnv,undefined,async()=>{throw new ApiError(primaryStatus,primaryCode,'Sanitized primary failure');});
+  f.service.alternateSpeechFetcher=async(key,text)=>{alternate++;assert.equal(key,'personal-router-key');assert.equal(text,'textile');return audioFixture();};
+  const one=await invited(f);
+  await f.call('PUT','/teacher/keys',{groq:'personal-groq-key',openrouter:'personal-router-key',allowAlternateAudio:true},one.token);
+  const request=new Request('https://worker.test/api/teacher/profile',{headers:{Authorization:'Bearer '+one.token}});
+  let identity=await f.service.principal(request);
+  for (const [status,code] of [[401,'provider_auth'],[400,'provider_request'],[402,'provider_request'],[429,'dictation_daily'],[429,'dictation_budget']]) {
+    primaryStatus=status;primaryCode=code;
+    await assert.rejects(f.service.accounts.speech(identity,{text:'textile',skill:'spelling'}),error=>error.status===status);
+  }
+  assert.equal(alternate,0);
+  primaryStatus=502;primaryCode='dictation_unavailable';
+  const clip=await f.service.accounts.speech(identity,{text:'textile',skill:'spelling'});
+  assert.equal(clip.provider,'openrouter');assert.equal(clip.voice,'en_paul_neutral');assert.equal(alternate,1);
+  await f.call('PUT','/teacher/keys',{allowAlternateAudio:false},one.token);
+  identity=await f.service.principal(request);
+  await assert.rejects(f.service.accounts.speech(identity,{text:'textile',skill:'spelling'}));
+  assert.equal(alternate,1);
+});
+
+test('Voxtral PCM is wrapped as a correctly sized mono 24kHz WAV and keeps samples unchanged',async()=>{
+  const pcm=new Uint8Array([20,10,40,20]);
+  const wav=await synthesizeAlternateAudio('test-router-key','Hello.',async (url,init)=>{
+    assert.equal(url,'https://openrouter.ai/api/v1/audio/speech');
+    const body=JSON.parse(init.body);
+    assert.equal(body.model,'mistralai/voxtral-mini-tts-2603');assert.equal(body.voice,'en_paul_neutral');assert.equal(body.response_format,'pcm');
+    return new Response(pcm,{headers:{'Content-Type':'audio/pcm;rate=24000;channels=1'}});
+  });
+  const view=new DataView(wav.buffer);
+  assert.equal(view.getUint16(22,true),1);assert.equal(view.getUint32(24,true),24000);assert.equal(view.getUint16(34,true),16);assert.equal(view.getUint32(40,true),pcm.length);
+  assert.deepEqual(wav.subarray(44),pcm);
+});
+
+test('deleting an owned private set stops queued spending and in-flight work cannot resurrect it',async()=>{
+  const entered=deferred(),released=deferred();let calls=0;
+  const f=fixture(encryptionEnv,undefined,async()=>{calls++;entered.resolve();await released.promise;return audioFixture();});
+  const one=await invited(f),two=await invited(f,'teacher-two');
+  await f.call('PUT','/teacher/keys',{groq:'personal-groq-key'},one.token);
+  const pack=privatePack();
+  await f.call('POST','/teacher/sets',{pack,expectedVersion:0},one.token);
+  await f.call('POST','/teacher/sets',{pack,expectedVersion:0},two.token);
+  const running=f.runAudioAlarm();await entered.promise;
+  assert.equal((await f.call('DELETE','/teacher/sets/private-regression',undefined,one.token)).status,200);
+  released.resolve();await running;
+  assert.equal(calls,1);
+  assert.equal((await f.call('GET','/teacher/sets/private-regression',undefined,one.token)).status,404);
+  assert.equal((await f.call('GET','/teacher/sets/private-regression',undefined,two.token)).status,200);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM teacher_audio WHERE owner = ?').get(one.teacher.id).n,0);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM teacher_audio_queue WHERE owner = ?').get(one.teacher.id).n,0);
+});
+
+test('private-backed publications require every selected recording and deletion preserves prepared student links',async()=>{
+  const f=fixture(encryptionEnv,undefined,async()=>audioFixture()), one=await invited(f);
+  await f.call('PUT','/teacher/keys',{groq:'personal-groq-key'},one.token);
+  const pack=privatePack();
+  assert.equal((await f.call('POST','/admin/publish',{pack,visibility:'public',mode:'spelling'},one.token)).data.error.code,'private_set_required');
+  await f.call('POST','/teacher/sets',{pack,expectedVersion:0},one.token);
+  const premature=await f.call('POST','/admin/publish',{pack,visibility:'public',mode:'spelling'},one.token);
+  assert.equal(premature.status,409);assert.equal(premature.data.error.code,'audio_not_ready');
+  await f.runAudioAlarm();
+  const published=await f.call('POST','/admin/publish',{pack,visibility:'public',mode:'spelling'},one.token);
+  assert.equal(published.status,200);assert.equal(published.data.preparedAudio,true);
+  await f.call('DELETE','/teacher/sets/'+pack.id,undefined,one.token);
+  const student=await f.call('GET','/packs/'+pack.id,undefined,'');
+  assert.equal(student.data.preparedAudio,true);assert.equal(student.data.audioStatus.ready,1);
+  assert.equal((await f.call('GET','/packs/'+pack.id+'/audio/1/0-s',undefined,'')).status,200);
+  const legacy=await f.call('POST','/admin/publish',{pack:privatePack('legacy-fixture'),visibility:'public',mode:'spelling'});
+  assert.equal(legacy.status,200);assert.equal(legacy.data.preparedAudio,undefined);
+});
+
+test('private set compare-and-swap rejects a stale expected version even when proposed version jumps forward',async()=>{
+  const f=fixture(encryptionEnv),one=await invited(f),pack=privatePack('grade5.unit:1');
+  assert.equal((await f.call('POST','/teacher/sets',{pack},one.token)).status,400);
+  assert.equal((await f.call('POST','/teacher/sets',{pack,expectedVersion:0},one.token)).status,200);
+  const current={...pack,version:3,name:'Current server copy'};
+  assert.equal((await f.call('POST','/teacher/sets',{pack:current,expectedVersion:1},one.token)).status,200);
+  assert.equal((await f.call('POST','/teacher/sets',{pack:{...pack,version:5,name:'Stale browser copy'},expectedVersion:1},one.token)).status,409);
+  const loaded=await f.call('GET','/teacher/sets/'+encodeURIComponent(pack.id),undefined,one.token);
+  assert.equal(loaded.status,200);assert.equal(loaded.data.pack.name,'Current server copy');
+  assert.equal((await f.call('POST','/teacher/sets/'+encodeURIComponent(pack.id)+'/retry',undefined,one.token)).status,200);
+  assert.equal((await f.call('DELETE','/teacher/sets/'+encodeURIComponent(pack.id),undefined,one.token)).status,200);
+});
+
+test('identical prompts saved in multiple pending private sets are billed once and valid dotted IDs play',async()=>{
+  let calls=0;
+  const f=fixture(encryptionEnv,undefined,async()=>{calls++;return audioFixture();}),one=await invited(f);
+  await f.call('PUT','/teacher/keys',{groq:'personal-groq-key'},one.token);
+  for (const id of ['grade5.unit:1','grade5.unit:2']) assert.equal((await f.call('POST','/teacher/sets',{pack:privatePack(id),expectedVersion:0},one.token)).status,200);
+  await f.runAudioAlarm();await f.runAudioAlarm();
+  assert.equal(calls,1);
+  for (const id of ['grade5.unit:1','grade5.unit:2']) assert.equal((await f.call('GET','/teacher/sets/'+encodeURIComponent(id)+'/audio/0-s',undefined,one.token)).status,200);
+});
+
+test('concurrent published prompt requests share one provider call across the authentication await',async()=>{
+  let calls=0;const entered=deferred(),released=deferred();
+  const f=fixture({},undefined,async()=>{calls++;entered.resolve();await released.promise;return audioFixture();});
+  const pack=privatePack('operator-concurrent');
+  await f.call('POST','/admin/publish',{pack,visibility:'public',mode:'spelling'});
+  const body={packId:pack.id,version:1,prompt:'0-s'};
+  const first=f.call('POST','/admin/packaudio',body),second=f.call('POST','/admin/packaudio',body);
+  await entered.promise;released.resolve();
+  assert.equal((await first).status,200);assert.equal((await second).status,200);assert.equal(calls,1);
+});
+
+test('owner cannot spend owner credentials by stepping an invited teacher job or recording that teacher publication',async()=>{
+  let textCalls=0,audioCalls=0;
+  const f=fixture(encryptionEnv,async({words})=>{textCalls++;return {records:words.map(draft),tokens:100};},async()=>{audioCalls++;return audioFixture();});
+  const one=await invited(f);await f.call('PUT','/teacher/keys',{groq:'personal-groq-key'},one.token);
+  const job=await f.call('POST','/generate',{words:['textile']},one.token);
+  assert.equal((await f.call('POST','/jobs/'+job.data.id+'/step')).status,404);assert.equal(textCalls,0);
+  assert.equal((await f.call('POST','/jobs/'+job.data.id+'/step',undefined,one.token)).status,200);assert.equal(textCalls,1);
+  const pack=privatePack('teacher-own-publication');
+  await f.call('POST','/teacher/sets',{pack,expectedVersion:0},one.token);await f.runAudioAlarm();
+  await f.call('POST','/admin/publish',{pack,visibility:'public',mode:'spelling'},one.token);
+  f.db.prepare('DELETE FROM pack_audio WHERE pack = ?').run(pack.id);
+  const attempted=await f.call('POST','/admin/packaudio',{packId:pack.id,version:1,prompt:'0-s'});
+  assert.equal(attempted.status,403);assert.equal(audioCalls,1);
+  const queue=await f.call('POST','/admin/packaudioqueue',{id:pack.id});
+  assert.equal(queue.data.audioStatus.pending,false);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM audio_queue WHERE pack = ?').get(pack.id).n,0);
+});
+
+test('legacy owner publications without an owner marker remain idempotent at the same version',async()=>{
+  const f=fixture(),pack=privatePack('legacy-idempotent');
+  const info={pack,visibility:'public',practice:{mode:'spelling',allowHints:true}};
+  f.db.prepare('INSERT INTO packs VALUES (?,?,?)').run(pack.id,pack.version,JSON.stringify(info));
+  const repeated=await f.call('POST','/admin/publish',{pack,visibility:'public',mode:'spelling'});
+  assert.equal(repeated.status,200);assert.equal(repeated.data.preparedAudio,undefined);
+});
+
+test('queue dispatch rechecks deletion during authentication and alarm scheduling before billing',async()=>{
+  for (const pause of ['authenticate','schedule']) {
+    let calls=0;const entered=deferred(),released=deferred();
+    const f=fixture(encryptionEnv,undefined,async()=>{calls++;return audioFixture();}),one=await invited(f);
+    await f.call('PUT','/teacher/keys',{groq:'personal-groq-key'},one.token);
+    await f.call('POST','/teacher/sets',{pack:privatePack(),expectedVersion:0},one.token);
+    if(pause==='authenticate') {
+      const authenticate=f.service.accounts.authenticate.bind(f.service.accounts);
+      f.service.accounts.authenticate=async identity=>{if(!identity.sid){entered.resolve();await released.promise;}return authenticate(identity);};
+    } else {
+      const schedule=f.service.scheduleAudio.bind(f.service);
+      let first=true;
+      f.service.scheduleAudio=async()=>{if(first){first=false;entered.resolve();await released.promise;}return schedule();};
+    }
+    const running=f.service.accounts.processQueue();await entered.promise;
+    assert.equal((await f.call('DELETE','/teacher/sets/private-regression',undefined,one.token)).status,200);
+    released.resolve();await running;
+    assert.equal(calls,0);
+    assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM teacher_audio').get().n,0);
+  }
+});
+
+test('silent owner audio cannot be marked ready after quality rejection',async()=>{
+  const silent=Buffer.from(audioFixture());silent.fill(0,44);
+  const f=fixture({},undefined,async()=>silent);
+  await f.call('POST','/teacher/sets',{pack:privatePack(),expectedVersion:0});
+  await f.runAudioAlarm();
+  const saved=await f.call('GET','/teacher/sets/private-regression');
+  assert.equal(saved.data.audioStatus.ready,0);assert.equal(saved.data.audioStatus.recordings[0].status,'failed');
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM teacher_audio').get().n,0);
+});
+
+test('autosaved legacy owner snapshot can upgrade its prepared-audio marker without changing version',async()=>{
+  const f=fixture({},undefined,async()=>audioFixture()),pack=privatePack('legacy-upgrade');
+  const legacy={pack,visibility:'public',practice:{mode:'spelling',allowHints:true}};
+  f.db.prepare('INSERT INTO packs VALUES (?,?,?)').run(pack.id,pack.version,JSON.stringify(legacy));
+  await f.call('POST','/teacher/sets',{pack,expectedVersion:0});await f.runAudioAlarm();
+  const response=await f.call('POST','/admin/publish',{pack,visibility:'public',mode:'spelling'});
+  assert.equal(response.status,200);assert.equal(response.data.preparedAudio,true);
+  assert.equal((await f.call('GET','/packs/'+pack.id,undefined,'')).data.preparedAudio,true);
+});
+
+test('invalid audio keys pause the remaining recordings and replacement resumes only missing clips',async()=>{
+  const calls=[];
+  const f=fixture(encryptionEnv,undefined,async(key,text)=>{calls.push({key,text});if(key==='wrong-personal-key')throw new ApiError(401,'provider_auth','Reconnect your Groq key.');return audioFixture();}),one=await invited(f);
+  await f.call('PUT','/teacher/keys',{groq:'good-personal-key'},one.token);
+  const pack=privatePack('key-recovery',['textile','cloth','fabric']);
+  await f.call('POST','/teacher/sets',{pack,expectedVersion:0},one.token);await f.runAudioAlarm();
+  await f.call('PUT','/teacher/keys',{groq:'wrong-personal-key'},one.token);await f.runAudioAlarm();
+  const failed=await f.call('GET','/teacher/sets/key-recovery',undefined,one.token);
+  assert.equal(failed.data.audioStatus.ready,1);assert.equal(failed.data.audioStatus.pending,false);
+  assert.equal(calls.length,2);
+  assert(failed.data.audioStatus.recordings.slice(1).every(r=>r.status==='failed'));
+  await f.call('PUT','/teacher/keys',{groq:'corrected-personal-key'},one.token);
+  await f.runAudioAlarm();await f.runAudioAlarm();
+  const ready=await f.call('GET','/teacher/sets/key-recovery',undefined,one.token);
+  assert.equal(ready.data.audioStatus.ready,3);assert.equal(calls.length,4);
+  assert.equal(calls.filter(r=>r.text==='textile').length,1);
+});
+
+test('an old-key 429 response cannot put a replacement key into provider cooldown',async()=>{
+  const entered=deferred(),released=deferred(),calls=[];
+  const f=fixture(encryptionEnv,undefined,async(key)=>{
+    calls.push(key);
+    if(key==='old-personal-key'){entered.resolve();await released.promise;throw new ApiError(429,'dictation_rate_limit','The old key was throttled.');}
+    return audioFixture();
+  }),one=await invited(f);
+  await f.call('PUT','/teacher/keys',{groq:'old-personal-key'},one.token);
+  const request=new Request('https://worker.test/api/teacher/profile',{headers:{Authorization:'Bearer '+one.token}});
+  const stale=await f.service.principal(request);
+  const running=assert.rejects(f.service.accounts.speech(stale,{text:'textile',skill:'spelling'}),error=>error.code==='dictation_rate_limit');
+  await entered.promise;
+  await f.call('PUT','/teacher/keys',{groq:'replacement-personal-key'},one.token);
+  released.resolve();await running;
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM provider_delay WHERE key = ?').get(one.teacher.id+':audio:groq').n,0);
+  const current=await f.service.principal(request);
+  const clip=await f.service.accounts.speech(current,{text:'textile',skill:'spelling'});
+  assert.equal(clip.provider,'groq');assert.deepEqual(calls,['old-personal-key','replacement-personal-key']);
 });

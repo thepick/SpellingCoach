@@ -124,6 +124,7 @@ async function renderSharedReady() {
  $('shared-start').textContent = mode ? 'Continue practice' : 'Start practice';
  $('shared-start').disabled = false;
  $('shared-start').hidden = false;
+ $('shared-study').hidden = review.mode === 'spelling' || !review.pack.words.some(row=>row.vocabulary?.status === 'approved');
  show('shared-ready');
 }
 
@@ -164,6 +165,8 @@ async function startSharedReview() {
 async function openSharedReview() {
  const args = new URLSearchParams(location.hash.slice(1));
  if (!args.has('pack')) {
+  $('local-preview-notice').hidden = true;
+  $('shared-study').hidden = true;
   sharedReview = null;
   sharedLoad++;
   showLanding();
@@ -183,11 +186,12 @@ async function openSharedReview() {
   history.replaceState(history.state, '', location.pathname + location.search + '#' + args);
  }
  const previewTicket = studentPreview ? args.get('draft') : null;
+ $('local-preview-notice').hidden = !previewTicket;
  try {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,95}$/.test(id)) throw Error('Invalid pack link.');
   if (state.learningCheckpoint && !state.learningSession) await recoverCheckpoint(false);
   const origin = previewTicket ? location.origin : serviceOrigin(entryPage === 'offline' ? args.get('service') || ONLINE_CONFIG : ONLINE_CONFIG);
-  let pack, practice, audio, audioStatus;
+  let pack, practice, audio, audioStatus, preparedAudio = false;
   if (previewTicket) {
    const local = JSON.parse(localStorage.getItem(LOCAL_PREVIEW_KEY) || 'null');
    if (local?.ticket !== previewTicket || local.expiresAt < Date.now()) throw Error('Preview expired.');
@@ -197,6 +201,7 @@ async function openSharedReview() {
   } else {
    const token = ai.root === origin ? ai.token : '';
    const response = await service('/packs/' + encodeURIComponent(id), {root:origin, token});
+   preparedAudio = response.preparedAudio === true;
    pack = Vocabulary.validatePack(response.pack);
    practice = response.practice;
    if (response.visibility === 'public' && Array.isArray(response.audio)) {
@@ -206,7 +211,9 @@ async function openSharedReview() {
   }
   if (pack.id !== id) throw Error('Wrong review set.');
   if (load !== sharedLoad) return;
-  sharedReview = {pack, origin, audio, audioStatus, mode:SharedReview.reviewMode(practice?.mode, pack.words), allowHints:practice?.allowHints !== false};
+  sharedReview = {pack, origin, audio, audioStatus, preparedAudio, localPreview:!!previewTicket, mode:SharedReview.reviewMode(practice?.mode, pack.words), allowHints:practice?.allowHints !== false};
+  $('local-preview-notice').hidden = preparedAudio;
+  $('local-preview-notice').textContent = previewTicket ? 'Draft preview uses this device’s voice. Use recording previews in the teacher workspace to check Troy. This preview makes no AI requests.' : 'This older set uses this device’s voice when a saved recording is unavailable.';
   await renderSharedReady();
  } catch (error) {
   if (load !== sharedLoad) return;
@@ -234,6 +241,17 @@ function showLanding() {
 }
 
 function initSharedReview() {
+ $('shared-study').onclick = async () => {
+  const review = sharedReview, owner = state;
+  if (!review || review.mode === 'spelling') return;
+  try {
+   await importPack(review.pack,review.origin);
+   if (sharedReview !== review || state !== owner) return;
+   const list = selectedList(), rows = await loadVocabulary(list);
+   if (sharedReview !== review || state !== owner) return;
+   beginStudy(list,rows.filter(row=>row.vocabulary?.status === 'approved'));
+  } catch (error) { if(sharedReview===review)$('shared-ready-status').textContent=error.message; }
+ };
  $('shared-start').onclick = startSharedReview;
  window.addEventListener('hashchange', openSharedReview);
 }

@@ -41,12 +41,14 @@ export function providerChoices(env, teacher = true, configuredModels) {
     }
   }
   if (teacher && env.OPENROUTER_FREE_TIER_CONFIRMED === 'true' && env.OPENROUTER_API_KEY
-    && OPENROUTER_MODELS.includes(env.OPENROUTER_FREE_MODEL)
-    && /^[a-z0-9][a-z0-9./_-]{0,63}$/i.test(env.OPENROUTER_APPROVED_PROVIDER ?? '')) {
+    && (env.PERSONAL_KEYS || OPENROUTER_MODELS.includes(env.OPENROUTER_FREE_MODEL)
+    && /^[a-z0-9][a-z0-9./_-]{0,63}$/i.test(env.OPENROUTER_APPROVED_PROVIDER ?? ''))) {
     targets.push({
       provider: 'openrouter', endpoint: OPENROUTER, model: env.OPENROUTER_FREE_MODEL,
-      key: env.OPENROUTER_API_KEY, upstream: env.OPENROUTER_APPROVED_PROVIDER
+      key: env.OPENROUTER_API_KEY, upstream: env.OPENROUTER_APPROVED_PROVIDER, ...(env.PERSONAL_KEYS ? {freeText:true,allowPaid:false} : {})
     });
+    if (env.PERSONAL_KEYS && env.ALLOW_PAID_TEXT) targets.push({provider:'openrouter',endpoint:OPENROUTER,
+      model:'openai/gpt-4.1-mini',key:env.OPENROUTER_API_KEY,freeText:true,allowPaid:true});
   }
   return targets;
 }
@@ -116,9 +118,13 @@ export async function requestVocabulary({
     delete body.max_completion_tokens;
     body.max_tokens = maxCompletionTokens;
     body.provider = {
-      only: [target.upstream], allow_fallbacks: false, require_parameters: true, data_collection: 'deny',
-      max_price: { prompt: 0, completion: 0, request: 0, image: 0, audio: 0 }
+      ...(target.upstream ? {only:[target.upstream]} : {}), allow_fallbacks: !target.upstream, require_parameters: !target.freeText, data_collection: 'deny',
+      ...(target.allowPaid ? {} : {max_price: { prompt: 0, completion: 0, request: 0, image: 0, audio: 0 }})
     };
+    if (target.freeText) {
+      delete body.response_format;
+      body.messages[0].content += ' Return only valid JSON in the following schema, without Markdown: ' + JSON.stringify(structured);
+    }
   } else {
     body.reasoning_effort = target.model.startsWith('openai/') ? 'low' : 'none';
   }
