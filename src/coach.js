@@ -486,8 +486,10 @@ function showReport(report, entry) {
   if (!selected.length) return;
   state.learningSession = null; delete state.learningCheckpoint;
   const mode = entry?.session.mode || previous[0]?.mode || 'spelling';
-  if (mode === 'spelling') start(selected.map(row => row.word), list);
-  else beginLearning(list, selected, {...coachOptions(), mode, type: 'practice', difficulty: 'adaptive'});
+  const assigned = sharedReview && findPackList(sharedReview.pack.id,sharedReview.origin)?.id === list.id;
+  const rules = assigned ? {...SharedReview.practiceRules(entry?.session.settings || sharedReview.practice),allowHints:entry?.session.settings.allowHints ?? sharedReview.allowHints} : {};
+  if (mode === 'spelling') start(selected.map(row => row.word), list, rules);
+  else beginLearning(list, selected, {...coachOptions(), mode, type: 'practice', difficulty: 'adaptive',...rules});
  };
  show('report-screen');
 }

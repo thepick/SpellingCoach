@@ -376,11 +376,13 @@ function watchPrivateAudio() {
 
 function invitationToken() { return new URLSearchParams(location.hash.slice(1)).get('invite') || ''; }
 function refreshTeacherLogin() {
- const invite = invitationToken(), owner = $('teacher-login-kind').value === 'owner' && !invite;
+ const invite = invitationToken();
+ if (invite) $('teacher-login-kind').value = 'teacher';
+ const owner = $('teacher-login-kind').value === 'owner' && !invite;
  $('teacher-login-kind').disabled = !!ai.token || !!invite;
  $('teacher-username-field').hidden = owner;
  $('teacher-username').required = !owner;
- $('teacher-username').disabled = !!ai.token;
+ $('teacher-username').disabled = owner || !!ai.token;
  $('teacher-name-field').hidden = !invite;
  $('teacher-name').required = !!invite;
  $('teacher-secret').autocomplete = invite ? 'new-password' : 'current-password';
@@ -683,19 +685,35 @@ function updateTeacherSelection(list, records) {
   (summary ? ' · ' + summary.approved.length + ' with approved vocabulary · ' + summary.drafts.length + ' to review' : '');
 }
 
+function linkPracticeOptions() {
+ return {mode:$('shared-mode').value,allowHints:$('shared-hints').checked,
+  retypeOnMiss:$('shared-retype').checked,allowVariants:$('shared-variants').checked};
+}
+function linkOptionsMatch(options) {
+ const current=linkPracticeOptions();
+ return Object.keys(current).every(key=>current[key]===options[key]);
+}
+function linkLookupProblem() {
+ return sharing.linkLookup==='loading'?'Loading existing link settings…':sharing.linkLookup==='error'?
+  'Could not load existing link settings. Reopen Student link to retry.':'';
+}
+
 function renderSharing() {
  const mode = $('shared-mode').value;
  const info = sharing.records && SharedReview.sharingContent(sharing.records, mode);
  const {approved, drafts, missing} = info || {approved:[], drafts:[], missing:[]};
  const clips = sharing.list?.audioStatus?.recordings || [];
  const required = clips.filter(clip=>mode !== 'spelling' || /-s$/.test(clip.key));
+ const lookupProblem=linkLookupProblem();
  const audioReady = !ai.teacher ||
   required.length >= (sharing.list?.words.length || 0) && required.every(clip=>clip.status === 'ready');
- const shareReady = !!info?.ready && !publishing && audioReady && !sharing.list?.remoteConflict;
+ const shareReady = !!info?.ready && !publishing && !lookupProblem && audioReady && !sharing.list?.remoteConflict;
  const needsReview = !!info && mode !== 'spelling' && !info.ready;
- const hasLink = !!ai.published && ai.publishedListId === sharing.list?.id && ai.publishedMode === mode &&
-  ai.publishedHints === $('shared-hints').checked && ai.publishedUpdatedAt === sharing.list.updatedAt;
- $('ai-publish-readiness').textContent = !sharing.list ? 'Create or select a set first.' :
+ const existingLink=!!ai.published && ai.publishedListId===sharing.list?.id;
+ const hasLink = !lookupProblem && existingLink && linkOptionsMatch({mode:ai.publishedMode,allowHints:ai.publishedHints,
+  retypeOnMiss:ai.publishedRetype,allowVariants:ai.publishedVariants}) && ai.publishedUpdatedAt === sharing.list.updatedAt;
+ const legacyRules=existingLink && (typeof ai.publishedRetype!=='boolean' || typeof ai.publishedVariants!=='boolean');
+ $('ai-publish-readiness').textContent = lookupProblem || (!sharing.list ? 'Create or select a set first.' :
   !info ? 'Checking which words are ready…' : info.ready && !audioReady ?
    (!ai.config.dictationEnabled ? ai.keys?.openrouter ? 'Paul audio is unavailable. Check AI setup and retry before creating this student link.' : 'Connect OpenRouter in AI setup to prepare paid Paul recordings before creating this student link.' : 'Prepare the missing recordings before sharing. Check Prepared recordings below, then retry failed recordings.') : mode === 'spelling' ?
    'Ready to share. Students will spell all ' + info.words.length + ' words.' : drafts.length ?
@@ -704,7 +722,8 @@ function renderSharing() {
       'Ready to share. All ' + info.words.length + (info.words.length === 1 ? ' word is' : ' words are') +
        ' included for spelling. ' + approved.length + (approved.length === 1 ? ' also has' : ' also have') + ' vocabulary.' +
        (missing.length ? ' Remaining words are spelling only.' : '') :
-      'Ready to share. Students will practice ' + approved.length + (approved.length === 1 ? ' word' : ' words') + ' with approved vocabulary.';
+      'Ready to share. Students will practice ' + approved.length + (approved.length === 1 ? ' word' : ' words') + ' with approved vocabulary.');
+ if(legacyRules && !lookupProblem)$('ai-publish-readiness').textContent+=' This older link still works. Update the student link to save the explicit student rules shown here.';
  $('ai-publish-readiness').className = needsReview ? 'notice' : 'hint';
  $('ai-vocabulary-details').hidden = !info || mode === 'spelling';
  $('ai-vocabulary-words').textContent = [['Approved', approved], ['Needs review', drafts], ['No vocabulary', missing]]
@@ -714,12 +733,13 @@ function renderSharing() {
  $('ai-publish-readiness').hidden = hasLink;
  $('ai-share-help').hidden = hasLink;
  $('ai-publish').hidden = hasLink;
+ $('ai-publish').textContent=existingLink?'Update student link':'Create student link';
  $('ai-publish').disabled = !shareReady;
  const audioStatus = hasLink && ai.audioStatus;
  const pending = audioStatus?.pending;
  const incomplete = audioStatus && audioStatus.ready < audioStatus.total;
  const waitingForAudio = !!pending || !!incomplete && !!ai.config.dictationEnabled;
- $('ai-preview').disabled = entryPage === 'teacher' ? !info?.ready || publishing : !hasLink || !!pending;
+ $('ai-preview').disabled = !!lookupProblem || (entryPage === 'teacher' ? !info?.ready || publishing : !hasLink || !!pending);
  $('ai-link-actions').hidden = !hasLink;
  $('ai-publish-options').hidden = !ai.teacher?.isAdmin || !ai.config.draftingAvailable;
  const settings=GenerationSettings.validate(sharing.list?.generationSettings);
@@ -736,8 +756,12 @@ function renderSharing() {
   ? 'Preparing practice audio. ' + audioStatus.ready + ' of ' + audioStatus.total + ' recordings ready. You can close this tab.'
   : incomplete ? audioStatus.ready + ' of ' + audioStatus.total + ' recordings are ready. Retry to prepare the remaining recordings.'
   : 'Practice audio is ready.';
- $('shared-mode').disabled = publishing;
- $('shared-hints').disabled = publishing || mode === 'spelling';
+ $('shared-mode').disabled = publishing || !!lookupProblem;
+ $('shared-hints').disabled = publishing || !!lookupProblem || mode === 'spelling';
+ $('shared-retype').disabled=publishing || !!lookupProblem || mode==='vocabulary';
+ if($('shared-retype-row'))$('shared-retype-row').hidden=mode==='vocabulary';
+ $('shared-variants').disabled=publishing || !!lookupProblem || mode==='spelling';
+ if($('shared-variants-row'))$('shared-variants-row').hidden=mode==='spelling';
  $('shared-hints-row').hidden = mode === 'spelling';
 }
 
@@ -765,12 +789,20 @@ async function showTeacherTools(view = 'tools') {
  $('tools-dialog').close();
  if (!$('teacher-url').value) $('teacher-url').value = ONLINE_CONFIG;
  const list = selectedList(), changedSet = sharing.list !== list;
- const current = {list, records:null};
+ const current = {list, records:null,linkOptionsInitialized:!changedSet && sharing.linkOptionsInitialized,
+  linkLoaded:!changedSet && sharing.linkLoaded,linkOptionsTouched:!changedSet && sharing.linkOptionsTouched,
+  linkLookup:!changedSet && sharing.linkLookup};
+ if(view==='share' && !current.linkLoaded && list && ai.token)current.linkLookup='loading';
  sharing = current;
  if (changedSet) {
-  $('shared-hints').checked = true;
   $('ai-publish-status').textContent = '';
   $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
+ }
+ if(view==='share' && !current.linkOptionsInitialized) {
+  $('shared-hints').checked=true;
+  $('shared-retype').checked=state.settings.retypeOnMiss!==false;
+  $('shared-variants').checked=state.settings.allowVariants===true;
+  current.linkOptionsInitialized=true;
  }
  const dialog = $('teacher-dialog');
  dialog.dataset.view = view;
@@ -788,24 +820,38 @@ async function showTeacherTools(view = 'tools') {
   current.records = rows;
   if (changedSet && rows) $('shared-mode').value = rows.some(row => row.vocabulary) ? 'mixed' : 'spelling';
   renderSharing();
-  if (view === 'share' && changedSet && rows && ai.token) {
+  if (view === 'share' && !current.linkLoaded && rows && ai.token) {
    const {token, root} = ai;
-   const mode = $('shared-mode').value, hints = $('shared-hints').checked;
+   const options=linkPracticeOptions(), generation=ai.linkGeneration || 0;
    const id = Dictation.canonicalPackId(list.packId) || list.id;
-   const saved = await service('/packs/' + encodeURIComponent(id), {root, token}).catch(() => null);
-   if (sharing !== current || ai.token !== token || !dialog.open ||
-       $('shared-mode').value !== mode || $('shared-hints').checked !== hints || saved?.visibility !== 'public') return;
+   let saved;
+   try { saved=await service('/packs/' + encodeURIComponent(id), {root, token}); }
+   catch(error) {
+    if(sharing!==current || ai.token!==token || !dialog.open)return;
+    current.linkLookup=error.status===404?'missing':'error';
+    current.linkLoaded=error.status===404;renderSharing();return;
+   }
+   if (sharing !== current || ai.token !== token || !dialog.open) return;
+   if((ai.linkGeneration || 0)!==generation || publishing) {current.linkLookup='error';renderSharing();return;}
+   if(saved?.visibility!=='public') {current.linkLookup='missing';current.linkLoaded=true;renderSharing();return;}
    const {pack, practice, audioStatus} = saved;
+   const remote=Vocabulary.validatePack(pack);
+   if(remote.id!==id)throw Error('The service returned another set’s student link.');
    const local = outputPack(list, SharedReview.sharingContent(rows, practice.mode).words);
-   if (JSON.stringify(local) !== JSON.stringify(Vocabulary.validatePack(pack))) return;
-   $('shared-mode').value = practice.mode;
-   $('shared-hints').checked = practice.allowHints;
+   if(!current.linkOptionsTouched && linkOptionsMatch(options)) {
+    $('shared-mode').value = practice.mode;
+    $('shared-hints').checked = practice.allowHints;
+    if(typeof practice.retypeOnMiss==='boolean')$('shared-retype').checked=practice.retypeOnMiss;
+    if(typeof practice.allowVariants==='boolean')$('shared-variants').checked=practice.allowVariants;
+   }
+   current.linkLoaded=true;current.linkLookup='ready';
    Object.assign(ai, {published:publicPackLink(id, root), publishedListId:list.id, publishedMode:practice.mode,
-    publishedHints:practice.allowHints, publishedUpdatedAt:list.updatedAt, audioStatus});
+    publishedHints:practice.allowHints,publishedRetype:practice.retypeOnMiss,publishedVariants:practice.allowVariants,
+    publishedUpdatedAt:JSON.stringify(local)===JSON.stringify(remote)?list.updatedAt:null, audioStatus});
    renderSharing();
    watchPracticeAudio();
   }
- } catch (error) { $('ai-publish-readiness').textContent = error.message; }
+ } catch (error) { if(sharing===current){current.linkLookup='error';renderSharing();} }
 }
 
 function showTeacherEntry() {
@@ -869,7 +915,8 @@ function initTeacher() {
   renderSetup();
   await openVocabularyEditor('draft');
  };
- for (const id of ['shared-mode', 'shared-hints']) $(id).onchange = () => {
+ for (const id of ['shared-mode', 'shared-hints','shared-retype','shared-variants']) $(id).onchange = () => {
+  sharing.linkOptionsTouched=true;
   $('ai-publish-status').textContent = '';
   $('ai-qr-result').hidden = true;
   renderSharing();
@@ -958,6 +1005,7 @@ function initTeacher() {
   $('ai-context').value = ''; $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
   $('ai-usage-result').textContent = '';
   for (const id of ['teacher-groq-status','teacher-openrouter-status','teacher-account-name','teacher-account-status','teacher-invite-status','ai-progress','teacher-private-audio-status']) $(id).textContent = '';
+  $('teacher-login-kind').value = invitationToken() ? 'teacher' : 'owner';
   teacherStatus('Signed out.'); refreshTeacher();
   if (entryPage === 'teacher') showTeacherEntry();
   else { state = loadState(); listId = state.lists[0]?.id || ''; renderSetup(); }
@@ -1012,7 +1060,10 @@ function initTeacher() {
  };
  $('ai-publish').onclick = async () => {
   const status = $('ai-publish-status');
-  const mode = $('shared-mode').value, allowHints = $('shared-hints').checked;
+  const lookupProblem=linkLookupProblem();
+  if(publishing || lookupProblem) {if(lookupProblem)status.textContent=lookupProblem;return;}
+  const generation=(ai.linkGeneration || 0)+1;ai.linkGeneration=generation;
+  const options=linkPracticeOptions(), {mode,allowHints,retypeOnMiss,allowVariants}=options;
   const reuse = $('ai-publish-cache').checked, {root, token} = ai;
   publishing = true; renderSharing();
   status.textContent = 'Creating student link…';
@@ -1023,19 +1074,23 @@ function initTeacher() {
    const records = await loadVocabulary(list);
    await autosaveTeacherSet(list);
    if (list.updatedAt !== stamp || ai.token !== token) throw Error('The set changed while preparing the link. Try again with the current version.');
+   if(!linkOptionsMatch(options))throw Error('Student rules changed while preparing the link. Try again with the current choices.');
    const info = SharedReview.sharingContent(records, mode);
    if (!info.ready) throw Error('Review the vocabulary before creating a student link, or choose Spelling.');
    const pack = outputPack(list, info.words);
    const cacheSettings = pack.words.some(row => row.vocabulary) ? sharedDraftCacheSettings(reuse) : undefined;
    const {pack: published, audioStatus} = await service('/admin/publish', {root, token, method: 'POST',
-    body: {pack, mode, allowHints, visibility: 'public', cacheSettings}, requestId: newListId()});
-   if (ai.token !== token) return;
+    body: {pack, mode, allowHints,retypeOnMiss,allowVariants, visibility: 'public', cacheSettings}, requestId: newListId()});
+   if (ai.token !== token || ai.linkGeneration!==generation) return;
    if (list.updatedAt !== stamp) throw Error('The set changed while creating the link. Create it again for the current version.');
+   if(!linkOptionsMatch(options))throw Error('Student rules changed while creating the link. Update the link again with the current choices.');
    if ((list.packVersion || 0) < published.version) { list.packVersion = published.version; save(); }
    ai.published = publicPackLink(published.id, root);
    ai.publishedListId = list.id;
    ai.publishedMode = mode;
    ai.publishedHints = allowHints;
+   ai.publishedRetype=retypeOnMiss;
+   ai.publishedVariants=allowVariants;
    ai.publishedUpdatedAt = list.updatedAt;
    ai.audioStatus = audioStatus;
    $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
@@ -1074,7 +1129,7 @@ function initTeacher() {
     url = new URL(publicPackLink(pack.id, ai.root));
     const args = new URLSearchParams(url.hash.slice(1));
     args.set('draft', ticket); url.hash = args.toString();
-    const practice = {mode, allowHints:$('shared-hints').checked};
+    const practice = linkPracticeOptions();
     localStorage.setItem(LOCAL_PREVIEW_KEY, JSON.stringify({ticket, pack, practice, expiresAt: Date.now() + 60000}));
     setTimeout(() => {
      try {

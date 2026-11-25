@@ -161,6 +161,45 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 #study-shuffle-status:empty { display: none; }
 @media (prefers-reduced-motion: reduce) { .mastery-meter .progressfill { transition: none; } }
 
+#teacher-dialog[data-view="setup"] #teacher-logout { display: none; }
+#teacher-dialog[data-view="setup"] .tools-panel { padding: 28px; gap: 24px; }
+#teacher-account { gap: 20px; }
+#teacher-keys-form { gap: 24px; }
+#teacher-keys-form > div:not(.actions) { display: grid; gap: 10px; }
+#teacher-account .checkline { align-items: start; gap: .65rem; line-height: 1.5; }
+#teacher-account .checkline input { margin-top: .3em; }
+#teacher-keys-form input[type=password] { background: var(--panel); color: var(--ink); }
+#teacher-keys-form input:is(:autofill, :-webkit-autofill) {
+ box-shadow: inset 0 0 0 1000px var(--panel) !important;
+ -webkit-text-fill-color: var(--ink) !important;
+ caret-color: var(--ink);
+}
+:is(#practice-settings-grid, #audio-settings-grid) { gap: .5rem 1rem; margin-bottom: 1rem; }
+:is(#practice-settings-grid, #audio-settings-grid) > div { display: grid; grid-template-rows: subgrid; grid-row: span 3; gap: .5rem; padding-bottom: .75rem; }
+:is(#practice-settings-grid, #audio-settings-grid) label { margin: 0; align-self: end; }
+:is(#practice-settings-grid, #audio-settings-grid) :is(input, select) { width: 100%; max-width: none; height: 46px; margin: 0; }
+:is(#practice-settings-grid, #audio-settings-grid) input[type=range] { padding: 0; align-self: center; }
+.tools-footer { padding-top: 20px; gap: 12px; align-items: center; }
+@media (max-width: 640px) {
+ #teacher-dialog[data-view="setup"] .tools-panel { padding: 20px; }
+}
+
+.tools-details > summary { font-size: 1.1rem; font-weight: 700; cursor: pointer; padding: .35rem 0; }
+.tools-details > summary:focus-visible { outline-offset: 4px; }
+.tools-details > p { margin-top: .75rem; }
+.teaching-options { gap: 1rem; }
+.teaching-options .checkline { align-items: start; line-height: 1.5; }
+.teaching-actions { margin-top: 1.1rem; }
+#tools-dialog .local-pin-setting { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+#tools-dialog .local-pin-setting input { max-width: 12rem; }
+#tools-dialog .local-pin-setting .hint { margin: .5rem 0 0; }
+#audio-settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tools-footer p { margin: 0 0 .25rem; }
+#tools-dialog #backup-status:empty { display: none; }
+@media (max-width: 640px) { #audio-settings-grid { grid-template-columns: 1fr; } }
+
+#shared-study:not([hidden]) { display: block; margin: .85rem auto 0; }
+
 </style></head><body data-entry="teacher">
 <div class="app"><header class="topbar"><div class="brand"><img class="brand-icon" src="data:image/x-icon;base64,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" width="32" height="32" alt=""><span>WordLab</span></div><label class="theme-control" for="theme-select"><span>Theme</span><select id="theme-select"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label><div id="storage-warning" class="notice" hidden role="status">Your progress will not be saved in this browser.</div></header><main><p id="local-preview-notice" class="notice" role="status" hidden>Draft preview uses this device’s voice. Use recording previews in the teacher workspace to check Paul. This preview makes no AI requests.</p>
 <section id="teacher-signin-screen" class="screen panel" hidden aria-labelledby="teacher-signin-title">
@@ -195,7 +234,29 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 <p id="mode-help" class="hint" role="status"></p>
 <div class="row between"><span class="hint">Lists and results stay in this browser.</span><button id="start-session" disabled>Begin practice</button></div></div>
 <div id="teacher-workspace-actions" class="section" hidden><p class="hint">Create words and prepare Paul audio. Optionally prepare and review vocabulary. Then preview, create, and copy the student link.</p><p id="setup-set-summary" class="hint" role="status"></p><div class="actions"><button type="button" id="teacher-open-publishing" disabled>Student link</button><button id="teacher-open-drafting" type="button" class="secondary">Prepare vocabulary</button><button id="teacher-open-connections" type="button" class="ghost">AI setup</button><button id="teacher-open-presets" type="button" class="ghost">Grade defaults</button><button id="teacher-open-invitations" type="button" class="ghost" hidden>Administration</button></div></div></section>
-<dialog id="tools-dialog" class="tools-dialog" aria-labelledby="tools-title"><div class="tools-panel"><div class="row between tools-heading"><div><h1 id="tools-title">Tools</h1><p class="subhead">Manage backups and practice preferences.</p></div><button id="close-tools" class="ghost" aria-label="Close tools">Close</button></div><section class="tool-section"><h2>Backup and restore</h2><p class="hint">Create a saved copy of your word lists before clearing browser data.</p><div class="actions"><button id="export-json" class="secondary">Export full backup (JSON)</button><button id="import-json" class="secondary">Import JSON or vocabulary pack</button></div><input id="json-file" type="file" accept=".json,application/json" hidden><p id="backup-status" class="status" role="status"></p></section><section class="tool-section"><h2>Teacher tools</h2><div class="actions"><button id="open-teacher" class="ghost">Online generation and sharing</button><a id="offline-download" href="WordLab%20v0.2.0.html" download>Download offline app</a></div></section><section class="tool-section"><h2>Practice settings</h2><div class="settings"><div><label for="round-size">Words in each review round</label><input id="round-size" type="number" min="1" max="20"><div class="hint">The number of different words in one round.</div></div><div><label for="auto-advance">Correct-answer delay (milliseconds)</label><input id="auto-advance" type="number" min="0" max="5000" step="100"><div class="hint">Time to read feedback before the next word.</div></div><div><label for="feedback-delay">Incorrect-answer display time (milliseconds)</label><input id="feedback-delay" type="number" min="300" max="10000" step="100"><div class="hint">How long the correction stays visible.</div></div><div><label for="voice-select">English voice</label><select id="voice-select"><option value="">System default</option></select></div><div><label for="speech-rate">Speech rate <span id="rate-label">0.85</span></label><input id="speech-rate" type="range" min="0.5" max="1.2" step="0.05"><div class="hint">A lower rate speaks more slowly.</div></div><div><label for="pin-entry">Parent access PIN (optional)</label><input id="pin-entry" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4 digits"></div></div><div class="row between" style="margin-top:14px"><label class="checkline"><input id="retype-toggle" type="checkbox"><span>Require a correct second attempt after an error</span></label><label class="checkline"><input id="allow-variants" type="checkbox"> Allow teacher-approved spelling variants in vocabulary and tests</label><button id="preview-voice" class="ghost small">Preview voice</button></div><p class="hint">This helps learners study each correction before continuing. Voice quality and offline availability depend on the installed browser or system voice.</p></section><div class="row between"><span id="tools-version" class="hint">WordLab v0.2.0</span><button id="done-tools">Done</button></div></div></dialog><dialog id="create-list-dialog" class="tools-dialog create-list-dialog" aria-labelledby="create-list-title"><form id="create-list-form" class="tools-panel create-list-form"><div class="tools-heading"><h1 id="create-list-title">Create a word list</h1><p id="create-list-intro" class="subhead">Give your list a name, then add or import the words to practice.</p></div><div class="stack"><div><label for="create-list-name">List name</label><input id="create-list-name" type="text" maxlength="80" autocomplete="off" placeholder="For example, Week 3 spelling" required autofocus></div><div id="create-list-grade-field"><label for="create-list-grade">Grade preset for this new set</label><select id="create-list-grade"><option value="3">Grade 3</option><option value="4">Grade 4</option><option value="5" selected>Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option></select><p class="hint">Copies your grade defaults into this set. You can adjust them in Prepare vocabulary.</p></div><div><label for="create-list-words">Spelling words</label><textarea id="create-list-words" spellcheck="false" placeholder="because&#10;different&#10;important" aria-describedby="create-list-help" required></textarea><div id="create-list-help" class="hint">Enter up to 200 words or phrases, one per line. Repeated words are removed.</div></div></div><div class="actions"><button id="import-csv" type="button" class="secondary">Import CSV</button><button id="split-list" type="button" class="secondary" hidden>Split into lists</button><button id="copy-list" type="button" class="ghost">Copy as CSV</button></div><p class="hint">CSV: words on separate lines or separated by commas. No headings needed.</p><input id="csv-file" type="file" accept=".csv,text/csv" hidden><div id="list-editor-status" class="status" role="status" aria-live="polite"></div><div class="row between"><button id="cancel-create-list" type="button" class="ghost">Cancel</button><button id="save-list-draft" type="submit">Create this list</button></div></form></dialog>
+<dialog id="tools-dialog" class="tools-dialog" aria-labelledby="tools-title"><div class="tools-panel">
+ <div class="row between tools-heading"><div><h1 id="tools-title">Tools</h1><p class="subhead">Back up your work and adjust practice preferences.</p></div><button id="close-tools" class="ghost" aria-label="Close tools">Close</button></div>
+ <section class="tool-section"><h2>Backup and restore</h2><p class="hint">Create a saved copy of your word lists before clearing browser data.</p><div class="actions"><button id="export-json" class="secondary">Export full backup (JSON)</button><button id="import-json" class="secondary">Import JSON or vocabulary pack</button></div><input id="json-file" type="file" accept=".json,application/json" hidden><p id="backup-status" class="status" role="status"></p></section>
+ <section id="tools-teaching-options" class="tool-section"><h2>Teaching options</h2><p id="tools-teaching-help" class="hint">Defaults for local practice and new student links. Shared sets have their own rules in Student link.</p><div id="local-teaching-defaults" class="stack teaching-options">
+  <label class="checkline"><input id="retype-toggle" type="checkbox"><span>Require a correct second attempt after a spelling error</span></label>
+  <label class="checkline"><input id="allow-variants" type="checkbox"><span>Allow teacher-approved spelling variants in vocabulary and tests</span></label>
+ </div><div class="actions teaching-actions"><button id="open-teacher" class="ghost">AI setup</button></div></section>
+ <details id="tools-advanced" class="tool-section tools-details"><summary>Advanced practice settings</summary>
+  <p class="hint">Optional adjustments to review rounds and feedback timing.</p><div id="practice-settings-grid" class="settings">
+   <div><label for="round-size">Words per review round (spelling only)</label><input id="round-size" type="number" min="1" max="20"><div class="hint">Different words in one spelling round. Vocabulary and mixed practice choose words automatically.</div></div>
+   <div><label for="auto-advance">Correct-answer delay (milliseconds)</label><input id="auto-advance" type="number" min="0" max="5000" step="100"><div class="hint">Time to read feedback before the next word.</div></div>
+   <div><label for="feedback-delay">Incorrect-answer display time (milliseconds)</label><input id="feedback-delay" type="number" min="300" max="10000" step="100"><div class="hint">How long the correction stays visible.</div></div>
+  </div>
+  <div class="local-pin-setting"><label for="pin-entry">Parent access PIN (optional)</label><input id="pin-entry" aria-describedby="parent-pin-help" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4 digits"><p id="parent-pin-help" class="hint">A check before returning from practice to setup on this browser only. It is not sent in student links. Leave blank for no PIN. Forgot PIN clears it and keeps your lists and progress. This is not an account password.</p></div>
+ </details>
+ <details id="tools-audio" class="tool-section tools-details"><summary>Offline and older-set audio</summary>
+  <p class="hint">WordLab prepares new recordings with Paul. These voice options are for local practice and older sets that use device speech.</p><div id="audio-settings-grid" class="settings">
+   <div><label for="voice-select">Device fallback voice</label><select id="voice-select" aria-describedby="device-voice-help"><option value="">Automatic device voice</option></select><div id="device-voice-help" class="hint">Used when this device speaks the words. Prepared online sets use their saved recordings.</div></div>
+   <div><label for="speech-rate">Local playback speed <span id="rate-label">0.85</span></label><input id="speech-rate" aria-describedby="device-rate-help" type="range" min="0.5" max="1.2" step="0.05"><div id="device-rate-help" class="hint">Changes device speech and recordings saved on this device, including local Paul clips. Use Listen slowly for shared recordings.</div></div>
+  </div><div class="actions"><button id="preview-voice" class="ghost small">Preview device voice</button><a id="offline-download" href="WordLab%20v0.2.0.html" download>Download offline app</a></div>
+ </details>
+ <div class="row between tools-footer"><div><p class="hint">Settings save automatically.</p><span id="tools-version" class="hint">WordLab v0.2.0</span></div><button id="done-tools">Close</button></div>
+</div></dialog><dialog id="create-list-dialog" class="tools-dialog create-list-dialog" aria-labelledby="create-list-title"><form id="create-list-form" class="tools-panel create-list-form"><div class="tools-heading"><h1 id="create-list-title">Create a word list</h1><p id="create-list-intro" class="subhead">Give your list a name, then add or import the words to practice.</p></div><div class="stack"><div><label for="create-list-name">List name</label><input id="create-list-name" type="text" maxlength="80" autocomplete="off" placeholder="For example, Week 3 spelling" required autofocus></div><div id="create-list-grade-field"><label for="create-list-grade">Grade preset for this new set</label><select id="create-list-grade"><option value="3">Grade 3</option><option value="4">Grade 4</option><option value="5" selected>Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option></select><p class="hint">Copies your grade defaults into this set. You can adjust them in Prepare vocabulary.</p></div><div><label for="create-list-words">Spelling words</label><textarea id="create-list-words" spellcheck="false" placeholder="because&#10;different&#10;important" aria-describedby="create-list-help" required></textarea><div id="create-list-help" class="hint">Enter up to 200 words or phrases, one per line. Repeated words are removed.</div></div></div><div class="actions"><button id="import-csv" type="button" class="secondary">Import CSV</button><button id="split-list" type="button" class="secondary" hidden>Split into lists</button><button id="copy-list" type="button" class="ghost">Copy as CSV</button></div><p class="hint">CSV: words on separate lines or separated by commas. No headings needed.</p><input id="csv-file" type="file" accept=".csv,text/csv" hidden><div id="list-editor-status" class="status" role="status" aria-live="polite"></div><div class="row between"><button id="cancel-create-list" type="button" class="ghost">Cancel</button><button id="save-list-draft" type="submit">Create this list</button></div></form></dialog>
 <section id="practice-screen" class="screen practice panel" hidden><div class="practice-head"><div><div id="list-name-practice" class="hint"></div><h1>Listen, then spell</h1></div><button id="pause-button" class="ghost">Pause practice <span class="kbd">Esc</span></button></div><div id="spelling-mastery" class="mastery-meter"><div class="mastery-meta"><span id="progress-text" class="mastery-count" aria-live="polite"></span><span class="mastery-percent"></span></div><div id="mastery-progress" class="progressline" role="progressbar" aria-label="Words mastered in this practice" aria-valuemin="0" aria-valuenow="0"><div id="progress-fill" class="progressfill"></div></div><div class="mastery-foot"><span>Two correct spellings in a row to master each word.</span><span id="round-text"></span></div></div><div id="tiles" class="tiles" aria-label="Word progress"></div>
 <div class="prompt"><div class="actions" style="justify-content:center"><button id="replay-button" class="secondary">Replay word <span class="kbd">R</span></button><button id="slow-replay" class="ghost">Replay slowly <span class="kbd">S</span></button></div><div id="definition" class="definition"></div><div id="visual-word" class="sr" aria-live="polite"></div><form id="answer-form"><div id="spelling-correction" class="correction" hidden><span>Correct answer</span><strong></strong><span>Type it to continue.</span><p class="correction-detail" hidden></p></div><label class="sr" for="answer-input">Type the word you hear</label><input id="answer-input" class="word-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"><div class="hint">Type the word and press Enter to submit your answer.</div><div class="actions" style="justify-content:center;margin-top:10px"><button id="dont-know" type="button" class="ghost">I’m not sure</button><button id="submit-answer" type="submit">Submit answer</button></div></form></div><div id="feedback" class="feedback" aria-live="polite"></div></section>
 <section id="summary-screen" class="screen panel" hidden><div class="row between"><div><div id="summary-list" class="hint"></div><h1 id="summary-title">Practice summary</h1></div><button id="summary-setup" class="ghost">Return to setup</button></div><div id="summary-stats" class="summary-stat"></div><div class="grid section"><div><h2>Words for more practice</h2><div id="missed-empty" class="hint">No words need additional review from this session.</div><ol id="missed-list" class="missed"></ol><div class="actions"><button id="practice-missed" disabled>Practice these words</button><button id="copy-missed" class="secondary" disabled>Copy review words</button></div></div><div><h2>Recent practice sessions</h2><ol id="history-list" class="history"></ol></div></div></section>
@@ -254,7 +315,7 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
  <div class="row between teacher-dialog-heading"><h1 id="teacher-title">Online vocabulary tools</h1><div class="actions"><button type="button" id="teacher-logout" class="ghost" hidden>Sign out</button><button type="button" id="teacher-close" class="ghost" autofocus>Close</button></div></div>
  <nav id="teacher-view-nav" class="actions" aria-label="Teacher task navigation" hidden><button id="teacher-nav-setup" type="button" class="ghost" aria-pressed="false">AI setup</button><button id="teacher-nav-presets" type="button" class="ghost" aria-pressed="false">Grade defaults</button><button id="teacher-nav-prepare" type="button" class="ghost" aria-pressed="false">Prepare vocabulary</button><button id="teacher-nav-share" type="button" class="ghost" aria-pressed="false">Student link</button><button id="teacher-nav-administration" type="button" class="ghost" aria-pressed="false">Administration</button></nav>
  <form id="teacher-connect" class="stack"><div id="teacher-url-field"><label for="teacher-url">WordLab service URL</label><input type="url" id="teacher-url" placeholder="https://api.wordlab.mtomlinson.ca" required></div>
-  <div><label for="teacher-login-kind">Sign-in method</label><select id="teacher-login-kind"><option value="teacher">Teacher account</option><option value="owner">Site owner</option></select></div>
+  <div><label for="teacher-login-kind">Sign-in method</label><select id="teacher-login-kind"><option value="owner" selected>Site owner</option><option value="teacher">Teacher account</option></select></div>
   <div id="teacher-username-field"><label for="teacher-username">Username</label><input id="teacher-username" autocomplete="username" minlength="3" maxlength="40" pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{2,39}" title="3–40 letters, numbers, underscores or hyphens" autocapitalize="none" spellcheck="false" required></div>
   <div id="teacher-name-field" hidden><label for="teacher-name">Display name</label><input id="teacher-name" autocomplete="name" maxlength="80"></div>
   <div><label id="teacher-secret-label" for="teacher-secret">Password</label><input id="teacher-secret" type="password" autocomplete="current-password" required></div><div class="actions"><button type="submit" id="teacher-login">Sign in</button><button type="submit" id="class-login" class="secondary" formnovalidate>Use class code</button></div></form>
@@ -300,6 +361,9 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
  <div id="teacher-admin" class="tool-section stack" hidden>
   <h2 id="teacher-publishing-title">Student link</h2><div><label for="shared-mode">What will students practice?</label><select id="shared-mode"><option value="mixed">Spelling and vocabulary</option><option value="spelling">Spelling only</option><option value="vocabulary">Vocabulary only</option></select></div>
   <label id="shared-hints-row" class="checkline"><input id="shared-hints" type="checkbox" checked> Allow hints during practice</label>
+  <label id="shared-retype-row" class="checkline"><input id="shared-retype" type="checkbox" checked> Require a correct second attempt after a spelling error</label>
+  <label id="shared-variants-row" class="checkline"><input id="shared-variants" type="checkbox"> Allow teacher-approved spelling variants in vocabulary and tests</label>
+  <p class="hint">These teaching rules are saved with this student link. Student device preferences cannot override them. Vocabulary tasks keep their own guided correction steps.</p>
   <p id="ai-publish-readiness" class="notice" role="status"></p>
   <details id="ai-vocabulary-details" hidden><summary>Vocabulary by word</summary><p id="ai-vocabulary-words" class="hint"></p></details>
   <div class="actions"><button type="button" id="ai-publish-review" hidden>Review vocabulary</button><button type="button" id="ai-preview" class="secondary" disabled>Preview as student</button><button type="button" id="ai-publish">Create student link</button></div>
@@ -4369,8 +4433,10 @@ function showReport(report, entry) {
   if (!selected.length) return;
   state.learningSession = null; delete state.learningCheckpoint;
   const mode = entry?.session.mode || previous[0]?.mode || 'spelling';
-  if (mode === 'spelling') start(selected.map(row => row.word), list);
-  else beginLearning(list, selected, {...coachOptions(), mode, type: 'practice', difficulty: 'adaptive'});
+  const assigned = sharedReview && findPackList(sharedReview.pack.id,sharedReview.origin)?.id === list.id;
+  const rules = assigned ? {...SharedReview.practiceRules(entry?.session.settings || sharedReview.practice),allowHints:entry?.session.settings.allowHints ?? sharedReview.allowHints} : {};
+  if (mode === 'spelling') start(selected.map(row => row.word), list, rules);
+  else beginLearning(list, selected, {...coachOptions(), mode, type: 'practice', difficulty: 'adaptive',...rules});
  };
  show('report-screen');
 }
@@ -5562,11 +5628,13 @@ function watchPrivateAudio() {
 
 function invitationToken() { return new URLSearchParams(location.hash.slice(1)).get('invite') || ''; }
 function refreshTeacherLogin() {
- const invite = invitationToken(), owner = $('teacher-login-kind').value === 'owner' && !invite;
+ const invite = invitationToken();
+ if (invite) $('teacher-login-kind').value = 'teacher';
+ const owner = $('teacher-login-kind').value === 'owner' && !invite;
  $('teacher-login-kind').disabled = !!ai.token || !!invite;
  $('teacher-username-field').hidden = owner;
  $('teacher-username').required = !owner;
- $('teacher-username').disabled = !!ai.token;
+ $('teacher-username').disabled = owner || !!ai.token;
  $('teacher-name-field').hidden = !invite;
  $('teacher-name').required = !!invite;
  $('teacher-secret').autocomplete = invite ? 'new-password' : 'current-password';
@@ -5869,19 +5937,35 @@ function updateTeacherSelection(list, records) {
   (summary ? ' · ' + summary.approved.length + ' with approved vocabulary · ' + summary.drafts.length + ' to review' : '');
 }
 
+function linkPracticeOptions() {
+ return {mode:$('shared-mode').value,allowHints:$('shared-hints').checked,
+  retypeOnMiss:$('shared-retype').checked,allowVariants:$('shared-variants').checked};
+}
+function linkOptionsMatch(options) {
+ const current=linkPracticeOptions();
+ return Object.keys(current).every(key=>current[key]===options[key]);
+}
+function linkLookupProblem() {
+ return sharing.linkLookup==='loading'?'Loading existing link settings…':sharing.linkLookup==='error'?
+  'Could not load existing link settings. Reopen Student link to retry.':'';
+}
+
 function renderSharing() {
  const mode = $('shared-mode').value;
  const info = sharing.records && SharedReview.sharingContent(sharing.records, mode);
  const {approved, drafts, missing} = info || {approved:[], drafts:[], missing:[]};
  const clips = sharing.list?.audioStatus?.recordings || [];
  const required = clips.filter(clip=>mode !== 'spelling' || /-s$/.test(clip.key));
+ const lookupProblem=linkLookupProblem();
  const audioReady = !ai.teacher ||
   required.length >= (sharing.list?.words.length || 0) && required.every(clip=>clip.status === 'ready');
- const shareReady = !!info?.ready && !publishing && audioReady && !sharing.list?.remoteConflict;
+ const shareReady = !!info?.ready && !publishing && !lookupProblem && audioReady && !sharing.list?.remoteConflict;
  const needsReview = !!info && mode !== 'spelling' && !info.ready;
- const hasLink = !!ai.published && ai.publishedListId === sharing.list?.id && ai.publishedMode === mode &&
-  ai.publishedHints === $('shared-hints').checked && ai.publishedUpdatedAt === sharing.list.updatedAt;
- $('ai-publish-readiness').textContent = !sharing.list ? 'Create or select a set first.' :
+ const existingLink=!!ai.published && ai.publishedListId===sharing.list?.id;
+ const hasLink = !lookupProblem && existingLink && linkOptionsMatch({mode:ai.publishedMode,allowHints:ai.publishedHints,
+  retypeOnMiss:ai.publishedRetype,allowVariants:ai.publishedVariants}) && ai.publishedUpdatedAt === sharing.list.updatedAt;
+ const legacyRules=existingLink && (typeof ai.publishedRetype!=='boolean' || typeof ai.publishedVariants!=='boolean');
+ $('ai-publish-readiness').textContent = lookupProblem || (!sharing.list ? 'Create or select a set first.' :
   !info ? 'Checking which words are ready…' : info.ready && !audioReady ?
    (!ai.config.dictationEnabled ? ai.keys?.openrouter ? 'Paul audio is unavailable. Check AI setup and retry before creating this student link.' : 'Connect OpenRouter in AI setup to prepare paid Paul recordings before creating this student link.' : 'Prepare the missing recordings before sharing. Check Prepared recordings below, then retry failed recordings.') : mode === 'spelling' ?
    'Ready to share. Students will spell all ' + info.words.length + ' words.' : drafts.length ?
@@ -5890,7 +5974,8 @@ function renderSharing() {
       'Ready to share. All ' + info.words.length + (info.words.length === 1 ? ' word is' : ' words are') +
        ' included for spelling. ' + approved.length + (approved.length === 1 ? ' also has' : ' also have') + ' vocabulary.' +
        (missing.length ? ' Remaining words are spelling only.' : '') :
-      'Ready to share. Students will practice ' + approved.length + (approved.length === 1 ? ' word' : ' words') + ' with approved vocabulary.';
+      'Ready to share. Students will practice ' + approved.length + (approved.length === 1 ? ' word' : ' words') + ' with approved vocabulary.');
+ if(legacyRules && !lookupProblem)$('ai-publish-readiness').textContent+=' This older link still works. Update the student link to save the explicit student rules shown here.';
  $('ai-publish-readiness').className = needsReview ? 'notice' : 'hint';
  $('ai-vocabulary-details').hidden = !info || mode === 'spelling';
  $('ai-vocabulary-words').textContent = [['Approved', approved], ['Needs review', drafts], ['No vocabulary', missing]]
@@ -5900,12 +5985,13 @@ function renderSharing() {
  $('ai-publish-readiness').hidden = hasLink;
  $('ai-share-help').hidden = hasLink;
  $('ai-publish').hidden = hasLink;
+ $('ai-publish').textContent=existingLink?'Update student link':'Create student link';
  $('ai-publish').disabled = !shareReady;
  const audioStatus = hasLink && ai.audioStatus;
  const pending = audioStatus?.pending;
  const incomplete = audioStatus && audioStatus.ready < audioStatus.total;
  const waitingForAudio = !!pending || !!incomplete && !!ai.config.dictationEnabled;
- $('ai-preview').disabled = entryPage === 'teacher' ? !info?.ready || publishing : !hasLink || !!pending;
+ $('ai-preview').disabled = !!lookupProblem || (entryPage === 'teacher' ? !info?.ready || publishing : !hasLink || !!pending);
  $('ai-link-actions').hidden = !hasLink;
  $('ai-publish-options').hidden = !ai.teacher?.isAdmin || !ai.config.draftingAvailable;
  const settings=GenerationSettings.validate(sharing.list?.generationSettings);
@@ -5922,8 +6008,12 @@ function renderSharing() {
   ? 'Preparing practice audio. ' + audioStatus.ready + ' of ' + audioStatus.total + ' recordings ready. You can close this tab.'
   : incomplete ? audioStatus.ready + ' of ' + audioStatus.total + ' recordings are ready. Retry to prepare the remaining recordings.'
   : 'Practice audio is ready.';
- $('shared-mode').disabled = publishing;
- $('shared-hints').disabled = publishing || mode === 'spelling';
+ $('shared-mode').disabled = publishing || !!lookupProblem;
+ $('shared-hints').disabled = publishing || !!lookupProblem || mode === 'spelling';
+ $('shared-retype').disabled=publishing || !!lookupProblem || mode==='vocabulary';
+ if($('shared-retype-row'))$('shared-retype-row').hidden=mode==='vocabulary';
+ $('shared-variants').disabled=publishing || !!lookupProblem || mode==='spelling';
+ if($('shared-variants-row'))$('shared-variants-row').hidden=mode==='spelling';
  $('shared-hints-row').hidden = mode === 'spelling';
 }
 
@@ -5951,12 +6041,20 @@ async function showTeacherTools(view = 'tools') {
  $('tools-dialog').close();
  if (!$('teacher-url').value) $('teacher-url').value = ONLINE_CONFIG;
  const list = selectedList(), changedSet = sharing.list !== list;
- const current = {list, records:null};
+ const current = {list, records:null,linkOptionsInitialized:!changedSet && sharing.linkOptionsInitialized,
+  linkLoaded:!changedSet && sharing.linkLoaded,linkOptionsTouched:!changedSet && sharing.linkOptionsTouched,
+  linkLookup:!changedSet && sharing.linkLookup};
+ if(view==='share' && !current.linkLoaded && list && ai.token)current.linkLookup='loading';
  sharing = current;
  if (changedSet) {
-  $('shared-hints').checked = true;
   $('ai-publish-status').textContent = '';
   $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
+ }
+ if(view==='share' && !current.linkOptionsInitialized) {
+  $('shared-hints').checked=true;
+  $('shared-retype').checked=state.settings.retypeOnMiss!==false;
+  $('shared-variants').checked=state.settings.allowVariants===true;
+  current.linkOptionsInitialized=true;
  }
  const dialog = $('teacher-dialog');
  dialog.dataset.view = view;
@@ -5974,24 +6072,38 @@ async function showTeacherTools(view = 'tools') {
   current.records = rows;
   if (changedSet && rows) $('shared-mode').value = rows.some(row => row.vocabulary) ? 'mixed' : 'spelling';
   renderSharing();
-  if (view === 'share' && changedSet && rows && ai.token) {
+  if (view === 'share' && !current.linkLoaded && rows && ai.token) {
    const {token, root} = ai;
-   const mode = $('shared-mode').value, hints = $('shared-hints').checked;
+   const options=linkPracticeOptions(), generation=ai.linkGeneration || 0;
    const id = Dictation.canonicalPackId(list.packId) || list.id;
-   const saved = await service('/packs/' + encodeURIComponent(id), {root, token}).catch(() => null);
-   if (sharing !== current || ai.token !== token || !dialog.open ||
-       $('shared-mode').value !== mode || $('shared-hints').checked !== hints || saved?.visibility !== 'public') return;
+   let saved;
+   try { saved=await service('/packs/' + encodeURIComponent(id), {root, token}); }
+   catch(error) {
+    if(sharing!==current || ai.token!==token || !dialog.open)return;
+    current.linkLookup=error.status===404?'missing':'error';
+    current.linkLoaded=error.status===404;renderSharing();return;
+   }
+   if (sharing !== current || ai.token !== token || !dialog.open) return;
+   if((ai.linkGeneration || 0)!==generation || publishing) {current.linkLookup='error';renderSharing();return;}
+   if(saved?.visibility!=='public') {current.linkLookup='missing';current.linkLoaded=true;renderSharing();return;}
    const {pack, practice, audioStatus} = saved;
+   const remote=Vocabulary.validatePack(pack);
+   if(remote.id!==id)throw Error('The service returned another set’s student link.');
    const local = outputPack(list, SharedReview.sharingContent(rows, practice.mode).words);
-   if (JSON.stringify(local) !== JSON.stringify(Vocabulary.validatePack(pack))) return;
-   $('shared-mode').value = practice.mode;
-   $('shared-hints').checked = practice.allowHints;
+   if(!current.linkOptionsTouched && linkOptionsMatch(options)) {
+    $('shared-mode').value = practice.mode;
+    $('shared-hints').checked = practice.allowHints;
+    if(typeof practice.retypeOnMiss==='boolean')$('shared-retype').checked=practice.retypeOnMiss;
+    if(typeof practice.allowVariants==='boolean')$('shared-variants').checked=practice.allowVariants;
+   }
+   current.linkLoaded=true;current.linkLookup='ready';
    Object.assign(ai, {published:publicPackLink(id, root), publishedListId:list.id, publishedMode:practice.mode,
-    publishedHints:practice.allowHints, publishedUpdatedAt:list.updatedAt, audioStatus});
+    publishedHints:practice.allowHints,publishedRetype:practice.retypeOnMiss,publishedVariants:practice.allowVariants,
+    publishedUpdatedAt:JSON.stringify(local)===JSON.stringify(remote)?list.updatedAt:null, audioStatus});
    renderSharing();
    watchPracticeAudio();
   }
- } catch (error) { $('ai-publish-readiness').textContent = error.message; }
+ } catch (error) { if(sharing===current){current.linkLookup='error';renderSharing();} }
 }
 
 function showTeacherEntry() {
@@ -6055,7 +6167,8 @@ function initTeacher() {
   renderSetup();
   await openVocabularyEditor('draft');
  };
- for (const id of ['shared-mode', 'shared-hints']) $(id).onchange = () => {
+ for (const id of ['shared-mode', 'shared-hints','shared-retype','shared-variants']) $(id).onchange = () => {
+  sharing.linkOptionsTouched=true;
   $('ai-publish-status').textContent = '';
   $('ai-qr-result').hidden = true;
   renderSharing();
@@ -6144,6 +6257,7 @@ function initTeacher() {
   $('ai-context').value = ''; $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
   $('ai-usage-result').textContent = '';
   for (const id of ['teacher-groq-status','teacher-openrouter-status','teacher-account-name','teacher-account-status','teacher-invite-status','ai-progress','teacher-private-audio-status']) $(id).textContent = '';
+  $('teacher-login-kind').value = invitationToken() ? 'teacher' : 'owner';
   teacherStatus('Signed out.'); refreshTeacher();
   if (entryPage === 'teacher') showTeacherEntry();
   else { state = loadState(); listId = state.lists[0]?.id || ''; renderSetup(); }
@@ -6198,7 +6312,10 @@ function initTeacher() {
  };
  $('ai-publish').onclick = async () => {
   const status = $('ai-publish-status');
-  const mode = $('shared-mode').value, allowHints = $('shared-hints').checked;
+  const lookupProblem=linkLookupProblem();
+  if(publishing || lookupProblem) {if(lookupProblem)status.textContent=lookupProblem;return;}
+  const generation=(ai.linkGeneration || 0)+1;ai.linkGeneration=generation;
+  const options=linkPracticeOptions(), {mode,allowHints,retypeOnMiss,allowVariants}=options;
   const reuse = $('ai-publish-cache').checked, {root, token} = ai;
   publishing = true; renderSharing();
   status.textContent = 'Creating student link…';
@@ -6209,19 +6326,23 @@ function initTeacher() {
    const records = await loadVocabulary(list);
    await autosaveTeacherSet(list);
    if (list.updatedAt !== stamp || ai.token !== token) throw Error('The set changed while preparing the link. Try again with the current version.');
+   if(!linkOptionsMatch(options))throw Error('Student rules changed while preparing the link. Try again with the current choices.');
    const info = SharedReview.sharingContent(records, mode);
    if (!info.ready) throw Error('Review the vocabulary before creating a student link, or choose Spelling.');
    const pack = outputPack(list, info.words);
    const cacheSettings = pack.words.some(row => row.vocabulary) ? sharedDraftCacheSettings(reuse) : undefined;
    const {pack: published, audioStatus} = await service('/admin/publish', {root, token, method: 'POST',
-    body: {pack, mode, allowHints, visibility: 'public', cacheSettings}, requestId: newListId()});
-   if (ai.token !== token) return;
+    body: {pack, mode, allowHints,retypeOnMiss,allowVariants, visibility: 'public', cacheSettings}, requestId: newListId()});
+   if (ai.token !== token || ai.linkGeneration!==generation) return;
    if (list.updatedAt !== stamp) throw Error('The set changed while creating the link. Create it again for the current version.');
+   if(!linkOptionsMatch(options))throw Error('Student rules changed while creating the link. Update the link again with the current choices.');
    if ((list.packVersion || 0) < published.version) { list.packVersion = published.version; save(); }
    ai.published = publicPackLink(published.id, root);
    ai.publishedListId = list.id;
    ai.publishedMode = mode;
    ai.publishedHints = allowHints;
+   ai.publishedRetype=retypeOnMiss;
+   ai.publishedVariants=allowVariants;
    ai.publishedUpdatedAt = list.updatedAt;
    ai.audioStatus = audioStatus;
    $('ai-qr-result').replaceChildren(); $('ai-qr-result').hidden = true;
@@ -6260,7 +6381,7 @@ function initTeacher() {
     url = new URL(publicPackLink(pack.id, ai.root));
     const args = new URLSearchParams(url.hash.slice(1));
     args.set('draft', ticket); url.hash = args.toString();
-    const practice = {mode, allowHints:$('shared-hints').checked};
+    const practice = linkPracticeOptions();
     localStorage.setItem(LOCAL_PREVIEW_KEY, JSON.stringify({ticket, pack, practice, expiresAt: Date.now() + 60000}));
     setTimeout(() => {
      try {
@@ -6374,7 +6495,11 @@ const SharedReview = (() => {
   return {approved, drafts, missing, words, ready:words.length > 0 && (mode === 'spelling' || !drafts.length && approved.length > 0)};
  }
 
- return {instructions, reviewMode, matchingPractice, sharingContent};
+ function practiceRules(practice) {
+  return Object.fromEntries(['retypeOnMiss','allowVariants'].filter(key=>typeof practice?.[key] === 'boolean').map(key=>[key,practice[key]]));
+ }
+
+ return {instructions, reviewMode, matchingPractice, sharingContent, practiceRules};
 })();
 if (typeof module === 'object' && module.exports) module.exports = SharedReview;
 
@@ -6487,11 +6612,13 @@ async function startSharedReview() {
  if (!review || button.disabled) return;
  button.disabled = true;
  $('shared-ready-status').textContent = '';
+ const rules = SharedReview.practiceRules(review.practice);
  try {
   const oldList = findPackList(review.pack.id, review.origin);
   const activeMode = SharedReview.matchingPractice(state, oldList?.id, review.mode);
   if (activeMode) {
-   if (activeMode === 'learning') state.learningSession.session.settings.allowHints = review.allowHints;
+   if (activeMode === 'learning') Object.assign(state.learningSession.session.settings,{allowHints:review.allowHints},rules);
+   else if (typeof rules.retypeOnMiss === 'boolean') state.session.retypeOnMiss = rules.retypeOnMiss;
    listId = oldList.id;
    resumeActivity();
    return;
@@ -6500,7 +6627,8 @@ async function startSharedReview() {
   await parkCurrentActivity();
   const parkedMode = SharedReview.matchingPractice(parked || {}, oldList?.id, review.mode);
   if (parkedMode) {
-   if (parkedMode === 'learning') parked.learningSession.session.settings.allowHints = review.allowHints;
+   if (parkedMode === 'learning') Object.assign(parked.learningSession.session.settings,{allowHints:review.allowHints},rules);
+   else if (typeof rules.retypeOnMiss === 'boolean') parked.session.retypeOnMiss = rules.retypeOnMiss;
    await resumeParkedActivity(oldList, parked);
    return;
   }
@@ -6508,10 +6636,10 @@ async function startSharedReview() {
   const list = selectedList();
   const records = await loadVocabulary(list);
   if (sharedReview !== review) return;
-  if (review.mode === 'spelling') await start(records.map(row => row.word), list);
+  if (review.mode === 'spelling') await start(records.map(row => row.word), list, rules);
   else beginLearning(list, records, {...coachOptions(), mode:review.mode, type:'practice', allowHints:review.allowHints,
    bankOrder:review.pack.id === Dictation.demoPackId && review.pack.version === 1 ? matterBankOrder : undefined,
-   difficulty:'adaptive', audioReplay:true, masteryPractice:true});
+   difficulty:'adaptive', audioReplay:true, masteryPractice:true,...rules});
  } catch (error) { $('shared-ready-status').textContent = error.message; }
  finally { button.disabled = false; }
 }
@@ -6566,7 +6694,7 @@ async function openSharedReview() {
   }
   if (pack.id !== id) throw Error('Wrong review set.');
   if (load !== sharedLoad) return;
-  sharedReview = {pack, origin, audio, audioStatus, preparedAudio, localPreview:!!previewTicket, mode:SharedReview.reviewMode(practice?.mode, pack.words), allowHints:practice?.allowHints !== false};
+  sharedReview = {pack, origin, audio, audioStatus, preparedAudio, practice, localPreview:!!previewTicket, mode:SharedReview.reviewMode(practice?.mode, pack.words), allowHints:practice?.allowHints !== false};
   $('local-preview-notice').hidden = preparedAudio;
   $('local-preview-notice').textContent = previewTicket ? 'Draft preview uses this device’s voice. Use recording previews in the teacher workspace to check Paul. This preview makes no AI requests.' : 'This older set uses this device’s voice when a saved recording is unavailable.';
   await renderSharedReady();
@@ -6677,13 +6805,13 @@ function next(s){
  if(s.words.every(w=>s.perWord[w].mastered)){s.current='';s.phase='done';return false;}
  s.round++;buildRound(s);if(!s.queue.length){s.current='';s.phase='done';return false;}takeNext(s);return true;
 }
-async function start(ws,list){
+async function start(ws,list,practice={}){
  if(!ws.length||!list)return;
  const records=await loadVocabulary(list).catch(()=>[]);
  if(state.session||state.learningSession)return;
  const meanings=dictionary();for(const {word,vocabulary} of records)if(vocabulary)meanings[word]={senseId:vocabulary.senseId,partOfSpeech:vocabulary.partOfSpeech,definition:vocabulary.definition};const defs=dictionary();for(const w of ws)defs[w]=(list.defs&&list.defs[w])||'';
  const perWord=dictionary();for(const w of ws){const old=state.progress[list.id]?.words?.[w]||{};perWord[w]={streak:0,misses:Number(old.misses)||0,lastSeen:Number(old.lastSeen)||null,initialDone:false,initialCorrect:false,missed:false,mastered:false,retypeMisses:0};}
- state.session={v:1,listId:list.id,listName:list.name,words:[...ws],defs,meanings,startedAt:now(),round:1,roundMembers:[],queue:[],current:'',currentType:'initial',phase:'prompt',perWord,log:[],missed:[],firstCorrect:0,initialCount:0,retypeMisses:0};
+ state.session={v:1,listId:list.id,listName:list.name,words:[...ws],defs,meanings,startedAt:now(),round:1,roundMembers:[],queue:[],current:'',currentType:'initial',phase:'prompt',perWord,log:[],missed:[],firstCorrect:0,initialCount:0,retypeMisses:0,...(typeof practice.retypeOnMiss==='boolean'?{retypeOnMiss:practice.retypeOnMiss}:{})};
  buildRound(state.session);next(state.session);save();renderPractice(true);
 }
 function submit(s,text){
@@ -6691,7 +6819,7 @@ function submit(s,text){
  s.log.push({type,word:w,typed:String(text),ok,at:now()});if(type==='initial'){p.initialDone=true;s.initialCount++;cp.initialAttempts++;if(ok){s.firstCorrect++;p.initialCorrect=true;cp.initialCorrect++;}}
  cp.lastSeen=Date.now();recordLegacySpelling(s.listId,w,ok);
  if(ok){p.streak++;if(p.streak>=2)p.mastered=true;s.phase='feedback';}
- else{p.streak=0;p.misses++;p.missed=true;cp.misses++;if(!s.missed.includes(w))s.missed.push(w);s.queue.push(w);s.feedbackDiff=diff(text,w);s.phase=state.settings.retypeOnMiss?'retype':'feedback';}
+ else{p.streak=0;p.misses++;p.missed=true;cp.misses++;if(!s.missed.includes(w))s.missed.push(w);s.queue.push(w);s.feedbackDiff=diff(text,w);s.phase=(typeof s.retypeOnMiss==='boolean'?s.retypeOnMiss:state.settings.retypeOnMiss)?'retype':'feedback';}
  save();return{ok,type,typed:String(text),word:w,diff:diff(text,w)};
 }
 function retype(s,text){
@@ -6728,7 +6856,7 @@ function countSelected(){
 }
 function loadSettings(){const x=state.settings;$('round-size').value=x.roundSize;$('retype-toggle').checked=x.retypeOnMiss;$('auto-advance').value=x.autoAdvanceMs;$('feedback-delay').value=x.feedbackMs;$('speech-rate').value=x.rate;$('rate-label').textContent=Number(x.rate).toFixed(2);$('pin-entry').value=x.pin;$('allow-variants').checked=x.allowVariants;refreshVoices();$('voice-select').value=x.voiceURI;}
 function speak(value,rate,onError,onStart){if(!speech){if(onError)onError();return;}try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(String(value)),v=voices.find(x=>x.voiceURI===state.settings.voiceURI)||voices.find(x=>/^en-US/i.test(x.lang))||voices.find(x=>/^en/i.test(x.lang));if(v)u.voice=v;if(onStart)u.onstart=onStart;if(onError)u.onerror=e=>{if(!['canceled','interrupted'].includes(e.error))onError();};u.rate=rate||state.settings.rate;speechSynthesis.speak(u);}catch(e){if(onError){onError();return;}speech=false;$('replay-button').hidden=true;$('slow-replay').hidden=true;$('visual-word').className='visual-prompt';$('visual-word').textContent='Prompt: '+value;}}
-function refreshVoices(){if(!speech)return;voices=speechSynthesis.getVoices().filter(v=>/^en(?:-|_)/i.test(v.lang));const sel=$('voice-select'),old=state.settings.voiceURI;sel.innerHTML='<option value="">System default</option>';voices.forEach(v=>sel.add(new Option(v.name+' ('+v.lang+')',v.voiceURI)));sel.value=old;}
+function refreshVoices(){if(!speech)return;voices=speechSynthesis.getVoices().filter(v=>/^en(?:-|_)/i.test(v.lang));const sel=$('voice-select'),old=state.settings.voiceURI;sel.innerHTML='<option value="">Automatic device voice</option>';voices.forEach(v=>sel.add(new Option(v.name+' ('+v.lang+')',v.voiceURI)));sel.value=old;}
 function renderTiles(s){const host=$('tiles');host.innerHTML='';s.words.forEach(w=>{const p=s.perWord[w],el=document.createElement('span');el.className='tile'+(p.mastered?' mastered':p.streak===1?' familiar':'');el.setAttribute('aria-label',p.mastered?'Mastered':p.streak===1?'One correct':'Not mastered');el.title=p.mastered?'Mastered':p.streak===1?'One correct':'Not mastered';host.append(el);});}
 function feedback(msg,kind,d){const box=$('feedback');box.className='feedback'+(kind?' '+kind:'');box.innerHTML='';if(msg){const t=document.createElement('div');t.textContent=msg;box.append(t);}if(d){const x=document.createElement('div');x.className='diff';x.innerHTML=textDiff(d);box.append(x);}}
 function renderCorrection(id, inputId, answer, explanation = '') {
@@ -6769,7 +6897,7 @@ function showSummary(r){const s=state.session;if(!s)return;clearTimeout(timer);s
 function copy(text){if(navigator.clipboard?.writeText)return navigator.clipboard.writeText(text).then(()=>true,()=>fallbackCopy(text));return Promise.resolve(fallbackCopy(text));}
 function fallbackCopy(text){const t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';(document.querySelector('dialog[open]')||document.body).append(t);t.select();let ok=false;try{ok=document.execCommand('copy');}catch(e){}t.remove();return ok;}
 function download(file,text,type){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=file;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-function practiceMissed(){const s=state.session;if(!s)return;const r=s.summary||summary(s);if(!Array.isArray(r.missed)||!r.missed.length)return;const l={id:s.listId,name:s.listName,words:s.words,defs:s.defs};state.session=null;save();start(r.missed,l);}
+function practiceMissed(){const s=state.session;if(!s)return;const r=s.summary||summary(s);if(!Array.isArray(r.missed)||!r.missed.length)return;const l={id:s.listId,name:s.listName,words:s.words,defs:s.defs};state.session=null;save();start(r.missed,l,{retypeOnMiss:s.retypeOnMiss});}
 function finishToSetup(){const checkpoint=state.learningCheckpoint;if(state.session&&!state.session.summary)finish(false);state.session=null;state.learningSession=null;save();if(checkpoint)getStore(checkpoint.backend).then(store=>store.remove(checkpoint.key)).catch(()=>{});renderSetup();if(sharedReview)renderSharedReady();else showLanding();}
 function backToSetup(){if(state.settings.pin){$('pin-check').value='';$('pin-error').textContent='';$('pin-overlay').hidden=false;$('pin-check').focus();}else finishToSetup();}
 function validBackup(x){if(!x||x.v!==1||!Array.isArray(x.lists)||!x.lists.every(listOK))throw Error('Choose a WordLab backup with a valid lists array.');return x.lists.map(l=>({id:l.id,name:l.name,words:wordsUnique(l.words),defs:dictionary(l.defs),updatedAt:now()}));}
@@ -6932,7 +7060,15 @@ $('copy-list').onclick=()=>{
  copy(ws.map(csv).join('\r\n')).then(ok=>{if(listDraft===draft)editorStatus(ok?'Draft copied as CSV.':'Copy failed.');});
 };
 $('preview-voice').onclick=()=>speak('The quick brown fox jumps over the lazy dog.',state.settings.rate);
-$('open-tools').onclick=()=>{$('tools-dialog').showModal();};
+$('open-tools').onclick=()=>{
+ $('tools-teaching-options').hidden=entryPage==='student';
+ $('local-teaching-defaults').hidden=!!sharedReview;
+ for(const id of ['retype-toggle','allow-variants'])$(id).disabled=!!sharedReview;
+ const savedRules=sharedReview?.practice;
+ const assignedRules=typeof savedRules?.retypeOnMiss==='boolean'&&typeof savedRules?.allowVariants==='boolean';
+ $('tools-teaching-help').textContent=sharedReview?(assignedRules?'This assignment uses its teacher’s saved rules. Local defaults cannot change them.':'This older link may use local teaching defaults. Ask the teacher to update the link to save its teaching rules.'):'Defaults for local practice and new student links. Shared sets have their own rules in Student link.';
+ $('tools-dialog').showModal();
+};
 $('close-tools').onclick=()=>$('tools-dialog').close();
 $('done-tools').onclick=()=>$('tools-dialog').close();
 ['round-size','retype-toggle','auto-advance','feedback-delay','voice-select','pin-entry','allow-variants'].forEach(id=>$(id).addEventListener('change',()=>{state.settings.roundSize=clamp($('round-size').value,1,20,7);state.settings.retypeOnMiss=$('retype-toggle').checked;state.settings.autoAdvanceMs=clamp($('auto-advance').value,0,5000,600);state.settings.feedbackMs=clamp($('feedback-delay').value,300,10000,1800);state.settings.voiceURI=$('voice-select').value;state.settings.rate=Math.max(.5,Math.min(1.2,Number($('speech-rate').value)||.85));state.settings.pin=/^\d{4}$/.test($('pin-entry').value)?$('pin-entry').value:'';state.settings.allowVariants=$('allow-variants').checked;save();}));
