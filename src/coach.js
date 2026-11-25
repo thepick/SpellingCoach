@@ -104,6 +104,12 @@ async function beginCoach() {
  settingsChanged();
  const options = coachOptions(), list = selectedList(), records = selectedRecords();
  if (!list || !records.length) return;
+ const parked = await parkedActivity(list.id, options.type);
+ if (selectedList() !== list || state.session || state.learningSession) return;
+ if (parked) {
+  try { await resumeParkedActivity(list, parked); } catch (error) { status(error.message); }
+  return;
+ }
  if (options.mode === 'study') {
   beginStudy(list, records);
   return;
@@ -329,7 +335,7 @@ function showReport(report, entry) {
  stats.replaceChildren();
  $('report-list').textContent = entry?.listName || list?.name || '';
  $('report-title').textContent = report ? (report.type === 'test' ? report.status === 'unfinished' ? 'Unfinished test' : 'Test results' : 'Practice results') : 'Learning progress';
- $('report-exit').textContent = report?.status === 'unfinished' ? 'Leave unfinished test' : 'Return to setup';
+ $('report-exit').textContent = report?.status === 'unfinished' ? 'Leave unfinished test' : sharedReview ? 'Back to set' : 'Return to setup';
  $('report-resume').hidden = report?.status !== 'unfinished';
  const previous = state.learningHistory.filter(row => row.listId === list?.id).slice().reverse();
  if (report) {
@@ -492,8 +498,8 @@ function previewPack(pack) {
  $('pack-preview').showModal();
 }
 
-async function importPack(pack) {
- let list = state.lists.find(row => row.packId === pack.id);
+async function importPack(pack, origin) {
+ let list = findPackList(pack.id, origin);
  const fresh = !list;
  const before = list && structuredClone({progress: state.progress[list.id], learning: state.learning[list.id],
   familiar: state.familiar[list.id], selection: state.settings.selected[list.id]});
@@ -505,6 +511,7 @@ async function importPack(pack) {
   const current = outputPack(list, await loadVocabulary(list));
   const plan = Vocabulary.planPackUpdate(current, pack);
   if (plan.action === 'older' || plan.action === 'unchanged') {
+   if (origin && !list.sharedOrigin) { list.sharedOrigin = origin; save(); }
    listId = list.id; renderSetup(); return 'This pack is already up to date.';
   }
   for (const key of [...plan.changedWords, ...plan.removedWords]) {
@@ -527,7 +534,7 @@ async function importPack(pack) {
  }
  listId = list.id;
  try {
-  await saveVocabulary(list, pack.words, {name: pack.name, words, packId: pack.id, packVersion: pack.version});
+  await saveVocabulary(list, pack.words, {name: pack.name, words, packId: pack.id, packVersion: pack.version, ...(origin ? {sharedOrigin: origin} : {})});
  } catch (error) {
   if (fresh) { state.lists = state.lists.filter(row => row !== list); delete state.settings.selected[list.id]; }
   else for (const [target, key] of [[state.progress, 'progress'], [state.learning, 'learning'], [state.familiar, 'familiar'], [state.settings.selected, 'selection']]) {
@@ -872,6 +879,7 @@ function initCoach() {
  $('offline-download').hidden = location.protocol === 'file:';
  initTeacher();
  initDictation();
+ initSharedReview();
 }
 
 function openShuffle(mode) {

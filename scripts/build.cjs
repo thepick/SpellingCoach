@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n');
-const sources = ['vocabulary', 'learning', 'state', 'dictation', 'coach', 'dictation-ui', 'teacher'];
+const sources = ['vocabulary', 'learning', 'state', 'dictation', 'coach', 'dictation-ui', 'teacher', 'shared-review'];
 const modules = read('src/vendor/qrcode.js') + '\n' + sources.map(file => read('src/' + file + '.js')).join('\n');
 const sample = JSON.stringify(JSON.parse(read('examples/weekly-vocabulary-sample.json'))).replace(/</g, '\\u003c');
 const code = read('src/app.js')

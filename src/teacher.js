@@ -25,7 +25,11 @@ async function service(path, {root = ai.root, token = ai.token, method = 'GET', 
  if (audio && response.ok && response.headers.get('Content-Type') === 'audio/wav') return response.arrayBuffer();
  let payload;
  try { payload = await response.json(); } catch (error) { throw Error('The service returned an invalid response.'); }
- if (!response.ok) throw Error(payload?.error?.message || 'The service could not complete the request.');
+ if (!response.ok) {
+  const error = Error(payload?.error?.message || 'The service could not complete the request.');
+  error.status = response.status;
+  throw error;
+ }
  return payload;
 }
 
@@ -123,32 +127,9 @@ function aiSettings() {
 function publicPackLink(id) {
  const site = new URL(location.protocol === 'file:' ? 'https://wordlab.mtomlinson.ca/' : location.href);
  site.search = ''; site.hash = '';
- const args = new URLSearchParams({pack: id, service: ai.root});
+ const args = new URLSearchParams({pack: id, service: ai.root, mode: $('shared-mode').value});
  site.hash = args.toString();
  return site.href;
-}
-
-async function getSharedPack() {
- const args = new URLSearchParams(location.hash.slice(1));
- const id = args.get('pack');
- if (!id || !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,95}$/.test(id)) return;
- const root = serviceOrigin(args.get('service') || ONLINE_CONFIG);
- const get = async token => {
-  const {pack} = await service('/packs/' + encodeURIComponent(id), {root, token});
-  if (state.session || state.learningSession) {
-   teacherStatus('Finish your active session before importing the shared pack.');
-   return;
-  }
-  previewPack(pack);
- };
- try { await get(''); }
- catch (error) {
-  if (!ai.token || ai.root !== root) {
-   status('This pack could not open publicly. Sign in with the class code or ask your teacher for the JSON file.');
-   return;
-  }
-  throw error;
- }
 }
 
 function initTeacher() {
@@ -191,10 +172,8 @@ function initTeacher() {
   }
   const shared = new URLSearchParams(location.hash.slice(1));
   if (shared.has('pack') && serviceOrigin(shared.get('service') || ONLINE_CONFIG) === root) {
-   try {
-    const result = await service('/packs/' + encodeURIComponent(shared.get('pack')));
-    $('teacher-dialog').close(); previewPack(result.pack);
-   } catch (error) { teacherStatus(error.message); }
+   $('teacher-dialog').close();
+   await openSharedReview();
   }
  });
  $('teacher-logout').onclick = () => {
@@ -322,7 +301,7 @@ function initTeacher() {
   applyJob(await service('/generate', {method: 'POST', body: {words, settings: aiSettings()}, requestId: newListId()}));
   await runJob();
  });
- if (location.hash) getSharedPack().catch(error => status(error.message));
+
 }
 function packQRCode(value) {
  const qr = qrcode(0, 'M');

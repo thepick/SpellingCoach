@@ -11,7 +11,7 @@ function newListId() {
 }
 
 function listMetadata(list) {
- const keys = ['vocabKey', 'vocabBackend', 'packId', 'packVersion', 'orderReceipt'];
+ const keys = ['vocabKey', 'vocabBackend', 'packId', 'packVersion', 'sharedOrigin', 'orderReceipt'];
  const result = {};
  for (const key of keys) if (Object.prototype.hasOwnProperty.call(list, key)) result[key] = list[key];
  return result;
@@ -125,7 +125,7 @@ function saveState() {
  return writeLocalState(state);
 }
 
-async function recoverCheckpoint() {
+async function recoverCheckpoint(render = true) {
  const marker = state.learningCheckpoint;
  if (!marker || state.learningSession) return;
  try {
@@ -133,13 +133,12 @@ async function recoverCheckpoint() {
   if (!data || data.listId !== marker.listId || !Learning.sessionOK(data.session)) throw Error('An unfinished session could not be read.');
   state.learningSession = data;
   listId = data.listId;
-  renderSetup();
-  pauseLearning();
+  if (render) { renderSetup(); pauseLearning(); }
  } catch (error) {
   storageOK = false;
   warning();
   $('storage-warning').textContent = error.message + ' Reload to try the saved checkpoint again.';
-  show('setup-screen');
+  if (render) show('setup-screen');
  }
 }
 

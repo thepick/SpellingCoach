@@ -95,8 +95,15 @@ select, input, textarea { max-width: 100%; }
 
 body:has(dialog.tools-dialog[open]) { overflow: hidden; }
 
+#shared-ready { width: min(100%, 33rem); margin: clamp(3rem, 12vh, 8rem) auto 0; text-align: center; padding: clamp(1.5rem, 6vw, 2.75rem); }
+#shared-ready .subhead { margin: .7rem 0 1.35rem; }
+#shared-ready p:empty { display: none; }
+#shared-start { width: 100%; max-width: 20rem; min-height: 52px; font-size: 1.08rem; }
+.app:has(#shared-ready:not([hidden])) .topbar:not(:has(#storage-warning:not([hidden]))) { display: none; }
+
 </style></head><body>
 <div class="app"><header class="topbar"><div class="brand"><img class="brand-icon" src="data:image/x-icon;base64,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" width="32" height="32" alt=""><span>WordLab <span class="version">v0.2.0</span></span></div><label class="theme-control" for="theme-select"><span>Theme</span><select id="theme-select"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label><div id="storage-warning" class="notice" hidden role="status">Your progress will not be saved in this browser.</div></header><main>
+<section id="shared-ready" class="screen panel" hidden aria-labelledby="shared-title"><h1 id="shared-title" tabindex="-1"></h1><p id="shared-instruction" class="subhead"></p><button type="button" id="shared-start">Start practice</button><p id="shared-ready-status" class="status" role="status"></p></section>
 <section id="resume-screen" class="screen resume panel" hidden><h1>Continue your session?</h1><p class="subhead">An unfinished session is saved in this browser.</p><div class="actions"><button id="resume-button">Resume session</button><button id="end-saved-button" class="secondary">End session</button></div></section>
 <section id="setup-screen" class="screen panel" hidden><div class="row between setup-heading"><div><h1>Spelling &amp; vocabulary</h1><p id="setup-intro" class="subhead">Create a list to get started. Give it a name and add one word or phrase per line.</p></div><button id="open-tools" class="secondary">Tools</button></div><div id="setup-status" class="status" role="status" aria-live="polite"></div>
 <div class="grid"><div class="stack"><div><label for="list-select">Word list</label><select id="list-select"></select></div><div class="actions"><button id="new-list">Create a word list</button><button id="edit-list" class="secondary small">Edit list</button><button id="delete-list" class="danger small">Delete</button><button id="reset-progress" class="ghost small">Reset progress</button></div><div class="actions"><button id="sample-pack" type="button" class="ghost small">Try the sample list</button><button id="open-vocabulary" type="button" class="secondary small" disabled>Vocabulary content</button><button id="open-report" type="button" class="ghost small" disabled>Learning progress</button></div><p id="list-actions-help" class="hint">Create or import a list first. List actions become available afterward.</p>
@@ -180,7 +187,7 @@ body:has(dialog.tools-dialog[open]) { overflow: hidden; }
   <p id="ai-progress" class="hint" role="status"></p>
  </div>
  <div id="teacher-admin" class="tool-section stack" hidden>
-  <h2>Publishing and usage</h2>
+  <h2>Publishing and usage</h2><div><label for="shared-mode">Practice from the student link</label><select id="shared-mode"><option value="mixed">Mixed practice</option><option value="spelling">Spelling</option><option value="vocabulary">Vocabulary</option></select></div>
   <div class="actions"><button type="button" id="ai-publish">Publish approved pack</button><button type="button" id="ai-share" class="secondary" disabled>Copy student link</button><button type="button" id="ai-qr" class="ghost" disabled>Show classroom QR code</button><button type="button" id="ai-usage" class="ghost">Refresh usage</button><button type="button" id="ai-stop" class="danger">Disable generation</button></div>
   <label class="checkline"><input id="ai-publish-cache" type="checkbox"> Reuse this pack’s approved content in generation</label><div id="ai-qr-result" hidden></div><p id="ai-usage-result" class="hint" role="status"></p>
   <details><summary>Recent generation jobs</summary><ol id="ai-job-history"></ol></details><details><summary>Class access codes</summary><div class="stack"><button type="button" id="ai-classes" class="ghost">Refresh class list</button><ul id="ai-class-status"></ul><div class="settings"><div><label for="ai-class-id">Class ID</label><input id="ai-class-id" maxlength="40"></div><div><label for="ai-class-name">Name</label><input id="ai-class-name" maxlength="80"></div><div><label for="ai-class-limit">Daily word allowance</label><input id="ai-class-limit" type="number" min="1" value="200"></div><div><label for="ai-class-expiry">Expires on</label><input id="ai-class-expiry" type="date"></div></div><div class="actions"><button type="button" id="ai-class-save" class="secondary">Save class</button><button type="button" id="ai-class-rotate" class="ghost">Rotate code</button><button type="button" id="ai-class-revoke" class="ghost">Revoke access</button></div></div></details>
@@ -3410,7 +3417,7 @@ function newListId() {
 }
 
 function listMetadata(list) {
- const keys = ['vocabKey', 'vocabBackend', 'packId', 'packVersion', 'orderReceipt'];
+ const keys = ['vocabKey', 'vocabBackend', 'packId', 'packVersion', 'sharedOrigin', 'orderReceipt'];
  const result = {};
  for (const key of keys) if (Object.prototype.hasOwnProperty.call(list, key)) result[key] = list[key];
  return result;
@@ -3524,7 +3531,7 @@ function saveState() {
  return writeLocalState(state);
 }
 
-async function recoverCheckpoint() {
+async function recoverCheckpoint(render = true) {
  const marker = state.learningCheckpoint;
  if (!marker || state.learningSession) return;
  try {
@@ -3532,13 +3539,12 @@ async function recoverCheckpoint() {
   if (!data || data.listId !== marker.listId || !Learning.sessionOK(data.session)) throw Error('An unfinished session could not be read.');
   state.learningSession = data;
   listId = data.listId;
-  renderSetup();
-  pauseLearning();
+  if (render) { renderSetup(); pauseLearning(); }
  } catch (error) {
   storageOK = false;
   warning();
   $('storage-warning').textContent = error.message + ' Reload to try the saved checkpoint again.';
-  show('setup-screen');
+  if (render) show('setup-screen');
  }
 }
 
@@ -3696,6 +3702,12 @@ async function beginCoach() {
  settingsChanged();
  const options = coachOptions(), list = selectedList(), records = selectedRecords();
  if (!list || !records.length) return;
+ const parked = await parkedActivity(list.id, options.type);
+ if (selectedList() !== list || state.session || state.learningSession) return;
+ if (parked) {
+  try { await resumeParkedActivity(list, parked); } catch (error) { status(error.message); }
+  return;
+ }
  if (options.mode === 'study') {
   beginStudy(list, records);
   return;
@@ -3921,7 +3933,7 @@ function showReport(report, entry) {
  stats.replaceChildren();
  $('report-list').textContent = entry?.listName || list?.name || '';
  $('report-title').textContent = report ? (report.type === 'test' ? report.status === 'unfinished' ? 'Unfinished test' : 'Test results' : 'Practice results') : 'Learning progress';
- $('report-exit').textContent = report?.status === 'unfinished' ? 'Leave unfinished test' : 'Return to setup';
+ $('report-exit').textContent = report?.status === 'unfinished' ? 'Leave unfinished test' : sharedReview ? 'Back to set' : 'Return to setup';
  $('report-resume').hidden = report?.status !== 'unfinished';
  const previous = state.learningHistory.filter(row => row.listId === list?.id).slice().reverse();
  if (report) {
@@ -4084,8 +4096,8 @@ function previewPack(pack) {
  $('pack-preview').showModal();
 }
 
-async function importPack(pack) {
- let list = state.lists.find(row => row.packId === pack.id);
+async function importPack(pack, origin) {
+ let list = findPackList(pack.id, origin);
  const fresh = !list;
  const before = list && structuredClone({progress: state.progress[list.id], learning: state.learning[list.id],
   familiar: state.familiar[list.id], selection: state.settings.selected[list.id]});
@@ -4097,6 +4109,7 @@ async function importPack(pack) {
   const current = outputPack(list, await loadVocabulary(list));
   const plan = Vocabulary.planPackUpdate(current, pack);
   if (plan.action === 'older' || plan.action === 'unchanged') {
+   if (origin && !list.sharedOrigin) { list.sharedOrigin = origin; save(); }
    listId = list.id; renderSetup(); return 'This pack is already up to date.';
   }
   for (const key of [...plan.changedWords, ...plan.removedWords]) {
@@ -4119,7 +4132,7 @@ async function importPack(pack) {
  }
  listId = list.id;
  try {
-  await saveVocabulary(list, pack.words, {name: pack.name, words, packId: pack.id, packVersion: pack.version});
+  await saveVocabulary(list, pack.words, {name: pack.name, words, packId: pack.id, packVersion: pack.version, ...(origin ? {sharedOrigin: origin} : {})});
  } catch (error) {
   if (fresh) { state.lists = state.lists.filter(row => row !== list); delete state.settings.selected[list.id]; }
   else for (const [target, key] of [[state.progress, 'progress'], [state.learning, 'learning'], [state.familiar, 'familiar'], [state.settings.selected, 'selection']]) {
@@ -4464,6 +4477,7 @@ function initCoach() {
  $('offline-download').hidden = location.protocol === 'file:';
  initTeacher();
  initDictation();
+ initSharedReview();
 }
 
 function openShuffle(mode) {
@@ -4667,7 +4681,11 @@ async function service(path, {root = ai.root, token = ai.token, method = 'GET', 
  if (audio && response.ok && response.headers.get('Content-Type') === 'audio/wav') return response.arrayBuffer();
  let payload;
  try { payload = await response.json(); } catch (error) { throw Error('The service returned an invalid response.'); }
- if (!response.ok) throw Error(payload?.error?.message || 'The service could not complete the request.');
+ if (!response.ok) {
+  const error = Error(payload?.error?.message || 'The service could not complete the request.');
+  error.status = response.status;
+  throw error;
+ }
  return payload;
 }
 
@@ -4765,32 +4783,9 @@ function aiSettings() {
 function publicPackLink(id) {
  const site = new URL(location.protocol === 'file:' ? 'https://wordlab.mtomlinson.ca/' : location.href);
  site.search = ''; site.hash = '';
- const args = new URLSearchParams({pack: id, service: ai.root});
+ const args = new URLSearchParams({pack: id, service: ai.root, mode: $('shared-mode').value});
  site.hash = args.toString();
  return site.href;
-}
-
-async function getSharedPack() {
- const args = new URLSearchParams(location.hash.slice(1));
- const id = args.get('pack');
- if (!id || !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,95}$/.test(id)) return;
- const root = serviceOrigin(args.get('service') || ONLINE_CONFIG);
- const get = async token => {
-  const {pack} = await service('/packs/' + encodeURIComponent(id), {root, token});
-  if (state.session || state.learningSession) {
-   teacherStatus('Finish your active session before importing the shared pack.');
-   return;
-  }
-  previewPack(pack);
- };
- try { await get(''); }
- catch (error) {
-  if (!ai.token || ai.root !== root) {
-   status('This pack could not open publicly. Sign in with the class code or ask your teacher for the JSON file.');
-   return;
-  }
-  throw error;
- }
 }
 
 function initTeacher() {
@@ -4833,10 +4828,8 @@ function initTeacher() {
   }
   const shared = new URLSearchParams(location.hash.slice(1));
   if (shared.has('pack') && serviceOrigin(shared.get('service') || ONLINE_CONFIG) === root) {
-   try {
-    const result = await service('/packs/' + encodeURIComponent(shared.get('pack')));
-    $('teacher-dialog').close(); previewPack(result.pack);
-   } catch (error) { teacherStatus(error.message); }
+   $('teacher-dialog').close();
+   await openSharedReview();
   }
  });
  $('teacher-logout').onclick = () => {
@@ -4964,13 +4957,187 @@ function initTeacher() {
   applyJob(await service('/generate', {method: 'POST', body: {words, settings: aiSettings()}, requestId: newListId()}));
   await runJob();
  });
- if (location.hash) getSharedPack().catch(error => status(error.message));
+
 }
 function packQRCode(value) {
  const qr = qrcode(0, 'M');
  qr.addData(value);
  qr.make();
  return qr.createDataURL(5, 20);
+}
+
+const SharedReview = (() => {
+ const instructions = {
+  spelling: 'Listen and type the word you hear.',
+  vocabulary: 'Read each question and choose or type your answer.',
+  mixed: 'Listen, spell, and answer questions about the words.'
+ };
+
+ function reviewMode(assigned, words) {
+  if (assigned === 'spelling' || !words.some(row => row.vocabulary?.definition)) return 'spelling';
+  return assigned === 'vocabulary' ? 'vocabulary' : 'mixed';
+ }
+
+ function matchingPractice(saved, id) {
+  if (!id) return null;
+  if (saved.session?.listId === id && saved.session.phase !== 'done') return 'spelling';
+  const entry = saved.learningSession;
+  return entry?.listId === id && entry.session.type === 'practice' && entry.session.status === 'active'
+   ? 'learning' : null;
+ }
+
+ return {instructions, reviewMode, matchingPractice};
+})();
+if (typeof module === 'object' && module.exports) module.exports = SharedReview;
+
+let sharedReview = null;
+let sharedLoad = 0;
+const parkedKey = (id, type) => 'paused-activity:' + JSON.stringify([id, type]);
+
+function findPackList(id, origin) {
+ const lists = state.lists.filter(list => list.packId === id);
+ return (origin && lists.find(list => list.sharedOrigin === origin)) ||
+  lists.find(list => !list.sharedOrigin) || (!origin ? lists[0] : undefined);
+}
+
+async function parkedActivity(id, type = 'practice') {
+ if (!id) return null;
+ const saved = await getStore().then(store => store.get(parkedKey(id, type))).catch(() => null);
+ if (saved?.session?.listId === id && sessionOK(saved.session)) return saved;
+ const entry = saved?.learningSession;
+ return entry?.listId === id && Learning.sessionOK(entry.session) ? saved : null;
+}
+
+async function parkCurrentActivity() {
+ const previous = {session:state.session, learningSession:state.learningSession, learningCheckpoint:state.learningCheckpoint};
+ const legacy = previous.session && previous.session.phase !== 'done' ? previous.session : null;
+ const learning = previous.learningSession && previous.learningSession.session.status !== 'finished' ? previous.learningSession : null;
+ const id = (legacy || learning)?.listId;
+ if (id) await (await getStore()).put(parkedKey(id, learning?.session.type || 'practice'), {session:legacy, learningSession:learning});
+ if (!previous.session && !previous.learningSession && !previous.learningCheckpoint) return;
+ if (previous.learningCheckpoint && !previous.learningSession) throw Error('Reload to restore your saved activity first.');
+ state.session = null;
+ state.learningSession = null;
+ if (!save()) {
+  Object.assign(state, previous);
+  throw Error('WordLab could not save your current activity.');
+ }
+ const checkpoint = previous.learningCheckpoint;
+ if (checkpoint) await getStore(checkpoint.backend).then(store => store.remove(checkpoint.key)).catch(() => {});
+}
+
+async function resumeParkedActivity(list, activity) {
+ state.session = activity.session || null;
+ state.learningSession = activity.learningSession || null;
+ listId = list.id;
+ if (!save()) {
+  state.session = null; state.learningSession = null;
+  throw Error('WordLab could not restore this activity.');
+ }
+ await checkpointChain;
+ if (storageOK) await getStore().then(store => store.remove(parkedKey(list.id, activity.learningSession?.session.type || 'practice'))).catch(() => {});
+ resumeActivity();
+}
+
+function clearParkedActivity(id) {
+ getStore().then(store => Promise.all(['practice', 'test'].map(type => store.remove(parkedKey(id, type))))).catch(() => {});
+}
+
+async function renderSharedReady() {
+ const review = sharedReview;
+ if (!review) return;
+ const list = findPackList(review.pack.id, review.origin);
+ const saved = list && (SharedReview.matchingPractice(state, list.id) ? state : await parkedActivity(list.id));
+ if (sharedReview !== review) return;
+ const mode = SharedReview.matchingPractice(saved || {}, list?.id);
+ const instruction = mode === 'learning' ? saved.learningSession.session.mode :
+  mode === 'spelling' ? 'spelling' : review.mode;
+ $('shared-title').textContent = review.pack.name;
+ $('shared-instruction').textContent = SharedReview.instructions[instruction];
+ $('shared-ready-status').textContent = '';
+ $('shared-start').textContent = mode ? 'Continue practice' : 'Start practice';
+ $('shared-start').disabled = false;
+ $('shared-start').hidden = false;
+ show('shared-ready');
+ $('shared-title').focus();
+}
+
+async function startSharedReview() {
+ const review = sharedReview, button = $('shared-start');
+ if (!review || button.disabled) return;
+ button.disabled = true;
+ $('shared-ready-status').textContent = '';
+ try {
+  const oldList = findPackList(review.pack.id, review.origin);
+  if (SharedReview.matchingPractice(state, oldList?.id)) {
+   listId = oldList.id;
+   resumeActivity();
+   return;
+  }
+  const parked = await parkedActivity(oldList?.id);
+  await parkCurrentActivity();
+  if (SharedReview.matchingPractice(parked || {}, oldList?.id)) {
+   await resumeParkedActivity(oldList, parked);
+   return;
+  }
+  await importPack(review.pack, review.origin);
+  const list = selectedList();
+  const records = await loadVocabulary(list);
+  if (sharedReview !== review) return;
+  if (review.mode === 'spelling') await start(records.map(row => row.word), list);
+  else beginLearning(list, records, {...coachOptions(), mode:review.mode, type:'practice',
+   difficulty:'adaptive', audioReplay:true});
+ } catch (error) { $('shared-ready-status').textContent = error.message; }
+ finally { button.disabled = false; }
+}
+
+async function openSharedReview() {
+ const args = new URLSearchParams(location.hash.slice(1));
+ if (!args.has('pack')) {
+  sharedReview = null;
+  sharedLoad++;
+  showLanding();
+  return;
+ }
+ const load = ++sharedLoad;
+ sharedReview = null;
+ $('shared-title').textContent = 'Opening your practice';
+ $('shared-instruction').textContent = '';
+ $('shared-ready-status').textContent = '';
+ $('shared-start').hidden = true;
+ show('shared-ready');
+ const id = args.get('pack');
+ try {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,95}$/.test(id)) throw Error('Invalid pack link.');
+  if (state.learningCheckpoint && !state.learningSession) await recoverCheckpoint(false);
+  const origin = serviceOrigin(args.get('service') || ONLINE_CONFIG);
+  const token = ai.root === origin ? ai.token : '';
+  const response = await service('/packs/' + encodeURIComponent(id), {root:origin, token});
+  const pack = Vocabulary.validatePack(response.pack);
+  if (pack.id !== id) throw Error('Wrong review set.');
+  if (load !== sharedLoad) return;
+  sharedReview = {pack, origin, mode:SharedReview.reviewMode(args.get('mode'), pack.words)};
+  await renderSharedReady();
+ } catch (error) {
+  if (load !== sharedLoad) return;
+  $('shared-title').textContent = 'This set could not open';
+  $('shared-instruction').textContent = 'Check your connection or ask your teacher for a new link.';
+  if (error.status === 401 || error.status === 403 || error.status === 404) {
+   $('shared-ready-status').textContent = 'If the set uses a class code, sign in from the WordLab home page.';
+  }
+  $('shared-title').focus();
+ }
+}
+
+function showLanding() {
+ if (state.learningSession) pauseLearning();
+ else if (state.learningCheckpoint) recoverCheckpoint();
+ else show(state.session ? 'resume-screen' : 'setup-screen');
+}
+
+function initSharedReview() {
+ $('shared-start').onclick = startSharedReview;
+ window.addEventListener('hashchange', openSharedReview);
 }
 
 const SELFTEST = new URLSearchParams(location.search).has('selftest');
@@ -5105,7 +5272,7 @@ function renderPractice(play){
  if(s.phase==='feedback'){clearTimeout(timer);const last=s.log[s.log.length-1],delay=last&&last.ok?state.settings.autoAdvanceMs:state.settings.feedbackMs;timer=setTimeout(advance,delay);}
 }
 function advance(){const s=state.session;if(!s||s.phase!=='feedback')return;if(s.words.every(w=>s.perWord[w].mastered)){s.current='';s.phase='done';finish(true);return;}next(s);save();renderPractice(true);}
-function showSummary(r){const s=state.session;if(!s)return;clearTimeout(timer);show('summary-screen');$('summary-list').textContent=s.listName;$('summary-title').textContent=r.mastered===r.total?'Practice complete':'Practice ended';$('summary-stats').innerHTML='<div class="stat"><span class="hint">Words mastered</span><strong>'+Number(r.mastered)+' / '+Number(r.total)+'</strong><small class="hint">Two correct answers in a row.</small></div><div class="stat"><span class="hint">First-attempt accuracy</span><strong>'+(r.attempts?Number(r.accuracy)+'%':'Not assessed')+'</strong><small class="hint">Correct first answers ÷ first answers submitted.</small></div><div class="stat"><span class="hint">Incorrect retype attempts</span><strong>'+Number(r.retypes)+'</strong><small class="hint">Incorrect answers during the correction step.</small></div>';
+function showSummary(r){const s=state.session;if(!s)return;clearTimeout(timer);show('summary-screen');$('summary-setup').textContent=sharedReview?'Back to set':'Return to setup';$('summary-list').textContent=s.listName;$('summary-title').textContent=r.mastered===r.total?'Practice complete':'Practice ended';$('summary-stats').innerHTML='<div class="stat"><span class="hint">Words mastered</span><strong>'+Number(r.mastered)+' / '+Number(r.total)+'</strong><small class="hint">Two correct answers in a row.</small></div><div class="stat"><span class="hint">First-attempt accuracy</span><strong>'+(r.attempts?Number(r.accuracy)+'%':'Not assessed')+'</strong><small class="hint">Correct first answers ÷ first answers submitted.</small></div><div class="stat"><span class="hint">Incorrect retype attempts</span><strong>'+Number(r.retypes)+'</strong><small class="hint">Incorrect answers during the correction step.</small></div>';
  const list=$('missed-list');list.innerHTML='';r.missed.forEach(w=>{const li=document.createElement('li');li.textContent=w+(s.defs[w]?' — '+s.defs[w]:'');list.append(li);});$('missed-empty').hidden=!!r.missed.length;$('practice-missed').disabled=!r.missed.length;$('copy-missed').disabled=!r.missed.length;
  const hist=(state.history[s.listId]?.sessions||[]).slice().reverse(),h=$('history-list');h.innerHTML='';hist.forEach(x=>{const li=document.createElement('li');li.textContent=new Date(x.at).toLocaleDateString()+' · '+x.accuracy+'% · '+x.mastered+'/'+x.total+' mastered'+(Array.isArray(x.missed)&&x.missed.length?' · '+x.missed[0]:'');h.append(li);});
 }
@@ -5113,7 +5280,7 @@ function copy(text){if(navigator.clipboard?.writeText)return navigator.clipboard
 function fallbackCopy(text){const t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';(document.querySelector('dialog[open]')||document.body).append(t);t.select();let ok=false;try{ok=document.execCommand('copy');}catch(e){}t.remove();return ok;}
 function download(file,text,type){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=file;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function practiceMissed(){const s=state.session;if(!s)return;const r=s.summary||summary(s);if(!Array.isArray(r.missed)||!r.missed.length)return;const l={id:s.listId,name:s.listName,words:s.words,defs:s.defs};state.session=null;save();start(r.missed,l);}
-function finishToSetup(){const checkpoint=state.learningCheckpoint;if(state.session&&!state.session.summary)finish(false);state.session=null;state.learningSession=null;save();if(checkpoint)getStore(checkpoint.backend).then(store=>store.remove(checkpoint.key)).catch(()=>{});renderSetup();show('setup-screen');}
+function finishToSetup(){const checkpoint=state.learningCheckpoint;if(state.session&&!state.session.summary)finish(false);state.session=null;state.learningSession=null;save();if(checkpoint)getStore(checkpoint.backend).then(store=>store.remove(checkpoint.key)).catch(()=>{});renderSetup();if(sharedReview)renderSharedReady();else show('setup-screen');}
 function backToSetup(){if(state.settings.pin){$('pin-check').value='';$('pin-error').textContent='';$('pin-overlay').hidden=false;$('pin-check').focus();}else finishToSetup();}
 function validBackup(x){if(!x||x.v!==1||!Array.isArray(x.lists)||!x.lists.every(listOK))throw Error('Choose a WordLab backup with a valid lists array.');return x.lists.map(l=>({id:l.id,name:l.name,words:wordsUnique(l.words),defs:dictionary(l.defs),updatedAt:now()}));}
 function runTests(){
@@ -5224,8 +5391,8 @@ $('split-list').onclick=()=>{
   save();renderSetup();$('create-list-dialog').close();status('Split the words into '+groups.length+' lists.');
  }catch(error){editorStatus(error.message);}
 };
-$('delete-list').onclick=()=>{const l=selectedList();if(l&&confirm('Delete “'+l.name+'” and its words?')){state.lists=state.lists.filter(x=>x.id!==l.id);delete state.settings.selected[l.id];clearListLearningData(state,l.id);removeVocabulary(l);listId=state.lists[0]?.id||'';save();renderSetup();status('List deleted.');}};
-$('reset-progress').onclick=()=>{const l=selectedList();if(!l)return;const message='Reset learning progress for “'+l.name+'”? This clears its review statistics and past practice summaries. The word list, definitions, selection, and settings will stay.';if(!confirm(message))return;clearListLearningData(state,l.id);save();status('Learning progress and practice summaries reset for “'+l.name+'”.');};
+$('delete-list').onclick=()=>{const l=selectedList();if(l&&confirm('Delete “'+l.name+'” and its words?')){state.lists=state.lists.filter(x=>x.id!==l.id);delete state.settings.selected[l.id];clearListLearningData(state,l.id);clearParkedActivity(l.id);removeVocabulary(l);listId=state.lists[0]?.id||'';save();renderSetup();status('List deleted.');}};
+$('reset-progress').onclick=()=>{const l=selectedList();if(!l)return;const message='Reset learning progress for “'+l.name+'”? This clears its review statistics and past practice summaries. The word list, definitions, selection, and settings will stay.';if(!confirm(message))return;clearListLearningData(state,l.id);clearParkedActivity(l.id);save();status('Learning progress and practice summaries reset for “'+l.name+'”.');};
 
 $('select-all').onclick=()=>{const l=selectedList();if(l){state.settings.selected[l.id]=[...l.words];save();renderSetup();}};
 $('select-none').onclick=()=>{const l=selectedList();if(l){state.settings.selected[l.id]=[];save();renderSetup();}};
@@ -5279,7 +5446,8 @@ $('pause-button').onclick=()=>{const s=state.session;if(!s)return;clearTimeout(t
 $('resume-practice').onclick=()=>{const s=state.session;if(!s)return;$('pause-overlay').hidden=true;s.phase=s.resumePhase||'prompt';delete s.resumePhase;save();renderPractice(s.phase==='prompt');};
 $('end-session').onclick=()=>{$('pause-overlay').hidden=true;end();};
 $('back-setup').onclick=()=>{$('pause-overlay').hidden=true;backToSetup();};
-$('resume-button').onclick=()=>{const s=state.session;if(state.learningSession){Learning.resume(state.learningSession.session);state.learningSession.recorded=false;save();renderLearning(true);return;}if(!s)return;if(s.phase==='done'&&s.summary){showSummary(s.summary);return;}s.phase=s.phase==='paused'?(s.resumePhase||'prompt'):s.phase;delete s.resumePhase;save();renderPractice(s.phase==='prompt');};
+function resumeActivity(){const s=state.session;if(state.learningSession){Learning.resume(state.learningSession.session);state.learningSession.recorded=false;save();renderLearning(true);return;}if(!s)return;if(s.phase==='done'&&s.summary){showSummary(s.summary);return;}s.phase=s.phase==='paused'?(s.resumePhase||'prompt'):s.phase;delete s.resumePhase;save();renderPractice(s.phase==='prompt');}
+$('resume-button').onclick=resumeActivity;
 $('end-saved-button').onclick=()=>{if(!state.learningSession){end();return;}Learning.finish(state.learningSession.session);finishLearningReport();};
 $('pin-form').onsubmit=e=>{e.preventDefault();if($('pin-check').value!==state.settings.pin){$('pin-error').textContent='That PIN did not match.';return;}$('pin-overlay').hidden=true;finishToSetup();};
 $('cancel-pin').onclick=()=>{$('pin-overlay').hidden=true;if(state.learningSession)renderLearning(false);else if(state.session?.summary)showSummary(state.session.summary);else if(state.session)$('pause-overlay').hidden=false;};
@@ -5296,7 +5464,7 @@ document.addEventListener('keydown',e=>{
 if(speech){speechSynthesis.addEventListener('voiceschanged',refreshVoices);setTimeout(refreshVoices,400);setTimeout(refreshVoices,1200);}
 state.settings.roundSize=clamp(state.settings.roundSize,1,20,7);state.settings.retypeOnMiss=state.settings.retypeOnMiss!==false;
 initCoach();
-renderSetup();warning();if(state.learningSession)pauseLearning();else if(state.learningCheckpoint)recoverCheckpoint();else show(state.session?'resume-screen':'setup-screen');
+renderSetup();warning();openSharedReview();
 })();
 
 </script></body></html>
