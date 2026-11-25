@@ -213,7 +213,7 @@ async function openSharedReview() {
   if (load !== sharedLoad) return;
   sharedReview = {pack, origin, audio, audioStatus, preparedAudio, localPreview:!!previewTicket, mode:SharedReview.reviewMode(practice?.mode, pack.words), allowHints:practice?.allowHints !== false};
   $('local-preview-notice').hidden = preparedAudio;
-  $('local-preview-notice').textContent = previewTicket ? 'Draft preview uses this device’s voice. Use recording previews in the teacher workspace to check Troy. This preview makes no AI requests.' : 'This older set uses this device’s voice when a saved recording is unavailable.';
+  $('local-preview-notice').textContent = previewTicket ? 'Draft preview uses this device’s voice. Use recording previews in the teacher workspace to check Paul. This preview makes no AI requests.' : 'This older set uses this device’s voice when a saved recording is unavailable.';
   await renderSharedReady();
  } catch (error) {
   if (load !== sharedLoad) return;

@@ -48,38 +48,7 @@ export function hasSpeechSignal(bytes) {
   return false;
 }
 
-export async function synthesizeDictation(key, sentence) {
-  if (typeof sentence !== 'string' || !sentence.length || sentence.length > 200) throw new ApiError(400,'invalid_input','Audio text must contain 1–200 characters.');
-  let response;
-  try {
-    response = await fetch('https://api.groq.com/openai/v1/audio/speech', {
-      method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(25000),
-      headers: {Authorization: 'Bearer ' + key, 'Content-Type': 'application/json'},
-      body: JSON.stringify({model: 'canopylabs/orpheus-v1-english', voice: 'troy', input: sentence, response_format: 'wav'})
-    });
-  } catch { throw unavailable(); }
-  if (response.status === 429) throw new ApiError(429, 'dictation_rate_limit', 'Groq’s audio allowance is busy. Try again later.');
-  if (!response.ok) throw providerFailure(response);
-  if (!response.body) throw unavailable();
-  const reader = response.body.getReader();
-  let length = 0;
-  const chunks = [];
-  try {
-    for (;;) {
-      const {done, value} = await reader.read();
-      if (done) break;
-      length += value.length;
-      if (length > MAX_WAV_BYTES) { await reader.cancel(); throw unavailable(); }
-      chunks.push(value);
-    }
-  } catch { throw unavailable(); }
-  const bytes = new Uint8Array(length);
-  let offset = 0;
-  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
-  return finishStreamedWav(bytes);
-}
-
-export async function synthesizeAlternateAudio(key, sentence, fetchRequest = fetch) {
+export async function synthesizeDictation(key, sentence, fetchRequest = fetch) {
   if (typeof sentence !== 'string' || !sentence.length || sentence.length > 200) throw new ApiError(400,'invalid_input','Audio text must contain 1–200 characters.');
   let response;
   try {
@@ -89,7 +58,7 @@ export async function synthesizeAlternateAudio(key, sentence, fetchRequest = fet
       body:JSON.stringify({model:'mistralai/voxtral-mini-tts-2603',voice:'en_paul_neutral',input:sentence,response_format:'pcm',provider:{data_collection:'deny'}})
     });
   } catch { throw unavailable(); }
-  if (response.status === 429) throw new ApiError(429,'dictation_rate_limit','The alternate audio provider is busy. Try again later.');
+  if (response.status === 429) throw new ApiError(429,'dictation_rate_limit','Paul audio is busy. Try again later.');
   if (!response.ok) throw providerFailure(response);
   if (!response.body) throw unavailable();
   const contentType = response.headers.get('Content-Type') ?? '';

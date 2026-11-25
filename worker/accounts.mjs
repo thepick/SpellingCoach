@@ -1,9 +1,10 @@
-import { ApiError, requireInput, shape, shortId, validatePack } from './validation.mjs';
+import { ApiError, requireInput, shape, shortId, validatePack, parseSettings, DEFAULT_SETTINGS } from './validation.mjs';
 import Learning from '../src/learning.js';
 import { hasSpeechSignal } from './dictation.mjs';
 
 const encode = new TextEncoder();
 const DAY = 86400000;
+const AUDIO_BLOCK = 'audioBlocked:openrouter:mistralai/voxtral-mini-tts-2603:en_paul_neutral:';
 const fail = (status, code, message) => { throw new ApiError(status, code, message); };
 const b64 = bytes => btoa(String.fromCharCode(...bytes)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 const unb64 = value => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
@@ -62,7 +63,7 @@ export class TeacherAccounts {
     if (identity.role !== 'teacher') return identity;
     const isAdmin = !identity.teacherId || identity.teacherId === 'operator';
     if (isAdmin) identity = {...identity,teacherId:'operator',isAdmin:true};
-    const record = this.read(identity.teacherId) ?? (isAdmin ? {id:'operator',revision:0,keys:{},settings:{allowPaidText:false,allowAlternateAudio:false}} : null);
+    const record = this.read(identity.teacherId) ?? (isAdmin ? this.ownerRecord() : null);
     if (!this.current(identity)) fail(401, 'unauthorized', 'Teacher access has expired or been revoked.');
     const credentials = {};
     const reconnect = [];
@@ -74,7 +75,7 @@ export class TeacherAccounts {
     }
     if (!this.current(identity)) fail(401, 'unauthorized', 'Teacher access has been revoked.');
     return {...identity, sid:isAdmin ? identity.sid ?? 'operator' : record.id, isAdmin, credentials, reconnect,keyRevision:record.revision,
-      personalKeys:!isAdmin || Object.keys(record.keys).length > 0 || record.settings.allowPaidText || record.settings.allowAlternateAudio, settings:record.settings};
+      personalKeys:!isAdmin || Object.keys(record.keys).length > 0 || record.settings.allowPaidText, settings:{allowPaidText:record.settings.allowPaidText === true}};
   }
 
   async crypt(action, owner, provider, value) {
@@ -117,7 +118,7 @@ export class TeacherAccounts {
         const invite = row && JSON.parse(row.value);
         if (!invite || invite.used || invite.revoked || invite.expiresAt <= this.s.now()) fail(401,'invitation_invalid','This invitation is expired, revoked, or already used.');
         if (this.s.one('SELECT id FROM teachers WHERE username = ?',username)) fail(409,'username_taken','Choose another username.');
-        const teacher = {id:crypto.randomUUID(),username,name:input.name.trim(),salt,password,epoch:0,revision:0,keys:{},settings:{allowPaidText:false,allowAlternateAudio:false},createdAt:this.s.now(),revoked:false};
+        const teacher = {id:crypto.randomUUID(),username,name:input.name.trim(),salt,password,epoch:0,revision:0,keys:{},settings:{allowPaidText:false},createdAt:this.s.now(),revoked:false};
         this.write(teacher);
         this.s.sql.exec('UPDATE invitations SET value = ? WHERE id = ?',JSON.stringify({...invite,used:true}),row.id);
         return teacher;
@@ -138,15 +139,14 @@ export class TeacherAccounts {
     const draftingAvailable = this.s.env.AI_ENABLED === 'true' && this.s.providers(identity).length > 0;
     return {...this.s.publicConfig(),draftingAvailable,
       generationEnabled:this.s.enabled(true) && draftingAvailable,
-      dictationEnabled:identity.isAdmin && !identity.personalKeys ? this.s.dictationEnabled()
-        : (this.s.enabled(true) || this.s.env.TROY_AUDIO_ENABLED === 'true') && !!(identity.credentials.groq || identity.settings.allowAlternateAudio && identity.credentials.openrouter),
+      dictationEnabled:this.s.env.AUDIO_ENABLED === 'true' && !!identity.credentials.openrouter,
       studentGenerationEnabled:identity.isAdmin && this.s.publicConfig().studentGenerationEnabled};
   }
 
   profile(identity) {
     const record = identity.isAdmin ? {id:'operator',username:'owner',name:'Owner'} : this.read(identity.teacherId);
     return {teacher:publicTeacher(record),config:this.config(identity),keys:{groq:!!identity.credentials?.groq,openrouter:!!identity.credentials?.openrouter},
-      settings:identity.settings ?? {allowPaidText:false,allowAlternateAudio:false},
+      settings:identity.settings ?? {allowPaidText:false},
       ...(identity.reconnect?.length ? {reconnect:identity.reconnect,message:'Reconnect your provider key. The saved key could not be decrypted.'} : {})};
   }
 
@@ -159,14 +159,15 @@ export class TeacherAccounts {
       keys[provider] = value === null ? null : await this.crypt('encrypt',identity.teacherId,provider,value);
     }
     for (const option of ['allowPaidText','allowAlternateAudio']) requireInput(input[option] === undefined || typeof input[option] === 'boolean','Choose a valid fallback setting.');
+    if (!Object.keys(keys).length && input.allowPaidText === undefined) return this.profile(identity);
     this.s.atomic(() => {
       if (!this.unchanged(identity)) fail(409,'account_changed','Your account changed. Reload and try again.');
-      const record = this.read(identity.teacherId) ?? {id:'operator',username:'__operator__',name:'Owner',revision:0,epoch:0,keys:{},settings:{allowPaidText:false,allowAlternateAudio:false}};
+      const record = this.read(identity.teacherId) ?? this.ownerRecord();
       for (const [provider,value] of Object.entries(keys)) value === null && !identity.isAdmin ? delete record.keys[provider] : record.keys[provider] = value;
-      for (const option of ['allowPaidText','allowAlternateAudio']) if (input[option] !== undefined) record.settings[option] = input[option];
+      record.settings = {allowPaidText:input.allowPaidText ?? (record.settings.allowPaidText === true)};
       record.revision++;
       this.write(record);
-      this.s.save('audioBlocked:'+record.id,null);
+      this.s.save(AUDIO_BLOCK+record.id,null);
       for (const {value} of this.s.rows('SELECT value FROM teacher_sets WHERE owner = ?',record.id)) {
         const saved = JSON.parse(value);
         for (const r of saved.recordings) if (r.status === 'failed' && r.errorCode !== 'invalid_input') { r.status='pending'; delete r.error; delete r.errorCode; }
@@ -212,34 +213,64 @@ export class TeacherAccounts {
     return JSON.parse(this.s.one('SELECT value FROM teacher_sets WHERE owner = ? AND id = ?',owner,id)?.value ?? 'null');
   }
 
+  ownerRecord() {
+    return {id:'operator',username:'__operator__',name:'Owner',revision:0,epoch:0,keys:{},settings:{allowPaidText:false}};
+  }
+
+  preferences(identity,input) {
+    if (input !== undefined) {
+      requireInput(shape(input,['grade','settings']) && Number.isInteger(input.grade) && input.grade >= 3 && input.grade <= 12
+        && shape(input.settings,Object.keys(DEFAULT_SETTINGS)),'Choose a grade from 3 to 12 and valid generation settings.');
+      this.s.atomic(() => {
+        if (!this.current(identity)) fail(401,'unauthorized','Teacher access has been revoked.');
+        const record = this.read(identity.teacherId) ?? this.ownerRecord();
+        const prior = record.presets?.[input.grade] ?? parseSettings({readingLevel:input.grade,practiceSentences:1,exampleSentences:1},true);
+        const settings = parseSettings({...prior,...input.settings},true);
+        requireInput(!settings.context && !settings.sense,'Save context and intended meaning with the set, not a grade preset.');
+        record.presets = {...record.presets,[input.grade]:settings};
+        this.write(record);
+      });
+    }
+    const saved = this.read(identity.teacherId)?.presets ?? {};
+    return {presets:Object.fromEntries(Array.from({length:10},(_,index) => {
+      const grade = index + 3;
+      return [String(grade),saved[grade] ?? parseSettings({readingLevel:grade,practiceSentences:1,exampleSentences:1},true)];
+    }))};
+  }
+
   setDetail(owner,record) {
     const queue = this.s.one('SELECT due FROM teacher_audio_queue WHERE owner = ? AND id = ? AND version = ?',owner,record.pack.id,record.pack.version);
     const teacher = owner === 'operator' ? null : this.read(owner);
     const revoked = teacher?.revoked;
     const recordings = record.recordings.map(({cacheKey,skill,...r}) => revoked && r.status !== 'ready' ? {...r,status:'failed',error:'Teacher access was revoked.'} : r);
-    return {pack:record.pack,audio:recordings.filter(r => r.status === 'ready').map(r => r.key),audioStatus:{
+    return {pack:record.pack,...(record.generationSettings ? {generationSettings:record.generationSettings} : {}),audio:recordings.filter(r => r.status === 'ready').map(r => r.key),audioStatus:{
       ready:recordings.filter(r => r.status === 'ready').length,total:recordings.length,pending:!revoked && queue?.due != null,
       recordings,...(queue?.due > this.s.now() ? {retryAt:queue.due} : {})}};
   }
 
   async saveSet(identity,input) {
-    requireInput(shape(input,['pack','expectedVersion']) && Number.isSafeInteger(input.expectedVersion) && input.expectedVersion >= 0,'Provide a private set and its last saved version.');
+    requireInput(shape(input,['pack','expectedVersion','generationSettings']) && Number.isSafeInteger(input.expectedVersion) && input.expectedVersion >= 0,'Provide a private set and its last saved version.');
     const pack = validatePack(input.pack,{allowSpellingOnly:true,allowDraft:true});
+    const generationSettings = input.generationSettings === undefined ? undefined : parseSettings(input.generationSettings,true);
     const owner = identity.teacherId;
     const record = this.s.atomic(() => {
       if (!this.unchanged(identity)) fail(409,'account_changed','Your account changed. Reload and try again.');
       const existing = this.readSet(owner,pack.id);
-      if (existing && existing.pack.version === pack.version && same(existing.pack,pack)) return existing;
+      const samePack = existing && existing.pack.version === pack.version && same(existing.pack,pack);
+      const oldVoice = existing?.recordings.some(r => r.status === 'ready' && r.cacheKey !== JSON.stringify([r.skill,r.text,'openrouter','mistralai/voxtral-mini-tts-2603','en_paul_neutral']));
+      if (samePack && !oldVoice && (generationSettings === undefined || same(existing.generationSettings,generationSettings))) return existing;
       if ((existing?.pack.version ?? 0) !== input.expectedVersion) fail(409,'pack_version','The saved set changed. Reload before saving again.');
-      if (existing && existing.pack.version >= pack.version) {
+      if (samePack && generationSettings !== undefined && !same(existing.generationSettings,generationSettings)) fail(409,'pack_version','Increase the set version when changing generation settings.');
+      if (existing && existing.pack.version >= pack.version && !samePack) {
         fail(409,'pack_version','The saved set changed. Reload before saving again.');
       }
       const recordings = pack.words.flatMap((word,index) => Learning.practiceAudioPrompts(word,index).map(prompt => {
-        const old = existing?.recordings.find(r => r.text === prompt.text && r.skill === prompt.skill && r.status === 'ready');
+        const old = existing?.recordings.find(r => r.text === prompt.text && r.skill === prompt.skill && r.status === 'ready'
+          && r.cacheKey === JSON.stringify([prompt.skill,prompt.text,'openrouter','mistralai/voxtral-mini-tts-2603','en_paul_neutral']));
         const cached = old || this.cachedPrompt(owner,prompt);
         return {...prompt,word:word.word,status:cached ? 'ready' : 'pending',...(cached ? {cacheKey:cached.cacheKey,provider:cached.provider,voice:cached.voice} : {})};
       }));
-      const saved = {pack,recordings};
+      const saved = {pack,recordings,...((generationSettings ?? existing?.generationSettings) ? {generationSettings:generationSettings ?? existing.generationSettings} : {})};
       this.writeSet(owner,saved);
       this.s.sql.exec('INSERT OR REPLACE INTO teacher_audio_queue VALUES (?, ?, ?, ?)',owner,pack.id,pack.version,recordings.some(r => r.status !== 'ready') ? this.s.now() : null);
       return saved;
@@ -249,10 +280,9 @@ export class TeacherAccounts {
   }
 
   cachedPrompt(owner,prompt) {
-    for (const [provider,model,voice] of [['groq','canopylabs/orpheus-v1-english','troy'],['openrouter','mistralai/voxtral-mini-tts-2603','en_paul_neutral']]) {
-      const cacheKey = JSON.stringify([prompt.skill,prompt.text,provider,model,voice]);
-      if (this.s.one('SELECT key FROM teacher_audio WHERE owner = ? AND key = ?',owner,cacheKey)) return {cacheKey,provider,voice};
-    }
+    const provider='openrouter', model='mistralai/voxtral-mini-tts-2603', voice='en_paul_neutral';
+    const cacheKey = JSON.stringify([prompt.skill,prompt.text,provider,model,voice]);
+    if (this.s.one('SELECT key FROM teacher_audio WHERE owner = ? AND key = ?',owner,cacheKey)) return {cacheKey,provider,voice};
     return null;
   }
 
@@ -264,7 +294,7 @@ export class TeacherAccounts {
     const record = this.readSet(identity.teacherId,id);
     if (!record) fail(404,'not_found','Saved set unavailable.');
     for (const r of record.recordings) if (r.status !== 'ready') { r.status = 'pending'; delete r.error; delete r.errorCode; }
-    this.s.save('audioBlocked:'+identity.teacherId,null);
+    this.s.save(AUDIO_BLOCK+identity.teacherId,null);
     this.writeSet(identity.teacherId,record);
     this.s.sql.exec('INSERT OR REPLACE INTO teacher_audio_queue VALUES (?, ?, ?, ?)',identity.teacherId,id,record.pack.version,record.recordings.some(r => r.status !== 'ready') ? this.s.now() : null);
     await this.s.scheduleAudio();
@@ -328,7 +358,7 @@ export class TeacherAccounts {
     } else {
       Object.assign(current,{status:prompt.status,error:prompt.error,errorCode:prompt.errorCode});
       if (['provider_auth','provider_request','provider_key_required'].includes(prompt.errorCode)) {
-        s.save('audioBlocked:'+owner,{revision:identity.keyRevision,code:prompt.errorCode,message:prompt.error});
+        s.save(AUDIO_BLOCK+owner,{revision:identity.keyRevision,code:prompt.errorCode,message:prompt.error});
         for (const r of record.recordings) if (r.status === 'pending') Object.assign(r,{status:'failed',error:prompt.error,errorCode:prompt.errorCode});
       }
     }
@@ -343,54 +373,35 @@ export class TeacherAccounts {
   }
 
   async speech(identity,prompt,dispatch = () => true) {
-    requireInput(typeof prompt.text === 'string' && prompt.text.length > 0 && prompt.text.length <= 200,'Audio text must contain 1–200 characters. Edit the sentence and try again.');
+    requireInput(typeof prompt.text === 'string' && prompt.text.length > 0 && prompt.text.length <= 200,'Audio text must contain 1-200 characters. Edit the sentence and try again.');
     if (!this.unchanged(identity)) fail(409,'account_changed','Provider settings changed. Retry the recording.');
     if (!dispatch()) fail(409,'set_changed','The set changed before the recording could start.');
-    const blocked = this.s.saved('audioBlocked:'+identity.teacherId);
-    if (blocked?.revision === identity.keyRevision) fail(503,blocked.code,blocked.message);
-    if (identity.isAdmin && !identity.personalKeys) {
-      const bytes = await this.s.generateSpeech(prompt.text);
-      if (!hasSpeechSignal(bytes)) fail(502,'audio_quality','The recording was mostly silent.');
-      return {bytes,provider:'groq',model:'canopylabs/orpheus-v1-english',voice:'troy'};
-    }
-    if (!(this.s.enabled(true) || this.s.env.TROY_AUDIO_ENABLED === 'true')) fail(503,'generation_offline','Audio generation is disabled.');
+    if (this.s.env.AUDIO_ENABLED !== 'true') fail(503,'generation_offline','Paul audio generation is disabled.');
+    if (!identity.credentials.openrouter) fail(503,'provider_key_required',identity.reconnect?.includes('openrouter')
+      ? 'Reconnect your OpenRouter key to prepare Paul audio.' : 'Connect your OpenRouter key to prepare Paul audio.');
     const s = this.s, owner = identity.teacherId, day = Math.floor(s.now()/DAY), minute = Math.floor(s.now()/60000);
-    const providerReady = provider => {
-      const retryAt = s.one('SELECT until FROM provider_delay WHERE key = ?',owner+':audio:'+provider)?.until ?? 0;
-      if (retryAt > s.now()) { const error = new ApiError(429,'dictation_rate_limit','Your audio provider is busy. Prepared recordings are saved.'); error.retryAt = retryAt; throw error; }
-    };
-    const delayed = (provider,error) => {
-      if (this.unchanged(identity) && error.code === 'dictation_rate_limit' && !error.retryAt) s.sql.exec('INSERT INTO provider_delay VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET until = MAX(until, excluded.until)',owner+':audio:'+provider,s.now()+61000);
-    };
-    const charge = () => s.atomic(() => {
+    const blocked = s.saved(AUDIO_BLOCK+owner);
+    if (blocked?.revision === identity.keyRevision) fail(503,blocked.code,blocked.message);
+    const retryAt = s.one('SELECT until FROM provider_delay WHERE key = ?',owner+':audio:openrouter')?.until ?? 0;
+    if (retryAt > s.now()) { const error = new ApiError(429,'dictation_rate_limit','Paul audio is busy. Prepared recordings are saved.'); error.retryAt = retryAt; throw error; }
+    s.atomic(() => {
       if (!this.unchanged(identity)) fail(409,'account_changed','Provider settings changed. Retry the recording.');
       if (!dispatch()) fail(409,'set_changed','The set changed before the recording could start.');
-      if (s.meter(day,owner+':dictationCalls') >= 100) fail(429,'dictation_daily','Your daily audio allowance is used up.');
-      if (s.meter(day,owner+':audio-minute:'+minute) >= 10) fail(429,'dictation_budget','Your minute audio allowance is used up.');
+      const legacyCalls = owner === 'operator' ? s.meter(day,'dictationCalls') : 0;
+      const legacyWindow = owner === 'operator' ? s.saved('dictationMinute') : null;
+      const legacyMinute = legacyWindow?.minute === minute ? legacyWindow.calls : 0;
+      if (s.meter(day,owner+':dictationCalls') + legacyCalls >= 100) fail(429,'dictation_daily','Your daily audio allowance is used up.');
+      if (s.meter(day,owner+':audio-minute:'+minute) + legacyMinute >= 10) fail(429,'dictation_budget','Your minute audio allowance is used up.');
       s.charge(day,owner+':dictationCalls',1); s.charge(day,owner+':audio-minute:'+minute,1);
     });
-    let primaryError;
-    if (identity.credentials.groq) {
-      try {
-        providerReady('groq'); charge();
-        const bytes = await s.speechFetcher(identity.credentials.groq,prompt.text);
-        if (!hasSpeechSignal(bytes)) fail(502,'audio_quality','The recording was mostly silent.');
-        return {bytes,provider:'groq',model:'canopylabs/orpheus-v1-english',voice:'troy'};
-      } catch (error) { primaryError = error; delayed('groq',error); }
+    let bytes;
+    try { bytes = await s.speechFetcher(identity.credentials.openrouter,prompt.text); }
+    catch (error) {
+      if (this.unchanged(identity) && error.code === 'dictation_rate_limit') s.sql.exec('INSERT INTO provider_delay VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET until = MAX(until, excluded.until)',owner+':audio:openrouter',s.now()+61000);
+      throw error;
     }
-    if (primaryError && !(primaryError.status >= 500 || primaryError.code === 'dictation_rate_limit')) throw primaryError;
-    // Recheck after the primary await before any separately billed fallback.
-    if (this.unchanged(identity) && identity.settings.allowAlternateAudio && identity.credentials.openrouter) {
-      providerReady('openrouter');
-      charge();
-      let bytes;
-      try { bytes = await s.alternateSpeechFetcher(identity.credentials.openrouter,prompt.text); }
-      catch(error) { delayed('openrouter',error); throw error; }
-      if (!hasSpeechSignal(bytes)) fail(502,'audio_quality','The recording was mostly silent.');
-      return {bytes,provider:'openrouter',model:'mistralai/voxtral-mini-tts-2603',voice:'en_paul_neutral'};
-    }
-    if (primaryError) throw primaryError;
-    fail(503,'provider_key_required',identity.reconnect?.length ? 'Reconnect your Groq key to prepare audio.' : 'Connect your Groq key to prepare audio. Alternate audio is off by default.');
+    if (!hasSpeechSignal(bytes)) fail(502,'audio_quality','The recording was mostly silent.');
+    return {bytes,provider:'openrouter',model:'mistralai/voxtral-mini-tts-2603',voice:'en_paul_neutral'};
   }
 
   copyPublished(identity,pack,mode) {

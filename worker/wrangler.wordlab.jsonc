@@ -11,7 +11,7 @@
     "AI_ENABLED": "true",
     "STUDENT_AI_ENABLED": "false",
     "GROQ_FREE_TIER_CONFIRMED": "true",
-    "TROY_AUDIO_ENABLED": "true",
+    "AUDIO_ENABLED": "true",
     "OPENROUTER_FREE_TIER_CONFIRMED": "false"
   },
   "durable_objects": {

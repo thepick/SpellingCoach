@@ -14,6 +14,8 @@ function listMetadata(list) {
  const keys = ['vocabKey', 'vocabBackend', 'packId', 'packVersion', 'remoteVersion', 'remoteConflict', 'sharedOrigin', 'orderReceipt'];
  const result = {};
  for (const key of keys) if (Object.prototype.hasOwnProperty.call(list, key)) result[key] = list[key];
+ const settings = GenerationSettings.validate(list.generationSettings);
+ if (settings) result.generationSettings = settings;
  return result;
 }
 

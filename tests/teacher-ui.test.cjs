@@ -5,7 +5,7 @@ const vm = require('node:vm');
 
 function harness(options={}) {
  const elements = new Map();
- const context = vm.createContext({console, URL, URLSearchParams, setTimeout, clearTimeout,
+ const context = vm.createContext({GenerationSettings:require('../src/generation-settings.js'),console, URL, URLSearchParams, setTimeout, clearTimeout,
   localStorage:{setItem(){},getItem(){return null;},removeItem(){}},
   $:id => {if (!elements.has(id)) elements.set(id,{textContent:'',value:'',hidden:false,checked:false}); return elements.get(id);},
   entryPage:options.entryPage || 'teacher', location:options.location || {origin:'https://example.test'},
@@ -243,9 +243,38 @@ test('actual built owner login opens a signed-in workspace without module orderi
  await page.elements.get('teacher-connect').onsubmit({preventDefault(){},submitter:{id:'teacher-login'}});
  assert.equal(page.elements.get('teacher-workspace-actions').hidden,false);
  assert.equal(page.elements.get('teacher-open-invitations').hidden,false);
- assert.equal(page.elements.get('teacher-operations').hidden,false);
- assert.deepEqual(calls.map(url=>new URL(url).pathname),['/api/admin/access','/api/teacher/profile','/api/teacher/sets']);
+ assert.equal(page.elements.get('teacher-operations').hidden,true);
+ assert.deepEqual(calls.map(url=>new URL(url).pathname),['/api/admin/access','/api/teacher/profile','/api/teacher/sets','/api/teacher/preferences']);
  assert.ok(calls.every(url=>url.startsWith('http://127.0.0.1:8765/')));
+});
+
+test('reopening grade defaults keeps its pending save locked and rejects a duplicate PUT',async()=>{
+ const page=startBuiltPage(), Settings=require('../src/generation-settings.js');
+ const profile={teacher:{id:'operator',name:'Owner',username:'owner',isAdmin:true},config:{},keys:{},settings:{allowPaidText:false}};
+ let release, puts=0;
+ page.context.fetch=async(url,options)=>{
+  let result;
+  if(options.method==='PUT') {
+   puts++;const body=JSON.parse(options.body);await new Promise(resolve=>release=resolve);
+   result={presets:{...Settings.presets(),[body.grade]:body.settings}};
+  } else result=url.endsWith('/admin/access')?{...profile,token:'fixture-token'}:url.endsWith('/teacher/profile')?profile:url.endsWith('/teacher/preferences')?{presets:Settings.presets()}:{sets:[]};
+  return {ok:true,headers:{get:()=> 'application/json'},json:async()=>result};
+ };
+ page.elements.get('teacher-login-kind').value='owner';page.elements.get('teacher-secret').value='fixture-password';
+ await page.elements.get('teacher-connect').onsubmit({preventDefault(){},submitter:{id:'teacher-login'}});
+ await page.elements.get('teacher-open-presets').onclick();
+ page.elements.get('preset-grade').value='5';page.elements.get('preset-practiceSentences').value='3';page.elements.get('preset-form').oninput();
+ const pending=page.elements.get('preset-form').onsubmit({preventDefault(){}});
+ assert.equal(page.elements.get('preset-save').disabled,true);
+ page.elements.get('teacher-close').onclick();await page.elements.get('teacher-open-presets').onclick();
+ assert.equal(page.elements.get('preset-save').disabled,true);
+ page.elements.get('preset-practiceSentences').value='4';page.elements.get('preset-form').oninput();
+ await page.elements.get('preset-form').onsubmit({preventDefault(){}});
+ assert.equal(puts,1);
+ release();await pending;
+ assert.equal(page.elements.get('preset-save').disabled,false);
+ await page.elements.get('teacher-open-presets').onclick();
+ assert.equal(Number(page.elements.get('preset-practiceSentences').value),3);
 });
 
 test('a stale audio poll cannot restore recordings from an older edited manifest',async()=>{
