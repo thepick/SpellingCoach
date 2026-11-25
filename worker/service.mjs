@@ -122,7 +122,7 @@ function secureEquals(first, second) {
 }
 
 export class VocabularyService {
-  constructor(storage, env, { now = Date.now, fetcher = requestVocabulary, speechFetcher = synthesizeDictation, alternateSpeechFetcher = synthesizeAlternateAudio, connectionFetcher = fetch } = {}) {
+  constructor(storage, env, { now = Date.now, fetcher = requestVocabulary, speechFetcher = synthesizeDictation, alternateSpeechFetcher = synthesizeAlternateAudio, connectionFetcher = (...args) => fetch(...args) } = {}) {
     this.storage = storage;
     this.sql = storage.sql;
     this.atomic = (work) => storage.transactionSync(work);
