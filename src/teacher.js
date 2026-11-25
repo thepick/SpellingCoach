@@ -13,8 +13,8 @@ function serviceOrigin(value) {
  return url.origin;
 }
 
-async function service(path, {root = ai.root, token = ai.token, method = 'GET', body, requestId} = {}) {
- const headers = {Accept: 'application/json'};
+async function service(path, {root = ai.root, token = ai.token, method = 'GET', body, requestId, audio = false} = {}) {
+ const headers = {Accept: audio ? 'audio/wav' : 'application/json'};
  if (token) headers.Authorization = 'Bearer ' + token;
  if (body) headers['Content-Type'] = 'application/json';
  if (requestId) headers['Idempotency-Key'] = requestId;
@@ -22,6 +22,7 @@ async function service(path, {root = ai.root, token = ai.token, method = 'GET', 
   method, headers, body: body ? JSON.stringify(body) : undefined, credentials: 'omit',
   cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(45000)
  });
+ if (audio && response.ok && response.headers.get('Content-Type') === 'audio/wav') return response.arrayBuffer();
  let payload;
  try { payload = await response.json(); } catch (error) { throw Error('The service returned an invalid response.'); }
  if (!response.ok) throw Error(payload?.error?.message || 'The service could not complete the request.');
@@ -48,6 +49,7 @@ function refreshTeacher() {
  $('teacher-admin').hidden = !teacher;
  $('ai-context-wrap').hidden = !teacher;
  $('vocab-regenerate').disabled = !teacher || !editorRecords.find(row => row.word === $('vocab-word').value)?.vocabulary;
+ updateTroyControls();
  $('teacher-selection').textContent = selectedWords().length + ' words selected from ' + (selectedList()?.name || 'no list');
  const active = ai.job && ['ready', 'processing', 'paused'].includes(ai.job.status);
  $('ai-generate').disabled = !signedIn || !selectedWords().length || active ||

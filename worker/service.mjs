@@ -1,8 +1,9 @@
 import {
-  ApiError, DEFAULT_SETTINGS, MAX_WORD_LENGTH, MAX_WORDS, cacheEligible, cacheKey, generatedRecords, integer,
+  ApiError, DEFAULT_SETTINGS, MAX_WORD_LENGTH, MAX_WORDS, cacheEligible, cacheKey, dictationText, generatedRecords, integer,
   normalizedWords, parseSettings, requireInput, shape, shortId, validatePack, validatedRecord, vocabularyWord, wordKey
 } from './validation.mjs';
 import { GROQ_MODELS, providerChoices, requestVocabulary, tokenBudget } from './provider.mjs';
+import { synthesizeDictation } from './dictation.mjs';
 
 const DAY = 86_400_000;
 const HOUR = 3600_000;
@@ -97,12 +98,13 @@ function secureEquals(first, second) {
 }
 
 export class VocabularyService {
-  constructor(storage, env, { now = Date.now, fetcher = requestVocabulary } = {}) {
+  constructor(storage, env, { now = Date.now, fetcher = requestVocabulary, speechFetcher = synthesizeDictation } = {}) {
     this.sql = storage.sql;
     this.atomic = (work) => storage.transactionSync(work);
     this.env = env;
     this.now = now;
     this.fetcher = fetcher;
+    this.speechFetcher = speechFetcher;
     this.origins = new Set((env.ALLOWED_ORIGINS ?? '').split(',').map((origin) => origin.trim())
       .filter((origin) => /^https?:\/\/[^/]+$/i.test(origin)));
     for (const statement of schema) this.sql.exec(statement);
@@ -133,9 +135,14 @@ export class VocabularyService {
     return providerChoices(this.env, teacher, this.saved('groqModels'));
   }
 
+  dictationEnabled() {
+    return this.enabled(true) && this.env.GROQ_FREE_TIER_CONFIRMED === 'true' && !!this.env.GROQ_API_KEY;
+  }
+
   publicConfig() {
     return {
       generationEnabled: this.enabled(true) && this.providers(true).length > 0,
+      dictationEnabled: this.dictationEnabled(),
       studentGenerationEnabled: this.enabled(false) && this.providers(false).length > 0,
       maxWords: MAX_WORDS, maxWordLength: MAX_WORD_LENGTH, defaults: DEFAULT_SETTINGS
     };
@@ -586,7 +593,7 @@ export class VocabularyService {
     const cacheHits = this.meter(day, 'cacheHits');
     const wordLookups = this.meter(day, 'wordLookups');
     return {
-      day: new Date(day * DAY).toISOString().slice(0, 10), calls,
+      day: new Date(day * DAY).toISOString().slice(0, 10), calls, dictationCalls: this.meter(day, 'dictationCalls'),
       tokens: this.meter(day, 'tokens'), cacheHits, wordLookups,
       cacheHitRate: wordLookups ? cacheHits / wordLookups : 0,
       cacheRecords: this.one('SELECT COUNT(*) AS count FROM cache').count,
@@ -601,10 +608,28 @@ export class VocabularyService {
     };
   }
 
+  async dictation(request) {
+    if (!this.dictationEnabled()) fail(503, 'unavailable', 'Troy audio generation is disabled.');
+    const sentence = dictationText(await bodyOf(request, 2048));
+    const now = this.now(), day = localDay(now), minute = Math.floor(now / 60000);
+    this.atomic(() => {
+      const window = this.saved('dictationMinute');
+      const calls = window?.minute === minute ? window.calls : 0;
+      if (calls >= 10 || this.meter(day, 'dictationCalls') >= 100) {
+        fail(429, 'dictation_budget', 'The pilot audio allowance is used up. Try again later.');
+      }
+      this.save('dictationMinute', {minute, calls: calls + 1});
+      this.charge(day, 'dictationCalls', 1);
+    });
+    const bytes = await this.speechFetcher(this.env.GROQ_API_KEY, sentence);
+    return new Response(bytes, {headers: {'Content-Type': 'audio/wav'}});
+  }
+
   async admin(request, route, method) {
     if (route === 'access' && method === 'POST') return json(await this.login(request, true));
     const identity = await this.principal(request);
     if (identity.role !== 'teacher') fail(403, 'forbidden', 'Teacher access is required.');
+    if (route === 'dictation' && method === 'POST') return this.dictation(request);
     if (route === 'usage' && method === 'GET') return json(this.usage());
     if (route === 'publish' && method === 'POST') return json(await this.publish(await bodyOf(request, 1_500_000)));
     if (route === 'packs' && method === 'GET') {

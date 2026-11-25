@@ -59,6 +59,7 @@ Every path below starts with /api. Send a JSON body where specified. Signed teac
 | POST /admin/publish | Publish an approved pack with public, class or private visibility |
 | GET /admin/packs | List pack summaries |
 | GET or POST /admin/classes | List, create, revoke or rotate classroom codes |
+| POST /admin/dictation | Generate a Troy WAV from a teacher-provided sentence using the exact target word |
 | GET /admin/usage | Read UTC-day usage, cache counts and recent jobs |
 | PUT /admin/settings | Set generationEnabled or the ordered groqModels allowlist |
 | DELETE /admin/cache?word={word} | Remove cached versions of a word |

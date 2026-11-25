@@ -17,7 +17,7 @@ The **Theme** menu defaults to **System** and follows device appearance changes.
 
 Use **Try the sample list** for a Grade 5 vocabulary draft. Its definitions use selected senses because the source passage was unavailable. Review them against the intended text before using the pack for a test.
 
-To use a saved pronunciation, open **Vocabulary content**, choose the word, and add a PCM WAV file under **Dictation recording**. Recordings are tied to the word and its saved meaning in that list. WordLab uses the recording for dictation and falls back to browser speech. Recordings stay on this device, so keep the WAV files for transfer or reuse.
+To use Troy for dictation, sign in as a teacher through **Tools → Online generation and sharing**. Then open **Vocabulary content**, choose a word, enter a sentence that uses its exact form, and choose **Generate and attach Troy audio**. Listen to the result before the lesson. You can also attach your own PCM WAV file. Recordings are tied to the word and its saved meaning in that list. WordLab uses the recording for dictation and falls back to browser speech. Recordings stay on this device, so keep the WAV files for transfer or reuse.
 
 Use **Tools → Export full backup** before clearing browser data or moving to a different web address or offline file. Browser storage is tied to the address or file. Import the backup in WordLab to carry over your lists and progress. The app accepts older list-only JSON files, new vocabulary packs, and full backups. The first upgrade keeps a copy of the original spelling state in the browser under `spell.state.v1.backup`.
 

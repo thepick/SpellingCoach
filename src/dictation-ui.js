@@ -59,8 +59,49 @@ async function renderRecordingControls() {
  $('recording-remove').disabled = !clip;
 }
 
+function updateTroyControls() {
+ const teacher = ai.role === 'teacher';
+ $('troy-sign-in').hidden = teacher;
+ $('generate-troy').disabled = !teacher || !ai.config.dictationEnabled || generatingTroy ||
+  !$('troy-sentence').value.trim();
+ $('troy-help').textContent = teacher && !ai.config.dictationEnabled
+  ? 'Troy generation is disabled on this service.'
+  : 'Use the exact spelling word in a sentence that shows its meaning.';
+}
+
+function prefillTroySentence(row) {
+ $('troy-sentence').value = row.vocabulary?.examples.find(sentence => sentence.length <= 200 &&
+  Dictation.containsTarget(sentence, row.word)) || '';
+ updateTroyControls();
+}
+
+let generatingTroy = false;
+async function saveRecording(target, bytes) {
+ Dictation.validateRecording(bytes);
+ const key = Dictation.recordingKey(target.listId, target.word, target.vocabulary);
+ await (await getStore('indexedDB')).put(key, new Blob([bytes], {type:'audio/wav'}));
+}
+
 function initDictation() {
  $('vocab-dialog').addEventListener('close', stopRecording);
+ $('troy-sentence').oninput = updateTroyControls;
+ $('troy-sign-in').onclick = () => {
+  $('vocab-dialog').close();
+  $('open-teacher').click();
+ };
+ $('generate-troy').onclick = async () => {
+  const target = editorRecordingTarget(), sentence = $('troy-sentence').value.trim();
+  if (!target || generatingTroy || ai.role !== 'teacher' || !ai.config.dictationEnabled) return;
+  generatingTroy = true;
+  updateTroyControls();
+  editorStatusText('Generating Troy audio for “' + target.word + '”…');
+  try {
+   const bytes = await service('/admin/dictation', {method:'POST', audio:true, body:{word:target.word, sentence}});
+   await saveRecording(target, bytes);
+   editorStatusText('Troy audio attached to “' + target.word + '”. Listen to check the pronunciation.');
+  } catch (error) { editorStatusText(error.message); }
+  finally { generatingTroy = false; updateTroyControls(); renderRecordingControls(); }
+ };
  $('recording-file').onchange = async event => {
   const input = event.target, target = editorRecordingTarget(), file = input.files[0];
   input.value = '';
@@ -69,8 +110,7 @@ function initDictation() {
    if (file.size > Dictation.MAX_WAV_BYTES) throw Error('Choose a WAV file up to 1 MB.');
    const bytes = await file.arrayBuffer();
    Dictation.validateRecording(bytes);
-   const key = Dictation.recordingKey(target.listId, target.word, target.vocabulary);
-   await (await getStore('indexedDB')).put(key, new Blob([bytes], {type:'audio/wav'}));
+   await saveRecording(target, bytes);
    editorStatusText('Saved a dictation recording for “' + target.word + '”.');
   } catch (error) { editorStatusText(error.message); }
   renderRecordingControls();

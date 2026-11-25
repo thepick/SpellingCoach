@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { VocabularyService } from './service.mjs';
+import { finishStreamedWav } from './dictation.mjs';
 import { providerChoices, requestVocabulary } from './provider.mjs';
 
 const secret = 'admin-secret-for-local-tests-only-128';
@@ -23,7 +24,7 @@ const draft = (word) => {
   return { word, definition, partOfSpeech, examples, clozeQuestions: clozeQuestions.map(({ id, ...question }) => question), meaningDistractors, acceptedSpellings };
 };
 
-function fixture(vars = {}, fetcher = async ({ words }) => ({ records: words.map(draft), tokens: 100 })) {
+function fixture(vars = {}, fetcher = async ({ words }) => ({ records: words.map(draft), tokens: 100 }), speechFetcher) {
   const db = new DatabaseSync(':memory:');
   let clock = Date.parse('2026-11-25T01:00:00Z');
   const env = {
@@ -50,7 +51,7 @@ function fixture(vars = {}, fetcher = async ({ words }) => ({ records: words.map
       }
     }
   };
-  const service = new VocabularyService(storage, env, { now: () => clock, fetcher });
+  const service = new VocabularyService(storage, env, { now: () => clock, fetcher, speechFetcher });
   const call = async (method, path, body, token = secret, extraHeaders = {}) => {
     const headers = { Origin: origin, ...extraHeaders };
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -58,7 +59,7 @@ function fixture(vars = {}, fetcher = async ({ words }) => ({ records: words.map
     const result = await service.fetch(new Request(`https://worker.test/api${path}`, {
       method, headers, body: body === undefined ? undefined : JSON.stringify(body)
     }));
-    return { status: result.status, data: result.status === 204 ? null : await result.json(), headers: result.headers };
+    return { status: result.status, data: result.status === 204 ? null : result.headers.get('Content-Type') === 'audio/wav' ? new Uint8Array(await result.arrayBuffer()) : await result.json(), headers: result.headers };
   };
   const createClass = async (classId, dailyWords = 200) => {
     const saved = await call('POST', '/admin/classes', {
@@ -290,4 +291,53 @@ test('the emergency switch holds pending work and rejects a paid model change', 
   assert.equal((await call('PUT', '/admin/settings', { generationEnabled: true })).data.generationEnabled, true);
   assert.equal((await call('POST', '/jobs/' + job.id + '/step')).data.status, 'complete');
   assert.equal(calls, 1);
+});
+
+test('Troy audio requires teacher access and a sentence containing the exact word', async () => {
+  let spoken;
+  const bytes = Uint8Array.of(82, 73, 70, 70);
+  const { call, createClass } = fixture({ STUDENT_AI_ENABLED: 'true' }, undefined, async (key, sentence) => {
+    assert.equal(key, 'fake');
+    spoken = sentence;
+    return bytes;
+  });
+  const body = { word: 'contracts', sentence: 'The metal contracts when it cools.' };
+  assert.equal((await call('POST', '/admin/dictation', body, '')).status, 401);
+  assert.equal((await call('POST', '/admin/dictation', body, await createClass('one'))).status, 403);
+  assert.equal((await call('POST', '/admin/dictation', { ...body, word: 'contract' })).status, 400);
+  assert.equal((await call('POST', '/admin/dictation', { ...body, voice: 'other' })).status, 400);
+  assert.equal((await call('GET', '/config')).data.dictationEnabled, true);
+  const result = await call('POST', '/admin/dictation', body);
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.data, bytes);
+  assert.equal(spoken, body.sentence);
+  await call('PUT', '/admin/settings', { generationEnabled: false });
+  assert.equal((await call('POST', '/admin/dictation', body)).status, 503);
+});
+
+test('Troy WAV streaming headers are finalized without altering the PCM samples', () => {
+ const wav = Buffer.alloc(46);
+ wav.write('RIFF', 0);
+ wav.writeUInt32LE(0xffffffff, 4);
+ wav.write('WAVEfmt ', 8);
+ wav.writeUInt32LE(16, 16);
+ wav.writeUInt16LE(1, 20);
+ wav.write('data', 36);
+ wav.writeUInt32LE(0xffffffff, 40);
+ wav.writeInt16LE(1234, 44);
+ assert.equal(finishStreamedWav(wav).readUInt32LE(4), 38);
+ assert.equal(wav.readUInt32LE(40), 2);
+ assert.equal(wav.readInt16LE(44), 1234);
+ assert.throws(() => finishStreamedWav(wav.subarray(0, 44)));
+});
+
+test('Troy generation has its own minute budget', async () => {
+ const { call, advance } = fixture({}, undefined, async () => Uint8Array.of(1));
+ const body = {word: 'contracts', sentence: 'Metal contracts as it cools.'};
+ const calls = await Promise.all(Array.from({length:11}, () => call('POST', '/admin/dictation', body)));
+ assert.equal(calls.filter(result => result.status === 200).length, 10);
+ assert.equal(calls.filter(result => result.status === 429).length, 1);
+ assert.equal((await call('GET', '/admin/usage')).data.dictationCalls, 10);
+ advance(60000);
+ assert.equal((await call('POST', '/admin/dictation', body)).status, 200);
 });

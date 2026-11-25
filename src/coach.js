@@ -665,6 +665,7 @@ function renderEditFields() {
  $('vocab-form').hidden = !row;
  if (!row) return;
  const v = row.vocabulary;
+ prefillTroySentence(row);
  for (const [key, id] of Object.entries(fields)) {
   const value = v?.[key];
   $(id).value = Array.isArray(value) ? value.join('\n') : value || (key === 'readingLevel' ? '5' : '');

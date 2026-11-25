@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { recordingKey, validateRecording } = require('../src/dictation.js');
+const { containsTarget, recordingKey, validateRecording } = require('../src/dictation.js');
 
 test('recordings are scoped to a list and an intended pronunciation', () => {
  const noun = {senseId: 'contract', partOfSpeech: 'noun', definition: 'An agreement.'};
@@ -28,4 +28,11 @@ test('dictation accepts a bounded WAV and rejects truncated or mislabeled data',
  assert.doesNotThrow(() => validateRecording(view(wave)));
  assert.throws(() => validateRecording(view(wave.subarray(0, 44))), /WAV/);
  assert.throws(() => validateRecording(new ArrayBuffer(1048577)), /1 MB/);
+});
+
+test('dictation suggestions match multiword targets and reject changed endings', () => {
+ assert.equal(containsTarget('The metal contracts when it cools.', 'contract'), false);
+ assert.equal(containsTarget('The metal contracts when it cools.', 'contracts'), true);
+ assert.equal(containsTarget('They turned the light off.', 'turn the light off'), false);
+ assert.equal(containsTarget('Please turn the light off.', 'turn the light off'), true);
 });

@@ -1,8 +1,16 @@
 const Dictation = (() => {
  const MAX_WAV_BYTES = 1024 * 1024;
 
+ const pronunciationWord = value => String(value).normalize('NFC').trim().replace(/[’‘]/g, "'").replace(/\s+/g, ' ').toLowerCase();
+
+ function containsTarget(sentence, word) {
+  const escaped = pronunciationWord(word).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp('(?:^|[^\\p{L}\\p{M}\\p{N}])' + escaped +
+   '(?=$|[^\\p{L}\\p{M}\\p{N}])', 'u').test(pronunciationWord(sentence));
+ }
+
  function recordingKey(listId, word, vocabulary) {
-  const target = String(word).normalize('NFC').trim().replace(/[’‘]/g, "'").replace(/\s+/g, ' ').toLowerCase();
+  const target = pronunciationWord(word);
   return 'dictation:' + JSON.stringify([listId, target, vocabulary?.senseId || '',
    vocabulary?.partOfSpeech || '', vocabulary?.definition || '']);
  }
@@ -27,6 +35,6 @@ const Dictation = (() => {
   if (!format || !audio) invalid();
  }
 
- return { recordingKey, validateRecording, MAX_WAV_BYTES };
+ return { containsTarget, recordingKey, validateRecording, MAX_WAV_BYTES };
 })();
 if (typeof module === 'object' && module.exports) module.exports = Dictation;

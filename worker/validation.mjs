@@ -111,6 +111,16 @@ function recordIsValid(entry, approvedOnly) {
     && unique(v.clozeQuestions.map((q) => q.id)) && unique(v.clozeQuestions.map((q) => q.sentence), choiceKey);
 }
 
+export function dictationText(input) {
+  requireInput(shape(input, ['word', 'sentence']), 'Provide a word and its example sentence.');
+  const word = vocabularyWord(input.word);
+  requireInput(safeContent(input.sentence, 200) && !/[\[\]\r\n]/u.test(input.sentence),
+    'Enter one example sentence of up to 200 characters.');
+  requireInput(explicitWord(wordKey(word)).test(wordKey(input.sentence)),
+    'Use the exact target word in the sentence, including its ending.');
+  return input.sentence.trim();
+}
+
 export function validatedRecord(entry, approvedOnly = false) {
   requireInput(recordIsValid(entry, approvedOnly), 'Vocabulary content is incomplete or invalid. Check definitions, sentences, and answer choices.');
   return entry;
