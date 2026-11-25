@@ -132,7 +132,7 @@ function download(file,text,type){const a=document.createElement('a'),url=URL.cr
 function practiceMissed(){const s=state.session;if(!s)return;const r=s.summary||summary(s);if(!Array.isArray(r.missed)||!r.missed.length)return;const l={id:s.listId,name:s.listName,words:s.words,defs:s.defs};state.session=null;save();start(r.missed,l);}
 function finishToSetup(){const checkpoint=state.learningCheckpoint;if(state.session&&!state.session.summary)finish(false);state.session=null;state.learningSession=null;save();if(checkpoint)getStore(checkpoint.backend).then(store=>store.remove(checkpoint.key)).catch(()=>{});renderSetup();show('setup-screen');}
 function backToSetup(){if(state.settings.pin){$('pin-check').value='';$('pin-error').textContent='';$('pin-overlay').hidden=false;$('pin-check').focus();}else finishToSetup();}
-function validBackup(x){if(!x||x.v!==1||!Array.isArray(x.lists)||!x.lists.every(listOK))throw Error('Choose a Spelling Coach backup with a valid lists array.');return x.lists.map(l=>({id:l.id,name:l.name,words:wordsUnique(l.words),defs:dictionary(l.defs),updatedAt:now()}));}
+function validBackup(x){if(!x||x.v!==1||!Array.isArray(x.lists)||!x.lists.every(listOK))throw Error('Choose a WordLab backup with a valid lists array.');return x.lists.map(l=>({id:l.id,name:l.name,words:wordsUnique(l.words),defs:dictionary(l.defs),updatedAt:now()}));}
 function runTests(){
  const out=[],assert=(v,m)=>{if(!v)throw Error(m||'assertion failed');},test=(n,f)=>{try{f();out.push([n,true,'']);}catch(e){out.push([n,false,e.message]);}};
  const oldSession=state.session,oldRound=state.settings.roundSize,oldMode=state.settings.retypeOnMiss,oldProgress=state.progress.selftest;
@@ -174,9 +174,9 @@ function runTests(){
   let failed=false;try{orderFromReceipt(receipt,3);}catch(error){failed=true;}
   assert(failed);
  });
- test('page title matches app version',()=>assert(document.title==='Spelling Coach v'+VERSION));
+ test('page title matches app version',()=>assert(document.title==='WordLab v'+VERSION));
  state.session=oldSession;state.settings.roundSize=oldRound;state.settings.retypeOnMiss=oldMode;if(oldProgress===undefined)delete state.progress.selftest;else state.progress.selftest=oldProgress;
- const pass=out.filter(x=>x[1]).length;document.body.innerHTML='<main style="font:16px system-ui;max-width:800px;margin:36px auto;padding:20px"><h1>Spelling Coach self-test</h1><p>'+pass+'/'+out.length+' checks passed.</p><ul>'+out.map(x=>'<li>'+(x[1]?'✓ ':'✗ ')+esc(x[0])+(x[2]?' — '+esc(x[2]):'')+'</li>').join('')+'</ul></main>';document.body.dataset.selftest=pass===out.length?'passed':'failed';
+ const pass=out.filter(x=>x[1]).length;document.body.innerHTML='<main style="font:16px system-ui;max-width:800px;margin:36px auto;padding:20px"><h1>WordLab self-test</h1><p>'+pass+'/'+out.length+' checks passed.</p><ul>'+out.map(x=>'<li>'+(x[1]?'✓ ':'✗ ')+esc(x[0])+(x[2]?' — '+esc(x[2]):'')+'</li>').join('')+'</ul></main>';document.body.dataset.selftest=pass===out.length?'passed':'failed';
 }
 if(SELFTEST){runTests();return;}
 

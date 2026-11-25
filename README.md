@@ -1,4 +1,4 @@
-# SpellingCoach
+# WordLab
 
 Spelling and vocabulary practice for lists of up to 200 words. The app runs in the browser and keeps learning records on the device.
 
@@ -11,13 +11,13 @@ Choose **Test** for a fixed set of questions with results at the end. Only appro
 
 ## Open the app
 
-The live site is [spellingcoach.mtomlinson.ca](https://spellingcoach.mtomlinson.ca/). For the v0.2.0 offline build, open `Spelling Coach v0.2.0.html` in a current browser. Offline speech depends on the installed voice. The v0.1.0 file remains in the repository for rollback.
+The planned address is **wordlab.mtomlinson.ca**. The current release remains at [spellingcoach.mtomlinson.ca](https://spellingcoach.mtomlinson.ca/) until the new domain is configured and WordLab is deployed. For the v0.2.0 offline build, open `WordLab v0.2.0.html` in a current browser. Offline speech depends on the installed voice. The original Spelling Coach v0.1.0 file remains in the repository for rollback.
 
 The **Theme** menu defaults to **System** and follows device appearance changes. Choose **Light** or **Dark** to save a manual preference.
 
 Use **Try the sample list** for a Grade 5 vocabulary draft. Its definitions use selected senses because the source passage was unavailable. Review them against the intended text before using the pack for a test.
 
-Use **Tools → Export full backup** before clearing browser data or moving between the site and a downloaded copy. The app accepts older list-only JSON files, new vocabulary packs, and full backups. The first upgrade keeps a copy of the original spelling state in the browser under `spell.state.v1.backup`.
+Use **Tools → Export full backup** before clearing browser data or moving to a different web address or offline file. Browser storage is tied to the address or file. Import the backup in WordLab to carry over your lists and progress. The app accepts older list-only JSON files, new vocabulary packs, and full backups. The first upgrade keeps a copy of the original spelling state in the browser under `spell.state.v1.backup`.
 
 To shuffle a saved word list, flashcards, or a test, use a completed RANDOM.ORG permutation receipt with each position from 1 through the number of items. A test can run in its prepared order without a receipt. The app maps the numbers to content on the device.
 
@@ -40,3 +40,7 @@ The QR encoder is the MIT-licensed browser distribution from [qrcode-generator v
 Teachers can generate and review vocabulary, distribute approved packs, and manage class codes once the [Cloudflare Worker](worker/README.md) is configured. Manual editing, imports, practice, tests, and reports work without the Worker.
 
 Student generation ships disabled. Enable it only after the provider and school approve the intended use. Keep the deployment on free plans and review generated content before publishing.
+
+## Website cutover
+
+When the release is ready, set the GitHub Pages custom domain to `wordlab.mtomlinson.ca`, then add a Cloudflare DNS-only CNAME for `wordlab` pointing to `thepick.github.io`. Verify HTTPS and migrate saved browser data using a full backup. [GitHub Pages custom-domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)

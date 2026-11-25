@@ -45,7 +45,7 @@ test('manual choices survive device changes and System restores automatic matchi
 
 test('both builds embed the original icon and expose all theme choices', () => {
  const favicon = fs.readFileSync('favicon.ico');
- for (const file of ['index.html', 'Spelling Coach v0.2.0.html']) {
+ for (const file of ['index.html', 'WordLab v0.2.0.html']) {
   const html = fs.readFileSync(file, 'utf8');
   const icon = html.match(/class="brand-icon" src="data:image\/x-icon;base64,([^"]+)"/);
   assert.ok(icon, file + ' embeds the icon');

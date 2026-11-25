@@ -12,7 +12,7 @@ const page = read('src/page.html').replace('<!-- BUILD:STYLE -->', () => read('s
   .replace('<!-- BUILD:SCRIPT -->', () => code)
   .replace('@@BRAND_ICON@@', () => fs.readFileSync(path.join(root, 'favicon.ico')).toString('base64'));
 const offline = page.replace(/^<link rel="(?:icon|apple-touch-icon|manifest)"[^\n]*\n/gm, '');
-const outputs = { 'index.html': page, 'Spelling Coach v0.2.0.html': offline };
+const outputs = { 'index.html': page, 'WordLab v0.2.0.html': offline };
 for (const [file, contents] of Object.entries(outputs)) {
   const target = path.join(root, file);
   if (process.argv.includes('--check')) {

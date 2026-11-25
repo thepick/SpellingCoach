@@ -1,6 +1,6 @@
 const CLASS_RECOVERY = 'class-generation-recovery';
 const GENERATION_KEY = 'spell.generation.v1';
-const ONLINE_CONFIG = 'https://api.spellingcoach.mtomlinson.ca';
+const ONLINE_CONFIG = 'https://api.wordlab.mtomlinson.ca';
 let ai = {root: '', token: '', role: '', config: {}, job: null, listId: '', published: '', generation: 0};
 const teacherStatus = message => { $('teacher-status').textContent = message; };
 
@@ -119,7 +119,7 @@ function aiSettings() {
 }
 
 function publicPackLink(id) {
- const site = new URL(location.protocol === 'file:' ? 'https://spellingcoach.mtomlinson.ca/' : location.href);
+ const site = new URL(location.protocol === 'file:' ? 'https://wordlab.mtomlinson.ca/' : location.href);
  site.search = ''; site.hash = '';
  const args = new URLSearchParams({pack: id, service: ai.root});
  site.hash = args.toString();

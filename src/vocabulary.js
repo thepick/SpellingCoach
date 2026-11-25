@@ -317,7 +317,7 @@ const Vocabulary = (() => {
       }
     }
     if (storage && preferred !== 'indexedDB') return localStore(storage);
-    throw new Error('Vocabulary storage is unavailable in this browser. Enable browser storage and reopen SpellingCoach.');
+    throw new Error('Vocabulary storage is unavailable in this browser. Enable browser storage and reopen WordLab.');
   }
 
   return { MAX_WORDS, MAX_WORD_LENGTH, MAX_PACK_BYTES, normalize, wordKey, normalizeWords, validateRecord, validatePack, legacyRecords, planPackUpdate, openStore };

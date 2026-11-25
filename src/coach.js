@@ -542,7 +542,7 @@ async function exportFullBackup() {
  const contents = JSON.stringify({kind: 'spellingcoach-backup', v: 1, state: snapshot, packs, questionHistory: archived,
   theme: themePreference.value});
  if (new Blob([contents]).size > MAX_IMPORT) throw Error('The backup is too large. Export individual vocabulary packs first.');
- download('Spelling Coach full backup.json', contents, 'application/json');
+ download('WordLab full backup.json', contents, 'application/json');
 }
 
 async function restoreFullBackup(backup) {
@@ -826,7 +826,7 @@ function initCoach() {
   } catch (error) { editorStatusText(error.message); }
  };
  $('vocab-export').onclick = () => {
-  try { download('SpellingCoach vocabulary.json', JSON.stringify(outputPack(editorList, editorRecords), null, 2), 'application/json'); }
+  try { download('WordLab vocabulary.json', JSON.stringify(outputPack(editorList, editorRecords), null, 2), 'application/json'); }
   catch (error) { editorStatusText(error.message); }
  };
  $('pack-decline').onclick = () => $('pack-preview').close();

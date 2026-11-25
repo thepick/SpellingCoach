@@ -5,7 +5,7 @@
   "workers_dev": true,
   "preview_urls": false,
   "vars": {
-    "ALLOWED_ORIGINS": "https://spellingcoach.mtomlinson.ca",
+    "ALLOWED_ORIGINS": "https://wordlab.mtomlinson.ca,https://spellingcoach.mtomlinson.ca",
     "AI_ENABLED": "false",
     "STUDENT_AI_ENABLED": "false",
     "GROQ_FREE_TIER_CONFIRMED": "false",
