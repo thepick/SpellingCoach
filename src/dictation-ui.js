@@ -29,8 +29,16 @@ async function playRecording(recording, rate, request, onStart) {
 
 function sharedAudioPath(listId, word, type, spoken) {
  const review = sharedReview;
- if (review?.origin !== location.origin || findPackList(review.pack.id, review.origin)?.id !== listId) return null;
- return Dictation.publishedClip(review.pack, word, type, spoken);
+ if (!review || findPackList(review.pack.id, review.origin)?.id !== listId) return null;
+ const bundled = review.origin === location.origin && Dictation.publishedClip(review.pack, word, type, spoken);
+ if (bundled) return bundled;
+ if (!review.audio?.size) return null;
+ const index = review.pack.words.findIndex(row => row.word === word);
+ if (index < 0) return null;
+ const skill = type === 'dictation' ? 'spelling' : 'vocabulary';
+ const prompt = Learning.practiceAudioPrompts(review.pack.words[index], index)
+  .find(item => item.skill === skill && item.text === spoken && review.audio.has(item.key));
+ return prompt ? review.origin + '/api/packs/' + encodeURIComponent(review.pack.id) + '/audio/' + review.pack.version + '/' + prompt.key : null;
 }
 
 async function playPublishedRecording(path, slow, fallback, onStart) {

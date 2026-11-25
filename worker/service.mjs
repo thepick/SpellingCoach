@@ -3,7 +3,8 @@ import {
   normalizedWords, parseSettings, requireInput, shape, shortId, validatePack, validatedRecord, vocabularyWord, wordKey
 } from './validation.mjs';
 import { GROQ_MODELS, providerChoices, requestVocabulary, tokenBudget } from './provider.mjs';
-import { synthesizeDictation } from './dictation.mjs';
+import { hasSpeechSignal, synthesizeDictation } from './dictation.mjs';
+import Learning from '../src/learning.js';
 
 const DAY = 86_400_000;
 const HOUR = 3600_000;
@@ -29,6 +30,7 @@ const schema = [
   'CREATE TABLE IF NOT EXISTS meter (day INTEGER NOT NULL, key TEXT NOT NULL, value INTEGER NOT NULL, PRIMARY KEY(day, key))',
   'CREATE TABLE IF NOT EXISTS provider_delay (key TEXT PRIMARY KEY, until INTEGER NOT NULL)',
   'CREATE TABLE IF NOT EXISTS packs (id TEXT PRIMARY KEY, version INTEGER NOT NULL, value TEXT NOT NULL)',
+  'CREATE TABLE IF NOT EXISTS pack_audio (pack TEXT NOT NULL, version INTEGER NOT NULL, prompt TEXT NOT NULL, bytes BLOB NOT NULL, PRIMARY KEY(pack, version, prompt))',
   'CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, pack TEXT NOT NULL, word TEXT NOT NULL, content TEXT NOT NULL)',
   'CREATE INDEX IF NOT EXISTS cache_pack ON cache(pack)',
   'CREATE INDEX IF NOT EXISTS cache_word ON cache(word)'
@@ -105,6 +107,7 @@ export class VocabularyService {
     this.now = now;
     this.fetcher = fetcher;
     this.speechFetcher = speechFetcher;
+    this.audioInFlight = new Map();
     this.origins = new Set((env.ALLOWED_ORIGINS ?? '').split(',').map((origin) => origin.trim())
       .filter((origin) => /^https?:\/\/[^/]+$/i.test(origin)));
     for (const statement of schema) this.sql.exec(statement);
@@ -136,7 +139,7 @@ export class VocabularyService {
   }
 
   dictationEnabled() {
-    return this.enabled(true) && this.env.GROQ_FREE_TIER_CONFIRMED === 'true' && !!this.env.GROQ_API_KEY;
+    return (this.enabled(true) || this.env.TROY_AUDIO_ENABLED === 'true') && this.env.GROQ_FREE_TIER_CONFIRMED === 'true' && !!this.env.GROQ_API_KEY;
   }
 
   publicConfig() {
@@ -548,9 +551,10 @@ export class VocabularyService {
   }
 
   async publish(input) {
-    requireInput(shape(input, ['pack', 'visibility', 'classId', 'cacheSettings', 'mode'])
+    requireInput(shape(input, ['pack', 'visibility', 'classId', 'cacheSettings', 'mode', 'allowHints'])
       && ['public', 'class', 'private'].includes(input.visibility), 'Choose a valid pack visibility.');
     requireInput(input.mode === undefined || ['spelling', 'vocabulary', 'mixed'].includes(input.mode), 'Choose a valid practice mode.');
+    requireInput(input.allowHints === undefined || typeof input.allowHints === 'boolean', 'Choose whether to allow hints.');
     const { visibility } = input;
     const pack = validatePack(input.pack, { allowSpellingOnly: input.mode === 'spelling' });
     const classId = input.classId;
@@ -560,16 +564,22 @@ export class VocabularyService {
     const vocabularyEntries = pack.words.filter((entry) => entry.vocabulary !== null);
     requireInput(!settings || (visibility === 'public' && vocabularyEntries.length > 0 && !settings.context && !settings.sense
       && vocabularyEntries.every((entry) => cacheEligible(entry, settings))), 'Reusable packs must be public and match the declared settings.');
-    const info = { pack, visibility, ...(visibility === 'class' ? { classId } : {}) };
+    const practice = {mode:input.mode || 'mixed', allowHints:input.allowHints !== false};
+    const info = {pack, visibility, practice, ...(visibility === 'class' ? {classId} : {})};
     const storage = { ...info, ...(settings ? { cacheSettings: settings } : {}) };
     return this.atomic(() => {
       const existing = this.one('SELECT version, value FROM packs WHERE id = ?', pack.id);
       if (existing && existing.version >= pack.version) {
-        if (existing.version === pack.version && canonical(JSON.parse(existing.value)) === canonical(storage)) return info;
-        fail(409, 'pack_version', 'Increase the pack version to publish changes.');
+        const {practice: previousPractice, ...previous} = JSON.parse(existing.value);
+        const {practice: currentPractice, ...current} = storage;
+        if (existing.version !== pack.version || canonical(previous) !== canonical(current)) {
+          fail(409, 'pack_version', 'Increase the pack version to publish changes.');
+        }
+        if (canonical(previousPractice) === canonical(currentPractice)) return info;
       }
       this.sql.exec('INSERT INTO packs VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET version = excluded.version, value = excluded.value',
         pack.id, pack.version, JSON.stringify(storage));
+      this.sql.exec('DELETE FROM pack_audio WHERE pack = ? AND version <> ?', pack.id, pack.version);
       this.sql.exec('DELETE FROM cache WHERE pack = ?', pack.id);
       if (settings) for (const entry of vocabularyEntries) {
         this.sql.exec('INSERT INTO cache VALUES (?, ?, ?, ?) ON CONFLICT(key) DO UPDATE SET pack = excluded.pack, content = excluded.content',
@@ -583,6 +593,7 @@ export class VocabularyService {
     const record = this.one('SELECT value FROM packs WHERE id = ?', id);
     if (!record) notFound();
     const { cacheSettings, ...info } = JSON.parse(record.value);
+    info.practice ??= {mode:info.pack.words.some(row => row.vocabulary) ? 'mixed' : 'spelling', allowHints:true};
     if (info.visibility === 'public') return info;
     if (!request.headers.has('Authorization')) notFound();
     const identity = await this.principal(request);
@@ -612,9 +623,8 @@ export class VocabularyService {
     };
   }
 
-  async dictation(request) {
+  async generateSpeech(sentence) {
     if (!this.dictationEnabled()) fail(503, 'unavailable', 'Troy audio generation is disabled.');
-    const sentence = dictationText(await bodyOf(request, 2048));
     const now = this.now(), day = localDay(now), minute = Math.floor(now / 60000);
     this.atomic(() => {
       const window = this.saved('dictationMinute');
@@ -625,15 +635,47 @@ export class VocabularyService {
       this.save('dictationMinute', {minute, calls: calls + 1});
       this.charge(day, 'dictationCalls', 1);
     });
-    const bytes = await this.speechFetcher(this.env.GROQ_API_KEY, sentence);
-    return new Response(bytes, {headers: {'Content-Type': 'audio/wav'}});
+    return this.speechFetcher(this.env.GROQ_API_KEY, sentence);
+  }
+
+  async preparePackAudio(request) {
+    const input = await bodyOf(request, 2048);
+    requireInput(shape(input, ['packId', 'version', 'prompt']) && shortId(input.packId) &&
+      integer(input.version, 1, Number.MAX_SAFE_INTEGER) && typeof input.prompt === 'string' &&
+      /^\d{1,3}-(?:s|v\d)$/.test(input.prompt), 'Choose a valid saved audio prompt.');
+    const { pack } = await this.pack(input.packId, request);
+    if (pack.version !== input.version) fail(409, 'pack_version', 'Publish the latest set before preparing its audio.');
+    const wordIndex = Number(input.prompt.split('-')[0]);
+    const record = pack.words[wordIndex];
+    const prompt = record && Learning.practiceAudioPrompts(record, wordIndex).find(item => item.key === input.prompt);
+    if (!prompt) notFound();
+    const args = [pack.id, pack.version, prompt.key];
+    if (this.one('SELECT prompt FROM pack_audio WHERE pack = ? AND version = ? AND prompt = ?', ...args)) return json({ ready: true });
+    const id = JSON.stringify(args);
+    if (!this.audioInFlight.has(id)) {
+      const pending = this.generateSpeech(prompt.text).then(bytes => {
+        if (!hasSpeechSignal(bytes)) fail(502, 'audio_quality', 'Troy returned a mostly silent recording.');
+        if (this.one('SELECT version FROM packs WHERE id = ?', pack.id)?.version !== pack.version) {
+          fail(409, 'pack_version', 'The set changed while generating audio. Publish and try again.');
+        }
+        this.sql.exec('INSERT OR IGNORE INTO pack_audio VALUES (?, ?, ?, ?)', ...args,
+          bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+      }).finally(() => this.audioInFlight.delete(id));
+      this.audioInFlight.set(id, pending);
+    }
+    await this.audioInFlight.get(id);
+    return json({ ready: true });
   }
 
   async admin(request, route, method) {
     if (route === 'access' && method === 'POST') return json(await this.login(request, true));
     const identity = await this.principal(request);
     if (identity.role !== 'teacher') fail(403, 'forbidden', 'Teacher access is required.');
-    if (route === 'dictation' && method === 'POST') return this.dictation(request);
+    if (route === 'dictation' && method === 'POST') {
+      const bytes = await this.generateSpeech(dictationText(await bodyOf(request, 2048)));
+      return new Response(bytes, {headers: {'Content-Type': 'audio/wav'}});
+    }
+    if (route === 'packaudio' && method === 'POST') return this.preparePackAudio(request);
     if (route === 'usage' && method === 'GET') return json(this.usage());
     if (route === 'publish' && method === 'POST') return json(await this.publish(await bodyOf(request, 1_500_000)));
     if (route === 'packs' && method === 'GET') {
@@ -679,12 +721,21 @@ export class VocabularyService {
     if (pathname === '/api/access' && method === 'POST') return json(await this.login(request, false));
     const admin = pathname.match(/^\/api\/admin\/([a-z]+)$/);
     if (admin) return this.admin(request, admin[1], method);
-    const pack = pathname.match(/^\/api\/packs\/([^/]{1,288})$/);
+    const pack = pathname.match(/^\/api\/packs\/([^/]{1,288})(?:\/audio\/(\d{1,16})\/(\d{1,3}-(?:s|v\d)))?$/);
     if (pack && method === 'GET') {
       let id;
       try { id = decodeURIComponent(pack[1]); } catch { notFound(); }
       if (!shortId(id)) notFound();
-      return json(await this.pack(id, request));
+      const info = await this.pack(id, request);
+      const version = info.pack.version;
+      if (pack[2]) {
+        if (Number(pack[2]) !== version) notFound();
+        const clip = this.one('SELECT bytes FROM pack_audio WHERE pack = ? AND version = ? AND prompt = ?', id, version, pack[3]);
+        if (!clip) notFound();
+        return new Response(clip.bytes, {headers: {'Content-Type': 'audio/wav'}});
+      }
+      const audio = this.rows('SELECT prompt FROM pack_audio WHERE pack = ? AND version = ?', id, version).map(row => row.prompt);
+      return json(audio.length ? {...info, audio} : info);
     }
     if ((pathname === '/api/generate' || pathname === '/api/regenerate') && method === 'POST') {
       const identity = await this.principal(request);

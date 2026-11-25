@@ -324,7 +324,7 @@ $('pause-button').onclick=()=>{const s=state.session;if(!s)return;clearTimeout(t
 $('resume-practice').onclick=()=>{const s=state.session;if(!s)return;$('pause-overlay').hidden=true;s.phase=s.resumePhase||'prompt';delete s.resumePhase;save();renderPractice(s.phase==='prompt');};
 $('end-session').onclick=()=>{$('pause-overlay').hidden=true;end();};
 $('back-setup').onclick=()=>{$('pause-overlay').hidden=true;backToSetup();};
-function resumeActivity(){const s=state.session;if(state.learningSession){Learning.resume(state.learningSession.session);state.learningSession.recorded=false;save();renderLearning(true);return;}if(!s)return;if(s.phase==='done'&&s.summary){showSummary(s.summary);return;}s.phase=s.phase==='paused'?(s.resumePhase||'prompt'):s.phase;delete s.resumePhase;save();renderPractice(s.phase==='prompt');}
+function resumeActivity(){const s=state.session;if(state.learningSession){Learning.resume(state.learningSession.session);Learning.upgradePractice(state.learningSession.session);state.learningSession.recorded=false;save();renderLearning(true);return;}if(!s)return;if(s.phase==='done'&&s.summary){showSummary(s.summary);return;}s.phase=s.phase==='paused'?(s.resumePhase||'prompt'):s.phase;delete s.resumePhase;save();renderPractice(s.phase==='prompt');}
 $('resume-button').onclick=resumeActivity;
 $('end-saved-button').onclick=()=>{if(!state.learningSession){end();return;}Learning.finish(state.learningSession.session);finishLearningReport();};
 $('pin-form').onsubmit=e=>{e.preventDefault();if($('pin-check').value!==state.settings.pin){$('pin-error').textContent='That PIN did not match.';return;}$('pin-overlay').hidden=true;finishToSetup();};

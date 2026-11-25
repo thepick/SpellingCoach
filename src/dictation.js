@@ -11,7 +11,7 @@ const Dictation = (() => {
   if (pack?.id !== 'matter-mixed-troy' || pack.version !== 1 || !Object.hasOwn(demoPrompts, word)) return null;
   const [cloze, definition] = demoPrompts[word];
   const folder = type === 'dictation' && spoken === word ? 'words' :
-   type === 'definition-recall' && spoken === definition ? 'definitions' :
+   ['definition-recall', 'word-bank'].includes(type) && spoken === definition ? 'definitions' :
     ['sentence-choice', 'missing-word', 'word-bank'].includes(type) && spoken === cloze ? 'cloze' : '';
   return folder ? '/demo-audio/matter-mixed-troy/' + folder + '/' + word + '.wav' : null;
  }

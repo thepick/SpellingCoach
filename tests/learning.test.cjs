@@ -168,6 +168,43 @@ test('mixed mastery counts each word when all its assigned skills are mastered',
   assert.deepEqual(L.practiceWordProgress(review), {mastered: 0, total: 2});
 });
 
+test('phased vocabulary uses one bank turn and two independent recalls, with hints resetting the current phase', () => {
+  const session = L.createSession(records.slice(0, 1), {mode:'mixed', phasedVocabulary:true});
+  assert.equal(L.current(session).type, 'dictation');
+  L.submit(session, L.current(session).answer); L.advance(session);
+  assert.equal(L.current(session).type, 'word-bank');
+  assert.equal(L.current(session).choices.length, 0);
+  L.hint(session); L.submit(session, L.current(session).answer); L.advance(session);
+  assert.equal(L.current(session).type, 'dictation');
+  L.hint(session); L.submit(session, L.current(session).answer); L.advance(session);
+  assert.equal(session.tasks[0].streak, 0);
+  assert.equal(L.current(session).type, 'word-bank');
+  L.submit(session, L.current(session).answer); L.advance(session);
+  L.submit(session, L.current(session).answer); L.advance(session);
+  const first = L.current(session);
+  assert.equal(first.type, 'missing-word');
+  assert.deepEqual(first.bank, []);
+  L.submit(session, first.answer); L.advance(session);
+  L.submit(session, L.current(session).answer); L.advance(session);
+  const second = L.current(session);
+  assert.equal(second.type, 'missing-word');
+  assert.notEqual(second.prompt, first.prompt);
+  L.hint(session); L.submit(session, second.answer); L.advance(session);
+  assert.equal(session.tasks[1].streak, 0);
+  for (let i = 0; i < 2; i++) { L.submit(session, L.current(session).answer); L.advance(session); }
+  assert.equal(L.practiceMastered(session), true);
+  assert.equal(L.sessionOK(JSON.parse(JSON.stringify(session))), true);
+});
+
+test('resuming a legacy practice replaces the pending multiple-choice question with a typed bank turn', () => {
+  const session = start({difficulty:'beginner'});
+  assert.equal(L.current(session).type, 'meaning-choice');
+  L.upgradePractice(session);
+  assert.equal(L.current(session).type, 'word-bank');
+  assert.deepEqual(L.current(session).choices, []);
+  assert.equal(L.sessionOK(JSON.parse(JSON.stringify(session))), true);
+});
+
 test('speech masks case, whitespace and apostrophe variants of a hidden answer', () => {
   const question = {type: 'definition-recall', answer: "Mary Jane's", prompt: 'One of MARY   JANE’S things.'};
   assert.equal(L.audio(question), 'One of blank things.');

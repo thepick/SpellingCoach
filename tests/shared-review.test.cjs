@@ -32,4 +32,6 @@ test('Continue practice only matches an unfinished practice for the same list', 
  assert.equal(matchingPractice({learningSession:{...entry,session:{...entry.session,status:'finished'}}}, 'x'), null);
  assert.equal(matchingPractice({learningSession:{...entry,session:{...entry.session,type:'test'}}}, 'x'), null);
  assert.equal(matchingPractice({session:{listId:'x',phase:'paused'}}, 'x'), 'spelling');
+ assert.equal(matchingPractice({session:{listId:'x',phase:'paused'}}, 'x', 'mixed'), null);
+ assert.equal(matchingPractice({learningSession:{...entry,session:{...entry.session,mode:'mixed'}}}, 'x', 'vocabulary'), null);
 });

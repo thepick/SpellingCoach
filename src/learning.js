@@ -172,6 +172,7 @@ const Learning = (() => {
   }
 
   function choose(session, task, seen = []) {
+    if (session.settings.phasedVocabulary && task.skill === 'vocabulary') return choosePhased(session, task);
     const options = variants(session, task);
     if (task.skill === 'spelling') return options[0];
     const record = session.records[task.recordIndex];
@@ -189,6 +190,45 @@ const Learning = (() => {
         + (question.type === 'definition-recall' ? 1 : 0);
       return rank(left) - rank(right);
     })[0];
+  }
+
+  function choosePhased(session, task) {
+    const record = session.records[task.recordIndex];
+    const prompts = phasedPrompts(record, task.recordIndex);
+    const history = wordProgress(session.progress, record).vocabulary;
+    const previous = task.streak ? task.lastRecall : history.prompts.at(-1);
+    const next = prompts.find(question => question.id !== previous) || prompts[0];
+    if (task.bankPassed) return next;
+    const words = distinct([next.answer, ...session.records.map(row => row.word)]).slice(0, 4);
+    const order = session.settings.bankOrder?.[record.word];
+    const bank = Array.isArray(order) && order.length === words.length && new Set(order).size === words.length &&
+      order.every(index => Number.isInteger(index) && index >= 0 && index < words.length)
+      ? order.map(index => words[index]) : rotated(words, task.recordIndex + session.settings.choiceOffset + 1);
+    return {...next, type:'word-bank', bank};
+  }
+
+  function phasedPrompts(record, recordIndex) {
+    const {word, vocabulary} = record;
+    if (!vocabulary?.definition) return [];
+    const acceptedSpellings = vocabulary.acceptedSpellings || [];
+    const mask = (text, extra) => hideAnswer(text, [word, ...acceptedSpellings, extra]);
+    const context = (vocabulary.examples || []).map(text => mask(text));
+    const info = {word, recordIndex, choices:[], bank:[], acceptedSpellings, senseId:vocabulary.senseId || '',
+      definition:mask(vocabulary.definition), partOfSpeech:vocabulary.partOfSpeech || '', context};
+    const singleBlank = text => (text.match(/_{2,}/g) || []).length === 1;
+    const sentences = (vocabulary.clozeQuestions || []).map((cloze, index) => ({...info, type:'missing-word',
+      id:'cloze:' + (cloze.id || index), prompt:mask(cloze.sentence, cloze.answer), answer:cloze.answer || word,
+      explanation:cloze.explanation || ''})).filter(question => singleBlank(question.prompt));
+    if (sentences.length) return sentences;
+    const examples = context.filter(singleBlank).map((prompt, index) => ({...info, type:'missing-word',
+      id:'example:' + index, prompt, answer:word}));
+    if (examples.length) return examples;
+    return [{...info, type:'definition-recall', id:'definition', prompt:info.definition, answer:word}];
+  }
+
+  function practiceAudioPrompts(record, index) {
+    return [{key:index + '-s', skill:'spelling', text:record.word}, ...phasedPrompts(record, index)
+      .map((question, prompt) => ({key:index + '-v' + prompt, skill:'vocabulary', text:audio(question)}))];
   }
 
   function ordered(values, order) {
@@ -211,8 +251,31 @@ const Learning = (() => {
   }
 
   function taskMastered(session, task) {
+    if (session.settings.phasedVocabulary) return task.streak >= 2 && (task.skill === 'spelling' || task.bankPassed);
     const skill = wordProgress(session.progress, session.records[task.recordIndex])[task.skill];
     return skill.mastered && skill.streak >= 2;
+  }
+
+  function recordPhase(task, result) {
+    if (!result.correct || result.hintCount) task.streak = 0;
+    else if (isBank(result.question)) task.bankPassed = true;
+    else if (task.skill === 'spelling' || task.bankPassed && isRecall(result.question)) {
+      if (task.streak < 2) task.streak++;
+      task.lastRecall = result.question.promptId;
+    }
+  }
+
+  function upgradePractice(session) {
+    if (session.type !== 'practice' || session.status !== 'active' || session.settings.phasedVocabulary) return;
+    Object.assign(session.settings, {phasedVocabulary:true, masteryPractice:true});
+    for (const task of session.tasks) Object.assign(task, {bankPassed:false, streak:0, lastRecall:''});
+    for (const result of session.results) recordPhase(session.tasks[result.question.taskId], result);
+    session.queue = session.queue.filter(id => !taskMastered(session, session.tasks[id]));
+    const question = current(session);
+    if (!session.feedback && question && question.type !== 'dictation' && !session.hintStage) {
+      const replacement = choosePhased(session, session.tasks[question.taskId]);
+      session.questions[session.index] = {...replacement, id:question.id, taskId:question.taskId, promptId:replacement.id};
+    }
   }
 
   function practiceWordProgress(session) {
@@ -255,6 +318,8 @@ const Learning = (() => {
       choiceOffset: Number.isInteger(options.choiceOffset) && options.choiceOffset >= 0 ? options.choiceOffset : 0,
       reviewIntervals: options.reviewIntervals?.length && options.reviewIntervals.every(days => Number.isFinite(days) && days > 0)
         ? [...options.reviewIntervals] : [1, 3, 7, 14, 30]};
+    if (settings.type === 'test') settings.phasedVocabulary = false;
+    if (settings.phasedVocabulary) settings.masteryPractice = true;
     const now = typeof options.now === 'number' ? options.now : Date.now();
     const session = {v: 1, type: settings.type, mode: settings.mode, settings, status: 'active', records: copy(describe(records)),
       questions: [], index: 0, tasks: [], queue: [], progress: copy(progress), results: [], hintStage: 0,
@@ -265,7 +330,8 @@ const Learning = (() => {
         if (skill === 'vocabulary' && !vocabularyFor(record, settings.type === 'test')) return;
         const stats = progressFor(session.progress, record)[skill];
         if (settings.reviewOnly && (!stats.mastered || stats.nextReview > now)) return;
-        session.tasks.push({id: session.tasks.length, recordIndex, skill, attempts: 0, successes: 0, consecutiveMisses: 0});
+        session.tasks.push({id: session.tasks.length, recordIndex, skill, attempts: 0, successes: 0, consecutiveMisses: 0,
+          ...(settings.phasedVocabulary ? {bankPassed:false, streak:0, lastRecall:''} : {})});
       });
     }
     if (session.type === 'test') {
@@ -359,6 +425,7 @@ const Learning = (() => {
       const skill = stats.spelling;
       if (assisted) {
         skill.assisted++;
+        if (session.settings.phasedVocabulary) skill.streak = 0;
       } else {
         skill.attempts++;
         skill.correct += Number(correct);
@@ -373,8 +440,8 @@ const Learning = (() => {
     vocabulary.prompts = [...vocabulary.prompts.filter(id => id !== q.promptId), q.promptId].slice(-40);
     vocabulary.lastAt = at;
     if (assisted) vocabulary.assisted += Number(correct);
-    if (session.settings.masteryPractice && !correct) vocabulary.streak = 0;
-    if (isChoice(q) && !assisted) {
+    if (session.settings.masteryPractice && (!correct || session.settings.phasedVocabulary && assisted)) vocabulary.streak = 0;
+    if ((isChoice(q) || session.settings.phasedVocabulary && isBank(q)) && !assisted) {
       vocabulary.recognitionAttempts++;
       vocabulary.recognition += Number(correct);
     }
@@ -382,7 +449,7 @@ const Learning = (() => {
       vocabulary.attempts++;
       vocabulary.correct += Number(correct);
       if (correct) {
-        const distinctPrompts = variants(session, session.tasks[q.taskId]).filter(isRecall)
+        const distinctPrompts = !session.settings.phasedVocabulary && variants(session, session.tasks[q.taskId]).filter(isRecall)
           .some(candidate => candidate.id !== q.promptId);
         if (!distinctPrompts || vocabulary.lastIndependentPrompt !== q.promptId || !vocabulary.streak) vocabulary.streak++;
         vocabulary.lastIndependentPrompt = q.promptId;
@@ -400,7 +467,7 @@ const Learning = (() => {
     if (!skipped && isChoice(question) && !question.choices.some(choice => key(choice) === key(input))) return null;
     const decision = skipped ? {correct: false, kind: 'skipped'} : evaluate(question, input, session.records, session.settings.allowVariants);
     const result = {...decision, question,
-      input: norm(input), assisted: session.hintStage > 0 || isBank(question), hintCount: session.hintStage, at: now};
+      input: norm(input), assisted: session.hintStage > 0 || isBank(question) && !session.settings.phasedVocabulary, hintCount: session.hintStage, at: now};
     session.results.push(result);
     if (session.type === 'test') {
       session.index++;
@@ -410,18 +477,20 @@ const Learning = (() => {
     evidence(session, result);
     const task = session.tasks[question.taskId];
     task.attempts++;
-    task.consecutiveMisses = result.correct ? 0 : task.consecutiveMisses + 1;
+    task.consecutiveMisses = result.correct && (!session.settings.phasedVocabulary || !result.assisted) ? 0 : task.consecutiveMisses + 1;
+    if (session.settings.phasedVocabulary) recordPhase(task, result);
     const wantsRecognition = session.settings.difficulty === 'beginner' && task.skill === 'vocabulary';
     const wantsAssisted = session.settings.difficulty === 'intermediate' && task.skill === 'vocabulary';
     const validSuccess = result.correct && !result.assisted || result.correct && isBank(question) && !result.hintCount && wantsAssisted;
     if (validSuccess) task.successes++;
     const skill = wordProgress(session.progress, session.records[question.recordIndex])[task.skill];
     const mastered = session.settings.masteryPractice ? taskMastered(session, task) : skill.mastered;
-    const done = wantsRecognition || wantsAssisted ? task.successes >= 2
+    const done = session.settings.phasedVocabulary ? mastered : wantsRecognition || wantsAssisted ? task.successes >= 2
       : mastered && result.correct && !result.assisted && (task.skill === 'spelling' || isRecall(question));
     if (!done && (session.settings.masteryPractice || task.attempts < MAX_PRACTICE_ATTEMPTS) && !session.queue.includes(task.id)) session.queue.push(task.id);
     session.feedback = {correct: result.correct, kind: result.kind, assisted: result.assisted, input: result.input,
-      correctionRequired: session.revealed || !result.correct && question.type === 'dictation' && session.settings.retypeOnMiss !== false,
+      correctionRequired: session.revealed && (!session.settings.phasedVocabulary || !result.correct) ||
+        !result.correct && question.type === 'dictation' && session.settings.retypeOnMiss !== false,
       answer: question.answer, explanation: question.explanation || ''};
     return session.feedback;
   }
@@ -505,6 +574,7 @@ const Learning = (() => {
     if (!tasks.every((task, i) => object(task) && task.id === i && count(task.recordIndex) && task.recordIndex < records.length &&
         ['spelling', 'vocabulary'].includes(task.skill) && (task.skill !== 'vocabulary' || vocabularyFor(records[task.recordIndex], type === 'test')) &&
         [task.attempts, task.successes, task.consecutiveMisses].every(count) &&
+        (!settings.phasedVocabulary || typeof task.bankPassed === 'boolean' && count(task.streak) && task.streak <= task.attempts && string(task.lastRecall)) &&
         (settings.masteryPractice === true || task.attempts <= MAX_PRACTICE_ATTEMPTS) &&
         task.successes <= task.attempts && task.consecutiveMisses <= task.attempts)) return false;
     if (new Set(queue).size !== queue.length || !queue.every(id => count(id) && id < tasks.length)) return false;
@@ -518,7 +588,7 @@ const Learning = (() => {
           : (isRecall(q) || isChoice(q) || isBank(q)) && strings(q.context) &&
             string(q.definition) && string(q.partOfSpeech) &&
             (!isChoice(q) || q.choices.length >= 2 && q.choices.includes(q.answer)) &&
-            (!isBank(q) || q.bank.length >= 2 && q.bank.includes(q.answer)));
+            (!isBank(q) || q.bank.length >= (settings.phasedVocabulary ? 1 : 2) && q.bank.includes(q.answer)));
     })) return false;
     if (!Object.values(progress).every(item => object(item) && ['spelling', 'vocabulary'].every(name => {
       const skill = item[name];
@@ -563,7 +633,7 @@ const Learning = (() => {
       assisted: results.filter(result => result.assisted).length, hints: results.reduce((total, result) => total + result.hintCount, 0),
       metrics: {
         spelling: measure(firstSpelling, () => true),
-        recognition: measure(results, result => isChoice(result.question) && !result.assisted),
+        recognition: measure(results, result => (isChoice(result.question) || session.settings.phasedVocabulary && isBank(result.question)) && !result.assisted),
         recall: measure(results, result => isRecall(result.question) && !result.assisted),
         combined: measure(results, result => isRecall(result.question) && !result.assisted)
       }
@@ -599,7 +669,7 @@ const Learning = (() => {
     }), order);
   }
 
-  return {createSession, current, evaluate, audio, hint, lastHint, submit, skip, correct, advance, finish, resume, sessionOK, report, mastery, practiceMastered, practiceWordProgress, flashcards};
+  return {createSession, current, evaluate, audio, hint, lastHint, submit, skip, correct, advance, finish, resume, upgradePractice, sessionOK, report, mastery, practiceMastered, practiceWordProgress, practiceAudioPrompts, flashcards};
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Learning;

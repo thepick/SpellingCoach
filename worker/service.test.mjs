@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { VocabularyService } from './service.mjs';
@@ -35,6 +36,7 @@ function fixture(vars = {}, fetcher = async ({ words }) => ({ records: words.map
   const storage = {
     sql: { exec(query, ...args) {
       const statement = db.prepare(query);
+      args = args.map(value => value instanceof ArrayBuffer ? new Uint8Array(value) : value);
       const output = statement.columns().length
         ? { rows: statement.all(...args), changes: 0 }
         : { rows: [], changes: Number(statement.run(...args).changes) };
@@ -193,6 +195,33 @@ test('teachers can publish words without definitions for spelling practice', asy
   assert.equal((await publish('spelling', { cacheSettings: {} })).status, 400);
   assert.equal((await publish('spelling')).status, 200);
   assert.deepEqual((await call('GET', '/packs/spelling-only', undefined, '')).data.pack, pack);
+});
+
+test('a published pack carries the teacher’s mode and hint policy', async () => {
+  const {call} = fixture();
+  const pack = {kind:'spellingcoach-pack', v:1, version:1, id:'settings-test', name:'Settings', words:[approved('textile')]};
+  const publish = (mode, allowHints) => call('POST','/admin/publish',{pack,visibility:'public',mode,allowHints});
+  assert.equal((await publish('mixed', false)).status, 200);
+  const load = () => call('GET','/packs/settings-test?mode=spelling&hints=on',undefined,'');
+  assert.deepEqual((await load()).data.practice, {mode:'mixed',allowHints:false});
+  assert.equal((await publish('vocabulary', true)).status, 200);
+  assert.deepEqual((await load()).data.practice, {mode:'vocabulary',allowHints:true});
+});
+
+test('shared practice audio is prepared by teachers from saved prompts and reused by students', async () => {
+  const wav = readFileSync(new URL('../demo-audio/matter-mixed-troy/words/solid.wav', import.meta.url));
+  const spoken = [];
+  const {call} = fixture({}, undefined, async (_key, text) => {spoken.push(text); return wav;});
+  const pack = {kind:'spellingcoach-pack', v:1, version:1, id:'audio-test', name:'Audio test', words:[approved('textile')]};
+  assert.equal((await call('POST','/admin/publish',{pack,visibility:'public'})).status, 200);
+  const input = {packId:pack.id, version:1, prompt:'0-v0'};
+  assert.equal((await call('POST','/admin/packaudio',input,'')).status, 401);
+  assert.equal((await call('POST','/admin/packaudio',input)).status, 200);
+  assert.equal((await call('POST','/admin/packaudio',input)).status, 200);
+  assert.deepEqual(spoken, ['The tailor used the blank for project 0.']);
+  assert.deepEqual((await call('GET','/packs/audio-test',undefined,'')).data.audio, ['0-v0']);
+  assert.deepEqual((await call('GET','/packs/audio-test/audio/1/0-v0',undefined,'')).data, new Uint8Array(wav));
+  assert.equal((await call('GET','/packs/audio-test/audio/2/0-v0',undefined,'')).status, 404);
 });
 
 test('provider routing is fail closed and requests use the fixed schema and target', async () => {

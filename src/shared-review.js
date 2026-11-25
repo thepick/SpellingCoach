@@ -10,11 +10,11 @@ const SharedReview = (() => {
   return assigned === 'vocabulary' ? 'vocabulary' : 'mixed';
  }
 
- function matchingPractice(saved, id) {
+ function matchingPractice(saved, id, mode) {
   if (!id) return null;
-  if (saved.session?.listId === id && saved.session.phase !== 'done') return 'spelling';
+  if ((!mode || mode === 'spelling') && saved.session?.listId === id && saved.session.phase !== 'done') return 'spelling';
   const entry = saved.learningSession;
-  return entry?.listId === id && entry.session.type === 'practice' && entry.session.status === 'active'
+  return entry?.listId === id && (!mode || mode === entry.session.mode) && entry.session.type === 'practice' && entry.session.status === 'active'
    ? 'learning' : null;
  }
 
@@ -33,6 +33,8 @@ if (typeof module === 'object' && module.exports) module.exports = SharedReview;
 
 let sharedReview = null;
 const LOCAL_PREVIEW_KEY = 'wordlab.local-preview';
+// Saved RANDOM.ORG permutations for the published Changes in Matter demo.
+const matterBankOrder = {solid:[1,3,0,2], liquid:[1,3,2,0], gas:[1,3,0,2], melt:[3,1,2,0]};
 let sharedLoad = 0;
 const parkedKey = (id, type) => 'paused-activity:' + JSON.stringify([id, type]);
 
@@ -94,9 +96,9 @@ async function renderSharedReady() {
   finishLearningReport();
   return;
  }
- const saved = list && (SharedReview.matchingPractice(state, list.id) ? state : await parkedActivity(list.id));
+ const saved = list && (SharedReview.matchingPractice(state, list.id, review.mode) ? state : await parkedActivity(list.id));
  if (sharedReview !== review) return;
- const mode = SharedReview.matchingPractice(saved || {}, list?.id);
+ const mode = SharedReview.matchingPractice(saved || {}, list?.id, review.mode);
  const instruction = mode === 'learning' ? saved.learningSession.session.mode :
   mode === 'spelling' ? 'spelling' : review.mode;
  $('shared-title').textContent = review.pack.name;
@@ -106,7 +108,6 @@ async function renderSharedReady() {
  $('shared-start').disabled = false;
  $('shared-start').hidden = false;
  show('shared-ready');
- $('shared-title').focus();
 }
 
 async function startSharedReview() {
@@ -116,7 +117,7 @@ async function startSharedReview() {
  $('shared-ready-status').textContent = '';
  try {
   const oldList = findPackList(review.pack.id, review.origin);
-  const activeMode = SharedReview.matchingPractice(state, oldList?.id);
+  const activeMode = SharedReview.matchingPractice(state, oldList?.id, review.mode);
   if (activeMode) {
    if (activeMode === 'learning') state.learningSession.session.settings.allowHints = review.allowHints;
    listId = oldList.id;
@@ -125,7 +126,7 @@ async function startSharedReview() {
   }
   const parked = await parkedActivity(oldList?.id);
   await parkCurrentActivity();
-  const parkedMode = SharedReview.matchingPractice(parked || {}, oldList?.id);
+  const parkedMode = SharedReview.matchingPractice(parked || {}, oldList?.id, review.mode);
   if (parkedMode) {
    if (parkedMode === 'learning') parked.learningSession.session.settings.allowHints = review.allowHints;
    await resumeParkedActivity(oldList, parked);
@@ -137,6 +138,7 @@ async function startSharedReview() {
   if (sharedReview !== review) return;
   if (review.mode === 'spelling') await start(records.map(row => row.word), list);
   else beginLearning(list, records, {...coachOptions(), mode:review.mode, type:'practice', allowHints:review.allowHints,
+   bankOrder:review.pack.id === 'matter-mixed-troy' && review.pack.version === 1 ? matterBankOrder : undefined,
    difficulty:'adaptive', audioReplay:true, masteryPractice:true});
  } catch (error) { $('shared-ready-status').textContent = error.message; }
  finally { button.disabled = false; }
@@ -162,21 +164,24 @@ async function openSharedReview() {
  try {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,95}$/.test(id)) throw Error('Invalid pack link.');
   if (state.learningCheckpoint && !state.learningSession) await recoverCheckpoint(false);
-  const origin = previewTicket ? location.origin : serviceOrigin(args.get('service') || ONLINE_CONFIG);
-  let pack;
+  const origin = previewTicket ? location.origin : serviceOrigin(entryPage === 'offline' ? args.get('service') || ONLINE_CONFIG : ONLINE_CONFIG);
+  let pack, practice, audio;
   if (previewTicket) {
    const local = JSON.parse(localStorage.getItem(LOCAL_PREVIEW_KEY) || 'null');
    if (local?.ticket !== previewTicket || local.expiresAt < Date.now()) throw Error('Preview expired.');
    localStorage.removeItem(LOCAL_PREVIEW_KEY);
    pack = Vocabulary.validatePack(local.pack);
+   practice = local.practice;
   } else {
    const token = ai.root === origin ? ai.token : '';
    const response = await service('/packs/' + encodeURIComponent(id), {root:origin, token});
    pack = Vocabulary.validatePack(response.pack);
+   practice = response.practice;
+   if (response.visibility === 'public' && Array.isArray(response.audio)) audio = new Set(response.audio);
   }
   if (pack.id !== id) throw Error('Wrong review set.');
   if (load !== sharedLoad) return;
-  sharedReview = {pack, origin, mode:SharedReview.reviewMode(args.get('mode'), pack.words), allowHints:args.get('hints') !== 'off'};
+  sharedReview = {pack, origin, audio, mode:SharedReview.reviewMode(practice?.mode, pack.words), allowHints:practice?.allowHints !== false};
   await renderSharedReady();
  } catch (error) {
   if (load !== sharedLoad) return;
@@ -185,7 +190,6 @@ async function openSharedReview() {
   if (error.status === 401 || error.status === 403 || error.status === 404) {
    $('shared-ready-status').textContent = entryPage === 'offline' ? 'If the set uses a class code, sign in from Tools.' : 'Ask your teacher for a public practice link.';
   }
-  $('shared-title').focus();
  }
 }
 
@@ -197,7 +201,6 @@ function showLanding() {
   $('shared-ready-status').textContent = '';
   $('shared-start').hidden = true;
   show('shared-ready');
-  $('shared-title').focus();
   return;
  }
  if (state.learningSession) pauseLearning();

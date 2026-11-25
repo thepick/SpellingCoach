@@ -4,6 +4,7 @@ const ONLINE_CONFIG = 'https://wordlab.mtomlinson.ca';
 let ai = {root: '', token: '', role: '', config: {}, job: null, listId: '', published: '', generation: 0};
 let sharing = {list:null, records:null};
 let publishing = false;
+let preparingAudio = false;
 function teacherStatus(message) {
  $('teacher-status').textContent = message;
  $('teacher-signin-status').textContent = message;
@@ -129,10 +130,9 @@ function aiSettings() {
  return settings;
 }
 
-function publicPackLink(id, mode, allowHints, root) {
+function publicPackLink(id, root) {
  const site = new URL('practice/', entryPage === 'offline' ? 'https://wordlab.mtomlinson.ca/' : location.href);
- const args = new URLSearchParams({pack: id, service: root, mode});
- if (!allowHints) args.set('hints', 'off');
+ const args = new URLSearchParams({pack: id, service: root});
  site.hash = args.toString();
  return site.href;
 }
@@ -172,6 +172,8 @@ function renderSharing() {
  $('ai-student-link').value = hasLink ? ai.published : '';
  $('ai-share').disabled = !hasLink;
  $('ai-qr').disabled = !hasLink;
+ $('ai-prepare-audio').hidden = !ai.config.dictationEnabled;
+ $('ai-prepare-audio').disabled = preparingAudio || !hasLink;
  $('shared-mode').disabled = publishing;
  $('shared-hints').disabled = publishing || mode === 'spelling';
 }
@@ -376,10 +378,10 @@ function initTeacher() {
    const pack = outputPack(list, info.words);
    const cacheSettings = reuse && pack.words.some(row => row.vocabulary) ? {...aiSettings(), context: ''} : undefined;
    const {pack: published} = await service('/admin/publish', {root, token, method: 'POST',
-    body: {pack, mode, visibility: 'public', cacheSettings}, requestId: newListId()});
+    body: {pack, mode, allowHints, visibility: 'public', cacheSettings}, requestId: newListId()});
    if (ai.token !== token) return;
    if ((list.packVersion || 0) < published.version) { list.packVersion = published.version; save(); }
-   ai.published = publicPackLink(published.id, mode, allowHints, root);
+   ai.published = publicPackLink(published.id, root);
    ai.publishedListId = list.id;
    ai.publishedMode = mode;
    ai.publishedHints = allowHints;
@@ -393,6 +395,29 @@ function initTeacher() {
  $('ai-share').onclick = teacherAction(async () => {
   $('ai-publish-status').textContent = await copy(ai.published) ? 'Student link copied.' : ai.published;
  });
+ $('ai-prepare-audio').onclick = async () => {
+  const {published, publishedMode, token, root} = ai;
+  const status = $('ai-publish-status');
+  preparingAudio = true; renderSharing();
+  try {
+   const id = new URLSearchParams(new URL(published).hash.slice(1)).get('pack');
+   const {pack, audio} = await service('/packs/' + encodeURIComponent(id), {root, token});
+   const saved = new Set(audio || []);
+   const prompts = pack.words.flatMap((record, index) => Learning.practiceAudioPrompts(record, index))
+    .filter(prompt => publishedMode === 'mixed' || prompt.skill === publishedMode);
+   let ready = prompts.filter(prompt => saved.has(prompt.key)).length;
+   for (const prompt of prompts) {
+    if (ai.token !== token || ai.published !== published || ai.publishedMode !== publishedMode) return;
+    if (saved.has(prompt.key)) continue;
+    status.textContent = 'Preparing Troy audio. ' + ready + ' of ' + prompts.length + ' recordings ready.';
+    await service('/admin/packaudio', {root, token, method:'POST', body:{packId:pack.id,version:pack.version,prompt:prompt.key}});
+    ready++;
+   }
+   status.textContent = 'Troy audio is ready for this set.';
+  } catch (error) {
+   if (ai.token === token) status.textContent = error.message + ' Prepare Troy audio again to resume.';
+  } finally { preparingAudio = false; renderSharing(); }
+ };
  $('ai-preview').onclick = () => {
   try {
    let url;
@@ -401,10 +426,11 @@ function initTeacher() {
     const {ready, words} = SharedReview.sharingContent(sharing.records, mode);
     if (!ready) return;
     const pack = outputPack(sharing.list, words), ticket = newListId();
-    url = new URL(publicPackLink(pack.id, mode, $('shared-hints').checked, ai.root));
+    url = new URL(publicPackLink(pack.id, ai.root));
     const args = new URLSearchParams(url.hash.slice(1));
     args.set('draft', ticket); url.hash = args.toString();
-    localStorage.setItem(LOCAL_PREVIEW_KEY, JSON.stringify({ticket, pack, expiresAt: Date.now() + 60000}));
+    const practice = {mode, allowHints:$('shared-hints').checked};
+    localStorage.setItem(LOCAL_PREVIEW_KEY, JSON.stringify({ticket, pack, practice, expiresAt: Date.now() + 60000}));
     setTimeout(() => {
      try {
       const pending = JSON.parse(localStorage.getItem(LOCAL_PREVIEW_KEY) || 'null');

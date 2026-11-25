@@ -35,7 +35,8 @@ a { color: var(--accent); text-underline-offset: .18em; }
 #spelling-correction { max-width: 460px; margin: .75rem auto 0; }
 #feedback:empty, #learning-choices:empty { display: none; }
 #vocab-form textarea, #teacher-dialog textarea { min-height: 3.5rem; }
-#vocab-word { min-height: 6rem; }
+#vocab-form details > .stack, #vocab-filters > .settings { padding-top: .75rem; }
+#vocab-cloze-help { margin: .35rem 0 0; }
 #ai-qr-result img { display: block; width: min(100%, 300px); height: auto; }
 #mode-help:empty, #ai-progress:empty, #ai-publish-status:empty { display: none; }
 #setup-screen .section > .row { margin-top: 14px; }

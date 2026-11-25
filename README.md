@@ -11,7 +11,7 @@ Choose **Test** for a fixed set of questions with results at the end. Only appro
 
 ## Open the app
 
-The planned address is **wordlab.mtomlinson.ca**. The current release remains at [spellingcoach.mtomlinson.ca](https://spellingcoach.mtomlinson.ca/) until the new domain is configured and WordLab is deployed. For the v0.2.0 offline build, open `WordLab v0.2.0.html` in a current browser. Offline speech depends on the installed voice. The original Spelling Coach v0.1.0 file remains in the repository for rollback.
+Open [WordLab](https://wordlab.mtomlinson.ca/). For the offline build, open `WordLab v0.2.0.html` in a current browser. Offline speech depends on the installed voice. The app version appears at the bottom of **Tools**.
 
 The **Theme** menu defaults to **System** and follows device appearance changes. Choose **Light** or **Dark** to save a manual preference.
 
@@ -19,7 +19,9 @@ Use **Try the sample list** for a Grade 5 vocabulary draft. Its definitions use 
 
 To use Troy for dictation, sign in as a teacher through **Tools → Online generation and sharing**. Then open **Vocabulary content**, choose a word, enter a sentence that uses its exact form, and choose **Generate and attach Troy audio**. Listen to the result before the lesson. You can also attach your own PCM WAV file. Recordings are tied to the word and its saved meaning in that list. WordLab uses the recording for dictation and falls back to browser speech. Recordings stay on this device, so keep the WAV files for transfer or reuse.
 
-Sign in at the WordLab home page to create and edit sets. Open **Share set** to choose a practice mode and whether to allow hints. If vocabulary needs review, open the entries directly and use **Back to sharing** when ready. **Preview as student** opens the assignment before publishing with temporary practice progress. After publishing, copy the student link. Public links open the Ready screen directly and show **Continue practice** when that browser has an unfinished session.
+Sign in at the WordLab home page to create and edit sets. Open **Share set** to choose a practice mode and whether to allow hints. If vocabulary needs review, open the entries directly and use **Back to sharing** when ready. **Preview as student** opens the assignment before publishing with temporary practice progress. After publishing, select **Prepare Troy audio** to save recordings to the set, then copy the student link. Students replay those recordings without a provider request. Public links use the published practice mode and hint setting, open the Ready screen directly, and show **Continue practice** when that browser has an unfinished session.
+
+In Mixed practice, mastering a word requires two correct dictations, one correctly typed answer with a word bank, and two correctly typed answers without the bank. A missed or hinted answer resets the current phase's streak and brings the word back for another attempt.
 
 Use **Tools → Export full backup** before clearing browser data or moving to a different web address or offline file. Browser storage is tied to the address or file. Import the backup in WordLab to carry over your lists and progress. The app accepts older list-only JSON files, new vocabulary packs, and full backups. The first upgrade keeps a copy of the original spelling state in the browser under `spell.state.v1.backup`.
 

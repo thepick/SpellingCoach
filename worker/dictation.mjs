@@ -23,6 +23,26 @@ export function finishStreamedWav(bytes) {
   throw unavailable();
 }
 
+export function hasSpeechSignal(bytes) {
+  finishStreamedWav(bytes);
+  const wav = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  for (let offset = 12; offset + 8 <= wav.byteLength;) {
+    const length = wav.getUint32(offset + 4, true);
+    if (wav.getUint32(offset) === 0x64617461) {
+      let squares = 0, nonzero = 0, count = 0;
+      for (let at = offset + 8; at + 1 < offset + 8 + length; at += 2) {
+        const sample = wav.getInt16(at, true);
+        squares += sample * sample;
+        if (sample) nonzero++;
+        count++;
+      }
+      return nonzero >= count * .35 && squares >= count * 360000;
+    }
+    offset += 8 + length + (length % 2);
+  }
+  return false;
+}
+
 export async function synthesizeDictation(key, sentence) {
   let response;
   try {

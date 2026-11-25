@@ -39,7 +39,7 @@ The `wrangler.wordlab.jsonc` configuration connects the WordLab website and API 
 6. If you decide to enable teacher-only OpenRouter fallback, verify a zero-cost endpoint and approved provider first. Configure OPENROUTER_API_KEY as a Worker secret, OPENROUTER_FREE_TIER_CONFIRMED as true, OPENROUTER_FREE_MODEL as an approved GPT-OSS :free variant and OPENROUTER_APPROVED_PROVIDER as the provider slug. The request enforces the provider allowlist and a zero-price ceiling. [OpenRouter provider selection](https://learn.openrouter.ai/courses/control-routing/provider-selection)
 7. Run a teacher-only pilot with the actual vocabulary samples. Record validity, instructional quality, latency, token consumption and 429 behavior across the candidate models and available batch sizes. Verify a 200-word job and a repeated approved-cache request against the deployed service, and record any free-plan limit reached. Teacher approval is required before classroom sharing.
 
-Emergency shutdown is available from the teacher controls. Setting AI_ENABLED to false at deploy time also blocks provider calls. An inference already accepted by a provider can finish. Local practice and approved-pack import operate independently.
+Set TROY_AUDIO_ENABLED and GROQ_FREE_TIER_CONFIRMED to true to enable teacher-only Troy preparation while leaving AI_ENABLED and STUDENT_AI_ENABLED false. For deploy-time shutdown of all provider calls, set both AI_ENABLED and TROY_AUDIO_ENABLED to false. An inference already accepted by a provider can finish. Local practice and saved pack audio operate independently.
 
 Changing ADMIN_AUTH_SECRET blocks the old credential from creating new teacher sessions. Changing SESSION_SIGNING_SECRET immediately invalidates signed sessions and existing class codes. Rotate each class code afterward. Store both secrets outside the repository and use a password manager for the teacher credential.
 
@@ -57,11 +57,13 @@ Every path below starts with /api. Send a JSON body where specified. Signed teac
 | POST /regenerate | Regenerate a word or selected definition, examples, distractors or cloze question |
 | GET /jobs/{id} | Read completed words, failures and pending counts |
 | POST /jobs/{id}/{step,pause,resume,cancel} | Work on one batch or change job state |
-| GET /packs/{id} | Read the current pack version if authorized |
+| GET /packs/{id} | Read the current pack, its published practice settings and the saved audio manifest if authorized |
+| GET /packs/{id}/audio/{version}/{prompt} | Play a saved WAV with the same access as the pack |
 | POST /admin/publish | Publish an approved pack with public, class or private visibility |
 | GET /admin/packs | List pack summaries |
 | GET or POST /admin/classes | List, create, revoke or rotate classroom codes |
 | POST /admin/dictation | Generate a Troy WAV from a teacher-provided sentence using the exact target word |
+| POST /admin/packaudio | Prepare and save a Troy WAV for a prompt from the published pack |
 | GET /admin/usage | Read UTC-day usage, cache counts and recent jobs |
 | PUT /admin/settings | Set generationEnabled or the ordered groqModels allowlist |
 | DELETE /admin/cache?word={word} | Remove cached versions of a word |

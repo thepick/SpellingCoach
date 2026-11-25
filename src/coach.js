@@ -27,7 +27,7 @@ const titleForType = {
  'definition-recall': 'Name the word',
  'sentence-choice': 'Choose the missing word',
  'meaning-choice': 'Choose the meaning',
- 'word-bank': 'Use the word bank'
+ 'word-bank': 'Fill in the blank with help'
 };
 
 async function loadVocabulary(list) {
@@ -88,7 +88,7 @@ function updateCoachSetup() {
  $('open-report').disabled = !list;
  $('sample-pack').hidden = state.lists.some(row => row.packId === SAMPLE_PACK.id);
  $('type-setting').hidden = study;
- $('difficulty-setting').hidden = study || test || options.mode === 'spelling';
+ $('difficulty-setting').hidden = true;
  $('test-settings').hidden = !test;
  $('per-word-setting').hidden = options.mode === 'spelling';
  $('test-choices-setting').hidden = options.mode === 'spelling';
@@ -151,6 +151,7 @@ async function beginCoach() {
 }
 
 function beginLearning(list, records, options, dueLists) {
+ if (options.type === 'practice') options = {...options, phasedVocabulary:true};
  const session = Learning.createSession(records, options, dueLists ? dueLists.progress : learningProgress(list));
  if (!session.questions.length) { status('There are no questions for this selection.'); return; }
  state.learningSession = {listId: list.id, listName: list.name, session, dueLists: dueLists?.owners || null};
@@ -216,8 +217,9 @@ function renderLearning(play, corrected = false) {
  if ($('learning-count').textContent !== progress) $('learning-count').textContent = progress;
  $('learning-prompt').textContent = question.type === 'dictation' ? 'Listen to the word, then type it.' : question.prompt;
  $('learning-audio-actions').hidden = !session.settings.audioReplay || !!result;
- const audioAvailable = speech || question.type === 'dictation' ||
-  sharedAudioPath(entry.listId, question.word, question.type, Learning.audio(question));
+ const recordedPrompt = sharedAudioPath(entry.listId, question.word, question.type, Learning.audio(question));
+ const audioAvailable = speech || question.type === 'dictation' || !!recordedPrompt;
+ $('learning-audio').textContent = recordedPrompt ? 'Listen to Troy' : 'Listen';
  $('learning-audio').disabled = !audioAvailable;
  $('learning-slow').disabled = !audioAvailable;
  $('learning-audio-error').hidden = audioAvailable;
@@ -252,12 +254,12 @@ function renderLearning(play, corrected = false) {
  $('learning-hint-text').textContent = hintsDisabled ? '' : lastHint?.text || '';
  const box = $('learning-feedback');
  renderCorrection('learning-correction', 'learning-input', correction ? result.answer : null, result?.explanation);
- if (!correction) $('learning-input').setAttribute('aria-describedby', 'learning-prompt');
+ if (!correction) $('learning-input').setAttribute('aria-describedby', bank.length ? 'learning-prompt learning-choices' : 'learning-prompt');
  box.hidden = !result || !!correction;
  box.className = 'feedback' + (result ? result.correct ? ' good' : ' bad' : '');
  if (result) {
   const message = {'other-word': 'That is a different word.', 'word-form': 'Check the word form.', 'likely-spelling': 'Check the spelling.'};
-  box.textContent = (result.correct ? (result.assisted ? 'Correct with help.' : 'Correct.') :
+  box.textContent = (result.correct ? (result.assisted ? 'Correct with help. You’ll try this word again.' : 'Correct.') :
    (message[result.kind] || 'Incorrect.') + ' Answer: ' + result.answer + '.') +
    (result.explanation ? ' ' + result.explanation : '');
  }
@@ -270,9 +272,9 @@ function renderLearning(play, corrected = false) {
  $('learning-end').textContent = 'End practice';
  if (correction || play && !result && !$('learning-typed').hidden) $('learning-input').focus();
  else if (!next.hidden) next.focus();
- else if (play && !result) $('learning-title').focus();
+ else if (play && !result) $('learning-choices').querySelector('input')?.focus();
  if (play && !result && question.type === 'dictation') playQuestion(true, false);
- if (advance) advanceAfterFeedback(entry, result.correct || corrected ? state.settings.autoAdvanceMs : state.settings.feedbackMs);
+ if (advance) advanceAfterFeedback(entry, result.correct && !result.assisted || corrected ? state.settings.autoAdvanceMs : state.settings.feedbackMs);
 }
 
 function advanceLearning() {
@@ -336,7 +338,6 @@ function showPracticeComplete(entry) {
  $('practice-complete-message').textContent = entry.session.mode === 'mixed'
   ? 'You mastered all the spelling and vocabulary in this set.' : 'You mastered all the vocabulary in this set.';
  show('practice-complete-screen');
- $('practice-complete-title').focus();
 }
 
 function missedFor(session) {
@@ -455,7 +456,6 @@ function showReport(report, entry) {
   else beginLearning(list, selected, {...coachOptions(), mode, type: 'practice', difficulty: 'adaptive'});
  };
  show('report-screen');
- $('report-title').focus();
 }
 
 async function beginDueReview() {
@@ -490,7 +490,6 @@ function beginStudy(list, rows) {
  $('study-reverse').checked = false;
  $('study-unfamiliar').checked = false;
  renderStudy();
- $('study-title').focus();
 }
 
 function studyCards() {
@@ -708,13 +707,14 @@ function renderVocabularyEditor(preferred) {
   (editorRecords.filter(row => row.vocabulary).length - approved) + ' need review · ' +
   editorRecords.filter(row => !row.vocabulary).length + ' missing';
  $('vocab-page').textContent = 'Page ' + (editorPage + 1) + ' of ' + (lastPage + 1);
+ $('vocab-pagination').hidden = lastPage === 0;
  $('vocab-prev').disabled = !editorPage;
  $('vocab-next').disabled = editorPage >= lastPage;
  const select = $('vocab-word');
  select.replaceChildren();
  for (const row of page) {
   const status = row.vocabulary?.status === 'approved' ? 'Approved' : row.vocabulary ? 'Review' : 'Missing';
-  select.add(new Option(row.word + ' · ' + status + (row.vocabulary ? ' · ' + row.vocabulary.clozeQuestions.length + ' sentences' : ''), row.word));
+  select.add(new Option(row.word + ' · ' + status, row.word));
  }
  select.value = page.some(row => row.word === chosen) ? chosen : page[0]?.word || '';
  $('vocab-undo').disabled = !undoVocabulary;
@@ -771,6 +771,9 @@ async function openVocabularyEditor(filter = '') {
   if (selectedList() !== list) return;
   editorList = list; editorPage = 0; undoVocabulary = null;
   $('vocab-search').value = ''; $('vocab-filter').value = filter;
+  $('vocab-filters').open = !!filter;
+  $('vocab-advanced').open = false;
+  $('vocab-audio').open = false;
   editorStatusText('');
   renderVocabularyEditor();
   $('vocab-dialog').showModal();
@@ -817,7 +820,8 @@ function initCoach() {
   lastHint = hint; save();
   $('learning-hint-text').textContent = lastHint?.text || '';
   $('learning-hint-text').hidden = !lastHint;
-  if (entry.session.revealed) { $('learning-hint').hidden = true; $('learning-input').focus(); }
+  if (entry.session.revealed) $('learning-hint').hidden = true;
+  if (!$('learning-typed').hidden) $('learning-input').focus();
  };
  $('learning-next').onclick = advanceLearning;
  $('study-exit').onclick = backToSetup;
@@ -889,6 +893,10 @@ function initCoach() {
   } catch (error) { editorStatusText(error.message); }
   finally { if (submitter) submitter.disabled = false; }
  };
+ $('vocab-form').addEventListener('invalid', event => {
+  const section = event.target.closest('details');
+  if (section) section.open = true;
+ }, true);
  $('vocab-undo').onclick = async () => {
   if (!undoVocabulary) return;
   try { await changeVocabulary(undoVocabulary, $('vocab-word').value); editorStatusText('Restored the previous version.'); }
