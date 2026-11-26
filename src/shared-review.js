@@ -94,6 +94,9 @@ function clearParkedActivity(id) {
 async function renderSharedReady() {
  const review = sharedReview;
  if (!review) return;
+ $('shared-progress-note').textContent=studentPreview ? 'Student preview: progress and audio preferences are not saved.' : storageOK
+  ? 'Progress saves locally. Reopen this set in the same browser and browser profile to continue. Clearing site data or closing private browsing can remove it.'
+  : 'Progress could not be saved in this browser. Keep this page open to retain your current session.';
  const workspace = state, session = state.session, learning = state.learningSession;
  const phase = session?.phase, status = learning?.session.status;
  let playback = dictationRequest;

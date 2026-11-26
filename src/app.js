@@ -5,7 +5,7 @@ const SELFTEST = new URLSearchParams(location.search).has('selftest');
 const entryPage = document.body.dataset.entry || 'offline';
 const studentPreview = entryPage === 'student' && new URLSearchParams(location.search).get('preview') === '1';
 let KEY = entryPage === 'teacher' ? 'spell.teacher.signed-out' : 'spell.state';
-const VERSION='0.2.0',D={roundSize:7,retypeOnMiss:true,autoAdvanceMs:600,feedbackMs:1800,voiceURI:'',rate:.85,pin:'',allowVariants:false};
+const VERSION='0.2.0',D={roundSize:7,retypeOnMiss:true,autoAdvanceMs:600,feedbackMs:1800,voiceURI:'',rate:.85,pin:'',allowVariants:false,vocabularyAutoplay:true};
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),now=()=>new Date().toISOString();
 const norm=s=>String(s??'').trim().replace(/\s+/g,' ').replace(/[’‘]/g,"'");
 function equal(a,b){a=norm(a);b=norm(b);return /[A-Z]/.test(b)?a===b:a.toLowerCase()===b.toLowerCase();}
@@ -36,7 +36,7 @@ function clean(raw){
  const s=blank();if(!raw||typeof raw!=='object')return s;
  s.lists=Array.isArray(raw.lists)?raw.lists.filter(listOK).map(l=>({id:l.id,name:l.name,words:wordsUnique(l.words),defs:dictionary(l.defs),updatedAt:l.updatedAt||now(),...listMetadata(l)})):[];
  if(![0,1,2].includes(raw.v))return s;
- const x=raw.settings||{};s.settings={roundSize:clamp(x.roundSize,1,20,7),retypeOnMiss:x.retypeOnMiss!==false,autoAdvanceMs:clamp(x.autoAdvanceMs,0,5000,600),feedbackMs:clamp(x.feedbackMs,300,10000,1800),voiceURI:typeof x.voiceURI==='string'?x.voiceURI:'',rate:Math.max(.5,Math.min(1.2,Number(x.rate)||.85)),pin:/^\d{4}$/.test(x.pin||'')?x.pin:'',allowVariants:x.allowVariants===true,selected:dictionary(x.selected)};
+ const x=raw.settings||{};s.settings={roundSize:clamp(x.roundSize,1,20,7),retypeOnMiss:x.retypeOnMiss!==false,autoAdvanceMs:clamp(x.autoAdvanceMs,0,5000,600),feedbackMs:clamp(x.feedbackMs,300,10000,1800),voiceURI:typeof x.voiceURI==='string'?x.voiceURI:'',rate:Math.max(.5,Math.min(1.2,Number(x.rate)||.85)),pin:/^\d{4}$/.test(x.pin||'')?x.pin:'',allowVariants:x.allowVariants===true,vocabularyAutoplay:x.vocabularyAutoplay!==false,selected:dictionary(x.selected)};
  if(raw.progress&&typeof raw.progress==='object')for(const[k,v]of Object.entries(raw.progress))if(v&&v.words&&typeof v.words==='object')s.progress[k]={words:dictionary(v.words)};
  if(raw.history&&typeof raw.history==='object')for(const[k,v]of Object.entries(raw.history))if(v&&Array.isArray(v.sessions))s.history[k]={sessions:v.sessions.slice(-10)};
  if(sessionOK(raw.session)){s.session=raw.session;s.session.defs=dictionary(raw.session.defs);s.session.perWord=dictionary(raw.session.perWord);}
@@ -46,7 +46,7 @@ let storageOK=true,state=SELFTEST||studentPreview?blank():loadState(),listId=(st
 function save(){return SELFTEST || storageOK && saveState();}
 function warning(){$('storage-warning').hidden=storageOK;if(storageIssue)$('storage-warning').textContent=storageIssue;}
 function status(t){$('setup-status').textContent=t;}
-function show(id){stopMasteryCelebration();stopRecording();document.querySelectorAll('.screen').forEach(x=>x.hidden=true);$(id).hidden=false;}
+function show(id){stopMasteryCelebration();stopRecording();if(speech)speechSynthesis.cancel();document.querySelectorAll('.screen').forEach(x=>x.hidden=true);$(id).hidden=false;}
 function selectedList(){return state.lists.find(x=>x.id===listId)||null;}
 function selectedGroup(words,selection){
  const chosen=new Set(selection);

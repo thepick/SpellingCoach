@@ -159,3 +159,51 @@ test('learning completion celebrates vocabulary and mixed mastery once, never un
   assert.equal(h.run('blasts'),1);
  }
 });
+
+test('vocabulary questions autoplay masked prompts; mute spans cards without changing dictation or tests',()=>{
+ const h=harness();h.context.records=JSON.parse(fs.readFileSync('examples/weekly-vocabulary-sample.json','utf8')).words.slice(0,2);
+ h.run("let clips=[],stops=0,cancels=0;stopRecording=()=>stops++;speechSynthesis={cancel:()=>cancels++};playQuestion=()=>clips.push(Learning.audio(Learning.current(state.learningSession.session)));state.learningSession={listId:'a',listName:'Words',session:Learning.createSession(records,{mode:'vocabulary',phasedVocabulary:true})};renderLearning(true)");
+ assert.equal(h.run('clips.length'),1);assert.match(h.run('clips[0]'),/blank/);
+ assert.equal(h.run('clips[0].includes(records[0].word)'),false);
+ h.run('renderLearning(false);toggleVocabularyAutoplay()');
+ assert.equal(h.run('stops'),1);assert.equal(h.run('cancels'),1);
+ assert.equal(h.elements.get('learning-autoplay').attributes['aria-pressed'],'false');
+ h.run('Learning.submit(state.learningSession.session,Learning.current(state.learningSession.session).answer);Learning.advance(state.learningSession.session);renderLearning(true)');
+ assert.equal(h.run('clips.length'),1);
+ h.run('playQuestion(false,false)');assert.equal(h.run('clips.length'),2);
+ h.run('toggleVocabularyAutoplay()');assert.equal(h.run('clips.length'),2);
+ h.run('renderLearning(true)');assert.equal(h.run('clips.length'),3);
+ h.run("state.settings.vocabularyAutoplay=false;state.learningSession.session=Learning.createSession(records,{mode:'mixed',phasedVocabulary:true});renderLearning(true)");
+ assert.equal(h.run('clips.length'),4);assert.equal(h.elements.get('learning-autoplay').hidden,true);
+ h.run("records.forEach(row=>row.vocabulary.status='approved');state.settings.vocabularyAutoplay=true;state.learningSession.session=Learning.createSession(records,{mode:'vocabulary',type:'test'});renderLearning(true)");
+ assert.equal(h.run('clips.length'),4);assert.equal(h.elements.get('learning-autoplay').hidden,true);
+});
+
+test('study autoplay waits for reveal, never leaks reverse cards, and shares the mute preference',()=>{
+ const h=harness();h.context.records=JSON.parse(fs.readFileSync('examples/weekly-vocabulary-sample.json','utf8')).words.slice(0,2);
+ h.run("let clips=[];Option=function(text,value){return {text,value}};playStudyRecordings=(card,line)=>clips.push(line);studyState={list:activeList,rows:records,index:0,revealed:false};state.familiar={};$('study-reverse').checked=true;renderStudy()");
+ assert.equal(h.run('clips.length'),0);
+ h.run('studyState.revealed=true;renderStudy();renderStudy()');assert.equal(h.run('clips.length'),1);
+ assert.equal(h.run('clips[0]'),h.run('records[0].vocabulary.examples[0]'));
+ h.run('state.settings.vocabularyAutoplay=false;studyState.index=1;studyState.revealed=false;renderStudy();studyState.revealed=true;renderStudy()');
+ assert.equal(h.run('clips.length'),1);assert.equal(h.elements.get('study-autoplay').attributes['aria-pressed'],'false');
+ h.run('state.settings.vocabularyAutoplay=true;studyState.revealed=false;renderStudy();studyState.revealed=true;renderStudy()');
+ assert.equal(h.run('clips.length'),2);
+});
+
+test('actual device speech stops when a revealed example is hidden or a practice answer is submitted',()=>{
+ const h=harness(),app=fs.readFileSync('src/app.js','utf8');
+ h.context.records=JSON.parse(fs.readFileSync('examples/weekly-vocabulary-sample.json','utf8')).words.slice(0,2);
+ h.context.document.querySelectorAll=()=>[];
+ h.run("let activeSpeech='';let voices=[];SpeechSynthesisUtterance=function(text){this.text=text};speechSynthesis={cancel(){activeSpeech=''},speak(utterance){activeSpeech=utterance.text;utterance.onstart?.()}};state.settings.rate=.85;state.familiar={}");
+ vm.runInContext(fs.readFileSync('src/dictation-ui.js','utf8'),h.context);
+ vm.runInContext(app.match(/^function show\(.*$/m)[0],h.context);
+ vm.runInContext(app.match(/^function speak\(.*$/m)[0],h.context);
+ h.run("studyState={list:activeList,rows:records,index:0,revealed:true};$('study-reverse').checked=true;renderStudy()");
+ assert.equal(h.run('activeSpeech'),h.run('records[0].vocabulary.examples[0]'));
+ h.run('studyState.revealed=false;renderStudy()');assert.equal(h.run('activeSpeech'),'');
+ h.run("state.learningSession={listId:'a',listName:'Words',session:Learning.createSession(records,{mode:'vocabulary',phasedVocabulary:true})};renderLearning(true)");
+ assert.match(h.run('activeSpeech'),/blank/);
+ h.run('Learning.submit(state.learningSession.session,Learning.current(state.learningSession.session).answer);renderLearning(false)');
+ assert.equal(h.run('activeSpeech'),'');
+});
