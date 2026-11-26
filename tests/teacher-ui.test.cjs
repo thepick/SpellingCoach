@@ -200,6 +200,49 @@ test('actual built teacher script starts with real module ordering and a local s
  assert.equal(page.elements.get('teacher-secret').value,'');
 });
 
+test('Tools gives API keys their own section after backups and hides it from students',async()=>{
+ const html=fs.readFileSync('index.html','utf8');
+ const sections=[...html.slice(html.indexOf('<dialog id="tools-dialog"'),html.indexOf('<section id="tools-teaching-options"')).matchAll(/<section\b[^>]*>[\s\S]*?<\/section>/g)].map(match=>match[0]);
+ assert.equal(sections.length,2);
+ assert.match(sections[0],/id="export-json"/);
+ assert.match(sections[1],/id="tools-api-keys"/);
+ assert.match(sections[1],/id="open-teacher"[^>]*>API keys<\/button>/);
+ for(const entry of ['teacher','offline','student']) {
+  const page=startBuiltPage(entry);
+  await new Promise(resolve=>setImmediate(resolve));
+  page.context.document.querySelectorAll=selector=>selector==='dialog[open]'?['tools-dialog','teacher-dialog'].map(id=>page.elements.get(id)).filter(dialog=>dialog.open):[];
+  if(entry!=='teacher') {
+   page.elements.get('open-tools').click();
+   assert.equal(page.elements.get('tools-api-keys').hidden,entry==='student');
+   if(entry==='student')continue;
+   await page.elements.get('open-teacher').click();
+   assert.equal(page.elements.get('tools-dialog').open,false);
+   assert.equal(page.elements.get('teacher-dialog').open,true);
+   assert.equal(page.elements.get('teacher-connect').hidden,false);
+   assert.equal(page.elements.get('teacher-account').hidden,true);
+  }
+  const profile={teacher:{id:'teacher-a',name:'Teacher',username:'teacher',isAdmin:false},config:{},keys:{groq:false,openrouter:false},settings:{allowPaidText:false}};
+  page.context.fetch=async url=>({ok:true,headers:{get:()=> 'application/json'},
+   json:async()=>url.endsWith('/admin/access')?{...profile,token:'fixture-token'}:url.endsWith('/teacher/profile')?profile:{sets:[]}});
+  page.elements.get('teacher-url').value='http://127.0.0.1:8765';
+  page.elements.get('teacher-login-kind').value='owner';
+  page.elements.get('teacher-secret').value='fixture-password';
+  await page.elements.get('teacher-connect').onsubmit({preventDefault(){},submitter:{id:'teacher-login'}});
+  assert.equal(!!page.elements.get('teacher-dialog').open,false);
+  page.elements.get('open-tools').click();
+  assert.equal(page.elements.get('tools-api-keys').hidden,false);
+  await page.elements.get('open-teacher').click();
+  assert.equal(page.elements.get('teacher-title').textContent,'API keys');
+  assert.equal(page.elements.get('teacher-account').hidden,false);
+  assert.equal(page.elements.get('tools-dialog').open,false);
+  assert.equal(page.elements.get('teacher-dialog').open,true);
+  page.elements.get('teacher-close').click();
+  await page.elements.get('teacher-open-connections').click();
+  assert.equal(page.elements.get('teacher-title').textContent,'API keys');
+  assert.equal(page.elements.get('teacher-account').hidden,false);
+ }
+});
+
 test('teacher sign-in remains selectable and invitation links always use the teacher flow',()=>{
  const h=harness({location:{origin:'https://example.test',hash:''}});
  h.run("ai={token:'',config:{}};$('teacher-login-kind').value='teacher';refreshTeacherLogin()");

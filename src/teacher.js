@@ -128,7 +128,7 @@ async function saveTeacherPreset() {
 function renderTeacherView(view) {
  if(view==='tools' && ai.role==='teacher' && ai.token)view='setup';
  const workspace = view === 'workspace';
- const titles={settings:'Teacher settings',workspace:'Prepare & share',setup:'AI setup',presets:'Grade defaults',prepare:'Prepare vocabulary',share:'Student link',administration:'Administration',tools:'Online teacher tools'};
+ const titles={settings:'Teacher settings',workspace:'Prepare & share',setup:'API keys',presets:'Grade defaults',prepare:'Prepare vocabulary',share:'Student link',administration:'Administration',tools:'Online teacher tools'};
  const list=selectedList();
  $('teacher-view-nav').hidden=entryPage!=='offline' || ai.role!=='teacher' || !ai.token;
  for (const name of ['setup','presets','prepare','share','administration']) {
@@ -691,7 +691,7 @@ function refreshTeacher() {
  $('teacher-account').hidden = !teacher || !signedIn;
  refreshTeacherLogin();
  if (entryPage === 'teacher') {
-  const toolsTitle = 'AI setup';
+  const toolsTitle = 'API keys';
   $('setup-word-selection-title').closest('.stack').hidden = true;
   $('open-teacher').textContent = toolsTitle;
  }
@@ -839,9 +839,9 @@ function renderSharing() {
  const existingLink=!!ai.published && ai.publishedListId===sharing.list?.id;
  const hasLink = !lookupProblem && currentStudentLink();
  const legacyRules=existingLink && (typeof ai.publishedRetype!=='boolean' || typeof ai.publishedVariants!=='boolean');
- $('ai-publish-readiness').textContent = sharing.list?.remoteConflict ? 'Resolve this set’s version conflict in AI setup before sharing. Your published link is unchanged.' : workspaceSavePending() ? 'Finish saving valid words before preparing or sharing this set.' : lookupProblem || (!sharing.list ? 'Create or select a set first.' :
+ $('ai-publish-readiness').textContent = sharing.list?.remoteConflict ? 'Resolve this set’s version conflict in API keys before sharing. Your published link is unchanged.' : workspaceSavePending() ? 'Finish saving valid words before preparing or sharing this set.' : lookupProblem || (!sharing.list ? 'Create or select a set first.' :
   !info ? 'Checking which words are ready…' : info.ready && !audioReady ?
-   (!ai.config.dictationEnabled ? ai.keys?.openrouter ? 'Paul audio is unavailable. Check AI setup and retry before creating this student link.' : 'Connect OpenRouter in AI setup to prepare paid Paul recordings before creating this student link.' : 'Waiting for recordings. Open Recording details under Words to check progress or retry failed recordings.') : mode === 'spelling' ?
+   (!ai.config.dictationEnabled ? ai.keys?.openrouter ? 'Paul audio is unavailable. Check API keys and retry before creating this student link.' : 'Connect OpenRouter in API keys to prepare paid Paul recordings before creating this student link.' : 'Waiting for recordings. Open Recording details under Words to check progress or retry failed recordings.') : mode === 'spelling' ?
    'Ready to share. Students will spell all ' + info.words.length + ' words.' : drafts.length ?
     'Review and approve the remaining vocabulary drafts before sharing.' : !approved.length ?
      'Add and approve vocabulary, or choose Spelling to share this word list.' : mode === 'mixed' ?

@@ -190,7 +190,6 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 .tools-details > p { margin-top: .75rem; }
 .teaching-options { gap: 1rem; }
 .teaching-options .checkline { align-items: start; line-height: 1.5; }
-.teaching-actions { margin-top: 1.1rem; }
 #tools-dialog .local-pin-setting { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 #tools-dialog .local-pin-setting input { max-width: 12rem; }
 #tools-dialog .local-pin-setting .hint { margin: .5rem 0 0; }
@@ -290,7 +289,7 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 <div id="teacher-workspace-actions" class="section" hidden>
  <p id="setup-set-summary" class="hint" role="status"></p>
  <div class="actions"><button type="button" id="teacher-open-publishing" disabled>Prepare &amp; share</button><button id="teacher-open-drafting" type="button" class="secondary" hidden>Prepare vocabulary</button></div>
- <details id="teacher-settings-disclosure"><summary>Teacher settings</summary><div class="actions"><button id="teacher-open-connections" type="button" class="ghost">AI setup</button><button id="teacher-open-presets" type="button" class="ghost">Grade defaults</button><button id="teacher-open-invitations" type="button" class="ghost" hidden>Administration</button></div></details>
+ <details id="teacher-settings-disclosure"><summary>Teacher settings</summary><div class="actions"><button id="teacher-open-connections" type="button" class="ghost">API keys</button><button id="teacher-open-presets" type="button" class="ghost">Grade defaults</button><button id="teacher-open-invitations" type="button" class="ghost" hidden>Administration</button></div></details>
 </div></section>
 <section id="prepare-share-screen" class="screen panel" hidden aria-labelledby="workspace-title">
  <header class="row between workspace-heading"><h1 id="workspace-title" tabindex="-1">Prepare &amp; share</h1><div class="actions"><button id="workspace-back" type="button" class="ghost">Back to sets</button><button id="workspace-teacher-settings" type="button" class="ghost">Teacher settings</button></div></header>
@@ -314,10 +313,11 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 <dialog id="tools-dialog" class="tools-dialog" aria-labelledby="tools-title"><div class="tools-panel">
  <div class="row between tools-heading"><div><h1 id="tools-title">Tools</h1><p class="subhead">Back up your work and adjust practice preferences.</p></div><button id="close-tools" class="ghost" aria-label="Close tools">Close</button></div>
  <section class="tool-section"><h2>Backup and restore</h2><p class="hint">Create a saved copy of your word lists before clearing browser data.</p><div class="actions"><button id="export-json" class="secondary">Export full backup (JSON)</button><button id="import-json" class="secondary">Import JSON or vocabulary pack</button></div><input id="json-file" type="file" accept=".json,application/json" hidden><p id="backup-status" class="status" role="status"></p></section>
+ <section id="tools-api-keys" class="tool-section" hidden><h2>API keys</h2><p class="hint">Manage your Groq and OpenRouter keys.</p><div class="actions"><button id="open-teacher" type="button" class="secondary">API keys</button></div></section>
  <section id="tools-teaching-options" class="tool-section"><h2>Teaching options</h2><p id="tools-teaching-help" class="hint">Defaults for local practice and new student links. Shared sets have their own rules in Prepare &amp; share.</p><div id="local-teaching-defaults" class="stack teaching-options">
   <label class="checkline"><input id="retype-toggle" type="checkbox"><span>Require a correct second attempt after a spelling error</span></label>
   <label class="checkline"><input id="allow-variants" type="checkbox"><span>Allow teacher-approved spelling variants in vocabulary and tests</span></label>
- </div><div class="actions teaching-actions"><button id="open-teacher" class="ghost">AI setup</button></div></section>
+ </div></section>
  <details id="tools-advanced" class="tool-section tools-details"><summary>Advanced practice settings</summary>
   <p class="hint">Optional adjustments to review rounds and feedback timing.</p><div id="practice-settings-grid" class="settings">
    <div><label for="round-size">Words per review round (spelling only)</label><input id="round-size" type="number" min="1" max="20"><div class="hint">Different words in one spelling round. Vocabulary and mixed practice choose words automatically.</div></div>
@@ -390,24 +390,24 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 </div></dialog>
 <dialog id="teacher-dialog" class="tools-dialog" aria-labelledby="teacher-title"><div class="tools-panel stack">
  <div class="row between teacher-dialog-heading"><h1 id="teacher-title">Online vocabulary tools</h1><div class="actions"><button type="button" id="teacher-logout" class="ghost" hidden>Sign out</button><button type="button" id="teacher-close" class="ghost" autofocus>Close</button></div></div>
- <nav id="teacher-view-nav" class="actions" aria-label="Teacher task navigation" hidden><button id="teacher-nav-setup" type="button" class="ghost" aria-pressed="false">AI setup</button><button id="teacher-nav-presets" type="button" class="ghost" aria-pressed="false">Grade defaults</button><button id="teacher-nav-prepare" type="button" class="ghost" aria-pressed="false">Prepare vocabulary</button><button id="teacher-nav-share" type="button" class="ghost" aria-pressed="false">Student link</button><button id="teacher-nav-administration" type="button" class="ghost" aria-pressed="false">Administration</button></nav>
+ <nav id="teacher-view-nav" class="actions" aria-label="Teacher task navigation" hidden><button id="teacher-nav-setup" type="button" class="ghost" aria-pressed="false">API keys</button><button id="teacher-nav-presets" type="button" class="ghost" aria-pressed="false">Grade defaults</button><button id="teacher-nav-prepare" type="button" class="ghost" aria-pressed="false">Prepare vocabulary</button><button id="teacher-nav-share" type="button" class="ghost" aria-pressed="false">Student link</button><button id="teacher-nav-administration" type="button" class="ghost" aria-pressed="false">Administration</button></nav>
  <form id="teacher-connect" class="stack"><div id="teacher-url-field"><label for="teacher-url">WordLab service URL</label><input type="url" id="teacher-url" placeholder="https://api.wordlab.mtomlinson.ca" required></div>
   <div><label for="teacher-login-kind">Sign-in method</label><select id="teacher-login-kind"><option value="owner" selected>Site owner</option><option value="teacher">Teacher account</option></select></div>
   <div id="teacher-username-field"><label for="teacher-username">Username</label><input id="teacher-username" autocomplete="username" minlength="3" maxlength="40" pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{2,39}" title="3–40 letters, numbers, underscores or hyphens" autocapitalize="none" spellcheck="false" required></div>
   <div id="teacher-name-field" hidden><label for="teacher-name">Display name</label><input id="teacher-name" autocomplete="name" maxlength="80"></div>
   <div><label id="teacher-secret-label" for="teacher-secret">Password</label><input id="teacher-secret" type="password" autocomplete="current-password" required></div><div class="actions"><button type="submit" id="teacher-login">Sign in</button><button type="submit" id="class-login" class="secondary" formnovalidate>Use class code</button></div></form>
  <p id="teacher-status" class="status" role="status"></p>
- <section id="teacher-settings-menu" class="stack" hidden aria-labelledby="teacher-title"><p class="hint">Manage connections, grade defaults, and teacher access.</p><div class="actions"><button id="settings-connections" type="button" class="secondary">AI setup</button><button id="settings-presets" type="button" class="secondary">Grade defaults</button><button id="settings-administration" type="button" class="ghost" hidden>Administration</button></div></section>
+ <section id="teacher-settings-menu" class="stack" hidden aria-labelledby="teacher-title"><p class="hint">Manage API keys, grade defaults, and teacher access.</p><div class="actions"><button id="settings-connections" type="button" class="secondary">API keys</button><button id="settings-presets" type="button" class="secondary">Grade defaults</button><button id="settings-administration" type="button" class="ghost" hidden>Administration</button></div></section>
 
  <section id="teacher-account" class="tool-section stack" hidden aria-labelledby="teacher-account-title">
-  <h2 id="teacher-account-title">Your connections</h2><p id="teacher-account-name" class="hint"></p>
+  <h2 id="teacher-account-title">Your API keys</h2><p id="teacher-account-name" class="hint"></p>
   <p class="hint">Your keys pay for your AI requests. WordLab stores them encrypted on its server and uses them only for your work. Students replay saved recordings without AI requests.</p>
   <form id="teacher-keys-form" class="stack" autocomplete="off">
    <div><label for="teacher-groq-key">Groq API key · vocabulary text <span id="teacher-groq-status"></span></label><input id="teacher-groq-key" type="password" autocomplete="off" placeholder="Leave blank to keep your saved key"><label class="checkline"><input id="teacher-delete-groq" type="checkbox"> Remove saved Groq key</label></div>
-   <div><label for="teacher-openrouter-key">OpenRouter API key · required for Paul audio <span id="teacher-openrouter-status"></span></label><input id="teacher-openrouter-key" type="password" autocomplete="off" placeholder="Leave blank to keep your saved key"><label class="checkline"><input id="teacher-delete-openrouter" type="checkbox"> Remove saved OpenRouter key</label></div>
+   <div><label for="teacher-openrouter-key">OpenRouter API key · required for Paul audio; optional backup text <span id="teacher-openrouter-status"></span></label><input id="teacher-openrouter-key" type="password" autocomplete="off" placeholder="Leave blank to keep your saved key"><label class="checkline"><input id="teacher-delete-openrouter" type="checkbox"> Remove saved OpenRouter key</label></div>
    <label class="checkline"><input id="teacher-paid-text" type="checkbox"> Allow paid text models when free models are unavailable</label>
    <p class="hint">Paul recordings use your paid OpenRouter balance. Groq drafts vocabulary text; OpenRouter can also back up text drafting. Paid text fallback starts off. Key saved does not mean verified; use Test connections. Saving keys makes no generation request.</p>
-   <div class="actions"><button id="teacher-keys-save" type="submit">Save AI setup</button><button id="teacher-test-keys" type="button" class="secondary">Test connections</button><button id="teacher-reload-sets" type="button" class="ghost">Reload saved sets</button></div>
+   <div class="actions"><button id="teacher-keys-save" type="submit">Save API keys</button><button id="teacher-test-keys" type="button" class="secondary">Test connections</button><button id="teacher-reload-sets" type="button" class="ghost">Reload saved sets</button></div>
   </form><p id="teacher-account-status" class="status" role="status"></p>
  </section>
  <section id="teacher-grade-defaults" class="stack" hidden aria-labelledby="teacher-title"><p class="hint">Reading complexity defaults for new sets, not curriculum requirements. Saving a grade never changes existing sets or generates AI content.</p><div><label for="preset-grade">Grade to edit</label><select id="preset-grade"><option value="3">Grade 3</option><option value="4">Grade 4</option><option value="5" selected>Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option></select></div><form id="preset-form" class="stack"><div class="settings teacher-fields"><div><label for="preset-readingLevel">Reading grade</label><input id="preset-readingLevel" type="number" min="1" max="12" required></div><div><label for="preset-practiceSentences">Practice sentences per word</label><input id="preset-practiceSentences" type="number" min="1" max="5" required></div><div><label for="preset-exampleSentences">Examples per word</label><input id="preset-exampleSentences" type="number" min="1" max="2" required></div></div><div><label for="preset-dialect">Spelling dialect</label><select id="preset-dialect"><option value="original">Keep original spelling</option><option value="american">American English</option><option value="british">British English</option><option value="canadian">Canadian English</option></select></div><div class="settings teacher-checkboxes"><label class="checkline"><input id="preset-esl" type="checkbox"> Use plain English in definitions</label><label class="checkline"><input id="preset-distractors" type="checkbox"> Write incorrect choices for tests</label><label class="checkline"><input id="preset-explanations" type="checkbox"> Explain the answers</label><label class="checkline"><input id="preset-reuseApproved" type="checkbox"> Reuse matching approved vocabulary</label></div><p class="hint">Textbook context and intended meaning are always blank in reusable defaults. Add them to an individual set.</p><button id="preset-save" type="submit">Save this grade’s defaults</button></form><p id="preset-status" class="status" role="status"></p></section>
@@ -5632,7 +5632,7 @@ async function saveTeacherPreset() {
 function renderTeacherView(view) {
  if(view==='tools' && ai.role==='teacher' && ai.token)view='setup';
  const workspace = view === 'workspace';
- const titles={settings:'Teacher settings',workspace:'Prepare & share',setup:'AI setup',presets:'Grade defaults',prepare:'Prepare vocabulary',share:'Student link',administration:'Administration',tools:'Online teacher tools'};
+ const titles={settings:'Teacher settings',workspace:'Prepare & share',setup:'API keys',presets:'Grade defaults',prepare:'Prepare vocabulary',share:'Student link',administration:'Administration',tools:'Online teacher tools'};
  const list=selectedList();
  $('teacher-view-nav').hidden=entryPage!=='offline' || ai.role!=='teacher' || !ai.token;
  for (const name of ['setup','presets','prepare','share','administration']) {
@@ -6195,7 +6195,7 @@ function refreshTeacher() {
  $('teacher-account').hidden = !teacher || !signedIn;
  refreshTeacherLogin();
  if (entryPage === 'teacher') {
-  const toolsTitle = 'AI setup';
+  const toolsTitle = 'API keys';
   $('setup-word-selection-title').closest('.stack').hidden = true;
   $('open-teacher').textContent = toolsTitle;
  }
@@ -6343,9 +6343,9 @@ function renderSharing() {
  const existingLink=!!ai.published && ai.publishedListId===sharing.list?.id;
  const hasLink = !lookupProblem && currentStudentLink();
  const legacyRules=existingLink && (typeof ai.publishedRetype!=='boolean' || typeof ai.publishedVariants!=='boolean');
- $('ai-publish-readiness').textContent = sharing.list?.remoteConflict ? 'Resolve this set’s version conflict in AI setup before sharing. Your published link is unchanged.' : workspaceSavePending() ? 'Finish saving valid words before preparing or sharing this set.' : lookupProblem || (!sharing.list ? 'Create or select a set first.' :
+ $('ai-publish-readiness').textContent = sharing.list?.remoteConflict ? 'Resolve this set’s version conflict in API keys before sharing. Your published link is unchanged.' : workspaceSavePending() ? 'Finish saving valid words before preparing or sharing this set.' : lookupProblem || (!sharing.list ? 'Create or select a set first.' :
   !info ? 'Checking which words are ready…' : info.ready && !audioReady ?
-   (!ai.config.dictationEnabled ? ai.keys?.openrouter ? 'Paul audio is unavailable. Check AI setup and retry before creating this student link.' : 'Connect OpenRouter in AI setup to prepare paid Paul recordings before creating this student link.' : 'Waiting for recordings. Open Recording details under Words to check progress or retry failed recordings.') : mode === 'spelling' ?
+   (!ai.config.dictationEnabled ? ai.keys?.openrouter ? 'Paul audio is unavailable. Check API keys and retry before creating this student link.' : 'Connect OpenRouter in API keys to prepare paid Paul recordings before creating this student link.' : 'Waiting for recordings. Open Recording details under Words to check progress or retry failed recordings.') : mode === 'spelling' ?
    'Ready to share. Students will spell all ' + info.words.length + ' words.' : drafts.length ?
     'Review and approve the remaining vocabulary drafts before sharing.' : !approved.length ?
      'Add and approve vocabulary, or choose Spelling to share this word list.' : mode === 'mixed' ?
@@ -7520,6 +7520,7 @@ $('copy-list').onclick=()=>{
 };
 $('preview-voice').onclick=()=>speak('The quick brown fox jumps over the lazy dog.',state.settings.rate);
 $('open-tools').onclick=()=>{
+ $('tools-api-keys').hidden=entryPage==='student';
  $('tools-teaching-options').hidden=entryPage==='student';
  $('local-teaching-defaults').hidden=!!sharedReview;
  for(const id of ['retype-toggle','allow-variants'])$(id).disabled=!!sharedReview;

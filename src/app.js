@@ -327,6 +327,7 @@ $('copy-list').onclick=()=>{
 };
 $('preview-voice').onclick=()=>speak('The quick brown fox jumps over the lazy dog.',state.settings.rate);
 $('open-tools').onclick=()=>{
+ $('tools-api-keys').hidden=entryPage==='student';
  $('tools-teaching-options').hidden=entryPage==='student';
  $('local-teaching-defaults').hidden=!!sharedReview;
  for(const id of ['retype-toggle','allow-variants'])$(id).disabled=!!sharedReview;

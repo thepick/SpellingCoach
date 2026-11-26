@@ -148,7 +148,6 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 .tools-details > p { margin-top: .75rem; }
 .teaching-options { gap: 1rem; }
 .teaching-options .checkline { align-items: start; line-height: 1.5; }
-.teaching-actions { margin-top: 1.1rem; }
 #tools-dialog .local-pin-setting { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 #tools-dialog .local-pin-setting input { max-width: 12rem; }
 #tools-dialog .local-pin-setting .hint { margin: .5rem 0 0; }
