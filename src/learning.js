@@ -136,7 +136,7 @@ const Learning = (() => {
     const safeWords = [word, ...common.acceptedSpellings];
     const definition = hideAnswer(vocabulary.definition, safeWords);
     const context = (vocabulary.examples || []).map(example => hideAnswer(example, safeWords)).filter(Boolean);
-    const info = {...common, definition, partOfSpeech: vocabulary.partOfSpeech || '', context};
+    const info = {...common, definition, partOfSpeech: vocabulary.partOfSpeech === 'unknown' ? '' : vocabulary.partOfSpeech || '', context};
     const choices = session.settings.multipleChoice;
     const serial = task.recordIndex + session.questions.length;
     const otherWords = distinct(session.records
@@ -149,6 +149,7 @@ const Learning = (() => {
       prompt: 'What does “' + word + '” mean?', answer: definition}, [definition, ...meaningDistractors], serial);
     const recall = {...info, type: 'definition-recall', id: 'definition', prompt: definition, answer: word};
     const questions = [meaning, recall].filter(Boolean);
+    if(record.promptType==='definition')return questions;
     for (const [index, cloze] of (vocabulary.clozeQuestions || []).entries()) {
       const answer = cloze.answer || word;
       const prompt = hideAnswer(cloze.sentence, [...safeWords, answer]);
@@ -216,6 +217,7 @@ const Learning = (() => {
     const info = {word, recordIndex, choices:[], bank:[], acceptedSpellings, senseId:vocabulary.senseId || '',
       definition:mask(vocabulary.definition), partOfSpeech:vocabulary.partOfSpeech || '', context};
     const singleBlank = text => (text.match(/_{2,}/g) || []).length === 1;
+    if(record.promptType==='definition')return [{...info,type:'definition-recall',id:'definition',prompt:info.definition,answer:word}];
     const sentences = (vocabulary.clozeQuestions || []).map((cloze, index) => ({...info, type:'missing-word',
       id:'cloze:' + (cloze.id || index), prompt:mask(cloze.sentence, cloze.answer), answer:cloze.answer || word,
       explanation:cloze.explanation || ''})).filter(question => singleBlank(question.prompt));
@@ -695,7 +697,7 @@ const Learning = (() => {
   function flashcards(records, {reverse = false, order} = {}) {
     return ordered(describe(records).filter(record => record.vocabulary?.definition).map(({word, vocabulary}) => {
       const front = reverse ? hideAnswer(vocabulary.definition, [word, ...(vocabulary.acceptedSpellings || [])]) : word;
-      return {word, definition: vocabulary.definition, partOfSpeech: vocabulary.partOfSpeech || '',
+      return {word, definition: vocabulary.definition, partOfSpeech: vocabulary.partOfSpeech === 'unknown' ? '' : vocabulary.partOfSpeech || '',
         examples: vocabulary.examples || [], front, back: reverse ? word : vocabulary.definition, audio: word,
         frontAudio: front.replace(/_{2,}/g, 'blank')};
     }), order);

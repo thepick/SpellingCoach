@@ -7,6 +7,8 @@
   "routes": [{ "pattern": "wordlab.mtomlinson.ca", "custom_domain": true }],
   "assets": { "directory": ".wrangler/site", "run_worker_first": ["/api/*"] },
   "vars": {
+    "IMAGE_IMPORTS_ENABLED": "true",
+    "IMAGE_OWNER_QUOTA_MB": "250",
     "ALLOWED_ORIGINS": "https://wordlab.mtomlinson.ca",
     "AI_ENABLED": "true",
     "STUDENT_AI_ENABLED": "false",
@@ -14,6 +16,7 @@
     "AUDIO_ENABLED": "true",
     "OPENROUTER_FREE_TIER_CONFIRMED": "false"
   },
+  "r2_buckets": [{ "binding": "WORDLAB_IMAGES", "bucket_name": "wordlab-images" }],
   "durable_objects": {
     "bindings": [{ "name": "VOCABULARY", "class_name": "VocabularyCoordinator" }]
   },

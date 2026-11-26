@@ -1,3 +1,4 @@
+const VocabularyMedia = typeof module === 'object' && module.exports ? require('./media-model.js') : MediaModel;
 const Vocabulary = (() => {
   const MAX_WORDS = 200;
   const MAX_WORD_LENGTH = 80;
@@ -84,14 +85,15 @@ const Vocabulary = (() => {
     word = displayWord(word);
     keys(value, [
       'senseId', 'partOfSpeech', 'definition', 'examples', 'clozeQuestions',
-      'meaningDistractors', 'acceptedSpellings', 'readingLevel', 'status'
+      'meaningDistractors', 'acceptedSpellings', 'readingLevel', 'status', 'contentType'
     ], 'Vocabulary record');
+    if (value.contentType !== undefined && value.contentType !== 'definition') throw Error('Unknown vocabulary content type.');
     const senseId = identifier(value.senseId, 'Sense ID');
     const partOfSpeech = value.partOfSpeech;
     if (!PARTS_OF_SPEECH.has(partOfSpeech)) throw new Error('Select a valid part of speech.');
     const status = value.status;
     if (!STATUSES.has(status)) throw new Error('Select a valid review status.');
-    if (status === 'approved' && partOfSpeech === 'unknown') throw new Error('Approved content needs a part of speech.');
+    if (status === 'approved' && partOfSpeech === 'unknown' && value.contentType !== 'definition') throw new Error('Approved content needs a part of speech.');
     const readingLevel = value.readingLevel;
     if (!Number.isInteger(readingLevel) || readingLevel < 1 || readingLevel > 12) {
       throw new Error('Reading level must be a grade from 1 to 12.');
@@ -129,7 +131,7 @@ const Vocabulary = (() => {
     if (meaningDistractors.some(choice => revealsWord(choice, spellings))) {
       throw new Error('A definition distractor reveals the target word.');
     }
-    return { senseId, partOfSpeech, definition, examples, clozeQuestions, meaningDistractors, acceptedSpellings, readingLevel, status };
+    return { senseId, partOfSpeech, definition, examples, clozeQuestions, meaningDistractors, acceptedSpellings, readingLevel, status, ...(value.contentType ? {contentType:value.contentType} : {}) };
   }
 
   function validatePack(payload) {
@@ -144,8 +146,8 @@ const Vocabulary = (() => {
         throw new Error('This vocabulary pack contains invalid JSON.');
       }
     }
-    keys(value, ['kind', 'v', 'id', 'version', 'name', 'words'], 'Vocabulary pack');
-    if (value.kind !== 'spellingcoach-pack' || value.v !== 1) throw new Error('Unsupported vocabulary pack format.');
+    keys(value, ['kind', 'v', 'id', 'version', 'name', 'words', 'media'], 'Vocabulary pack');
+    if (value.kind !== 'spellingcoach-pack' || ![1,2].includes(value.v)) throw new Error('Unsupported vocabulary pack format.');
     const id = identifier(value.id, 'Pack ID');
     const version = value.version;
     if (!Number.isSafeInteger(version) || version < 1) throw new Error('Pack version must be a positive integer.');
@@ -153,13 +155,14 @@ const Vocabulary = (() => {
     const rows = boundedArray(value.words, MAX_WORDS * 5, 'Vocabulary pack words');
     const words = new Map();
     for (const item of rows) {
-      keys(item, ['word', 'vocabulary'], 'Pack word');
+      keys(item, value.v===2 ? ['id','word','vocabulary','image','promptType'] : ['word','vocabulary'], 'Pack word');
       const word = displayWord(item.word);
       const vocabulary = item.vocabulary == null ? null : validateRecord(word, item.vocabulary);
       const key = wordKey(word);
-      const entry = { word, vocabulary };
+      const entry = { word, vocabulary, ...(item.id !== undefined ? {id:identifier(item.id,'Entry ID')} : {}), ...(item.image ? {image:VocabularyMedia.validate(item.image)} : {}), ...(item.promptType ? {promptType:item.promptType} : {}) };
+      if (item.promptType !== undefined && !['definition','sentence'].includes(item.promptType)) throw Error('Choose a definition or sentence prompt.');
       if (words.has(key)) {
-        if (JSON.stringify(words.get(key).vocabulary) !== JSON.stringify(vocabulary)) {
+        if (JSON.stringify({...words.get(key),word:key}) !== JSON.stringify({...entry,word:key})) {
           throw new Error('Conflicting vocabulary entries for ' + word + '.');
         }
       } else {
@@ -168,7 +171,8 @@ const Vocabulary = (() => {
       if (words.size > MAX_WORDS) throw new Error('A pack can contain up to 200 unique words. Split the pack to keep all words.');
     }
     if (!words.size) throw new Error('A vocabulary pack needs at least one word.');
-    return { kind: 'spellingcoach-pack', v: 1, id, version, name, words: [...words.values()] };
+    if(value.v===1 && value.media!==undefined)throw Error('Images require a version 2 pack.');
+    return { kind: 'spellingcoach-pack', v: value.v, id, version, name, words: [...words.values()], ...(value.media ? {media:VocabularyMedia.settings(value.media)} : {}) };
   }
 
   function legacyRecords(list) {

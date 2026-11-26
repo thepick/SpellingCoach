@@ -177,6 +177,7 @@ function renderSetWorkspace() {
  const allApproved=rows.length===list.words.length && approved===rows.length;
  $('workspace-title').textContent='Prepare & share';
  $('workspace-set-name').textContent=list.name;
+ $('images-display').value=list.media?.display || 'practice';$('images-tests').checked=!!list.media?.tests;
  $('workspace-words-summary').textContent='· '+list.words.length+' words';
  $('workspace-vocabulary-summary').textContent=allApproved ? 'All '+approved+' words approved' :
   approved+' approved · '+(vocabulary.length-approved)+' to review · '+(list.words.length-vocabulary.length)+' missing';
@@ -238,7 +239,8 @@ function renderWorkspaceVocabulary() {
   summary.append(status); card.append(summary);
   const body = document.createElement('div'); body.className = 'generated-word-body stack';
   const definition = document.createElement('p'); definition.textContent = row.vocabulary?.definition || 'Generated sentences will appear here.';
-  body.append(definition);
+  body.append(definitionCard(row,definition,{list,context:'teacher'}));
+  body.append(imageEditControls(row,list));
   for (const prompt of Learning.practiceAudioPrompts(row, index)) {
    const clipRow = document.createElement('div'), text = document.createElement('p'), listen = document.createElement('button');
    clipRow.className = 'generated-clip';
@@ -331,6 +333,7 @@ function initTeacherViewNavigation() {
  for (const view of ['setup','presets','prepare','share','administration']) $('teacher-nav-'+view).onclick=()=>showTeacherTools(view);
 }
 function sharedDraftCacheSettings(reuse) {
+ if(sharing.records?.some(row=>row.image))return undefined;
  if (!reuse || !ai.teacher?.isAdmin) return undefined;
  const settings=GenerationSettings.validate(selectedList()?.generationSettings) || GenerationSettings.defaults();
  return settings.context || settings.sense ? undefined : settings;
@@ -408,6 +411,7 @@ function renderTeacherProfile(profile) {
 }
 
 function resetTeacherWorkspace() {
+ resetMediaUI();
  clearTimeout(workspaceSaveTimer);workspaceEdit=null;pendingGeneration=null;
  teacherPresets=GenerationSettings.presets(); preferencesIdentity=null; preferencesRequest=null; preferencesMutation=0; pendingPresetSave=null;
  ++presetEditVersion; hydratedGenerationList=null; hydratedGenerationText='';
@@ -473,6 +477,8 @@ async function autosaveTeacherSet(list) {
   const rows = await loadVocabulary(list);
   if (ai.token !== token || state !== owner) return;
   const pack = outputPack(list, rows), stamp = list.updatedAt;
+  await ensureTeacherImages(pack,{root,token,owner});
+  if (state !== owner || ai.token !== token) return;
   $('teacher-private-audio-status').textContent = 'Saving privately and queuing recordings…';
   let saved;
   try { saved = await service('/teacher/sets', {root,token,method:'POST',body:{pack,expectedVersion:list.remoteVersion || 0,
@@ -665,7 +671,7 @@ function initTeacherAccounts() {
     if (ai.token !== token) return;
     const pack = Vocabulary.validatePack(saved.pack || saved), list = findPackList(pack.id);
     if (list) {
-     await saveVocabulary(list,pack.words,{name:pack.name,words:pack.words.map(row=>row.word),packId:pack.id,packVersion:pack.version});
+     await saveVocabulary(list,pack.words,{name:pack.name,words:pack.words.map(row=>row.word),packId:pack.id,packVersion:pack.version,media:pack.media});
      state.settings.selected[list.id] = list.words.slice(); save();
     } else await importPack(pack);
     const restored = findPackList(pack.id); if (restored) {
@@ -1321,7 +1327,7 @@ function initTeacher() {
    if (ai.token !== token || state !== owner) return;
    const replacement = ai.job.words[0];
    if (!replacement) throw Error(ai.job.message || 'No replacement was generated. Existing content was kept.');
-   await changeVocabulary(editorRecords.map(row => row.word === previous.word ? replacement : row), previous.word);
+   await changeVocabulary(editorRecords.map(row => row.word === previous.word ? {...row,...replacement,promptType:row.promptType,image:row.image,id:row.id,vocabulary:{...replacement.vocabulary,...(row.vocabulary?.contentType==='definition'?{definition:row.vocabulary.definition,contentType:'definition'}:{})}} : row), previous.word);
    $('regenerate-dialog').close(); editorStatusText('Replacement saved for review.');
   } catch (error) { $('regenerate-status').textContent = error.message; }
   finally { $('regenerate-submit').disabled = false; }
@@ -1402,7 +1408,7 @@ function initTeacher() {
     const args = new URLSearchParams(url.hash.slice(1));
     args.set('draft', ticket); url.hash = args.toString();
     const practice = linkPracticeOptions();
-    localStorage.setItem(LOCAL_PREVIEW_KEY, JSON.stringify({ticket, pack, practice, expiresAt: Date.now() + 60000}));
+    localStorage.setItem(LOCAL_PREVIEW_KEY, JSON.stringify({ticket, pack, practice, imageScope:typeof mediaScope==='function'?mediaScope():null, expiresAt: Date.now() + 60000}));
     setTimeout(() => {
      try {
       const pending = JSON.parse(localStorage.getItem(LOCAL_PREVIEW_KEY) || 'null');

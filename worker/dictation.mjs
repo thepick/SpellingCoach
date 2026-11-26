@@ -1,6 +1,6 @@
 import { ApiError } from './validation.mjs';
 
-const MAX_WAV_BYTES = 1024 * 1024;
+const MAX_WAV_BYTES = 2 * 1024 * 1024;
 const unavailable = () => new ApiError(502, 'dictation_unavailable', 'WordLab could not create a recording.');
 function providerFailure(response) {
   if (response.status === 401 || response.status === 403) return new ApiError(response.status,'provider_auth','The audio provider rejected this key. Replace or reconnect the key.');
@@ -49,7 +49,7 @@ export function hasSpeechSignal(bytes) {
 }
 
 export async function synthesizeDictation(key, sentence, fetchRequest = fetch) {
-  if (typeof sentence !== 'string' || !sentence.length || sentence.length > 200) throw new ApiError(400,'invalid_input','Audio text must contain 1–200 characters.');
+  if (typeof sentence !== 'string' || !sentence.length || sentence.length > 300) throw new ApiError(400,'invalid_input','Audio text must contain 1-300 characters.');
   let response;
   try {
     response = await fetchRequest('https://openrouter.ai/api/v1/audio/speech',{

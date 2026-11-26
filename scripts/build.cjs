@@ -3,12 +3,13 @@ const path = require('node:path');
 const {createHash} = require('node:crypto');
 const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n');
-const sources = ['vocabulary', 'learning', 'generation-settings', 'state', 'dictation', 'coach', 'dictation-ui', 'teacher', 'shared-review'];
-const modules = read('src/vendor/qrcode.js') + '\n' + sources.map(file => read('src/' + file + '.js')).join('\n');
+const sources = ['media-model','vocabulary','imports','media', 'learning', 'generation-settings', 'state', 'dictation', 'coach', 'dictation-ui', 'teacher', 'shared-review'];
+const zipWorkerSource = read('src/vendor/fflate.js')+'\n'+read('src/imports.js')+'\nonmessage = function(e){try{postMessage({files:TermImports.inflate(e.data,fflate)});}catch(error){postMessage({error:error.message});}}';
+const modules = 'const ZIP_WORKER_SOURCE = '+JSON.stringify(zipWorkerSource)+';\n'+'const fflate = (()=>{const self={};'+read('src/vendor/fflate.js')+';return self.fflate;})();\n'+read('src/vendor/qrcode.js') + '\n' + sources.map(file => read('src/' + file + '.js')).join('\n');
 const sample = JSON.stringify(JSON.parse(read('examples/weekly-vocabulary-sample.json'))).replace(/</g, '\\u003c');
 const code = read('src/app.js')
   .replace('// BUILD:MODULES', () => 'const SAMPLE_PACK = ' + sample + ';\n' + modules)
-  .replace('// BUILD:STARTUP', 'initCoach();');
+  .replace('// BUILD:STARTUP', 'initCoach();initMediaUI();');
 let page = read('src/page.html').replace('<!-- BUILD:STYLE -->', () => read('src/styles.css'))
   .replace('<!-- BUILD:SCRIPT -->', () => code)
   .replace('@@BRAND_ICON@@', () => fs.readFileSync(path.join(root, 'favicon.ico')).toString('base64'));

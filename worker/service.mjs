@@ -6,6 +6,7 @@ import { GROQ_MODELS, providerChoices, requestVocabulary, tokenBudget } from './
 import { hasSpeechSignal, synthesizeDictation } from './dictation.mjs';
 import Learning from '../src/learning.js';
 import Dictation from '../src/dictation.js';
+import { ImageService } from './media.mjs';
 import { TeacherAccounts } from './accounts.mjs';
 
 const DAY = 86_400_000;
@@ -136,6 +137,7 @@ export class VocabularyService {
       .filter((origin) => /^https?:\/\/[^/]+$/i.test(origin)));
     for (const statement of schema) this.sql.exec(statement);
     this.accounts = new TeacherAccounts(this);
+    this.media = new ImageService(this);
     this.atomic(() => {
       const {legacyDemoPackId, demoPackId} = Dictation;
       const old = this.one('SELECT value FROM packs WHERE id = ?', legacyDemoPackId);
@@ -191,7 +193,7 @@ export class VocabularyService {
       generationEnabled: draftingAvailable && this.enabled(true),
       dictationEnabled: this.dictationEnabled(),
       studentGenerationEnabled: this.enabled(false) && this.providers(false).length > 0,
-      maxWords: MAX_WORDS, maxWordLength: MAX_WORD_LENGTH, defaults: DEFAULT_SETTINGS
+      imagesEnabled:this.media.enabled(), packFormats:[1,2], maxWords: MAX_WORDS, maxWordLength: MAX_WORD_LENGTH, defaults: DEFAULT_SETTINGS
     };
   }
 
@@ -621,6 +623,7 @@ export class VocabularyService {
       && vocabularyEntries.every((entry) => cacheEligible(entry, settings))), 'Reusable packs must be public and match the declared settings.');
     const practice = {mode:input.mode || 'mixed', allowHints:input.allowHints !== false,
       ...Object.fromEntries(['retypeOnMiss','allowVariants'].filter(key => input[key] !== undefined).map(key => [key,input[key]]))};
+    this.media.assertAssets(pack,identity.teacherId);
     const privateSet = this.accounts.readSet(identity.teacherId,pack.id);
     const info = {pack, visibility, practice, ...(privateSet ? {preparedAudio:true} : {}), ...(visibility === 'class' ? {classId} : {})};
     const storage = { ...info, owner:identity.teacherId, ...(settings ? { cacheSettings: settings } : {}) };
@@ -716,7 +719,7 @@ export class VocabularyService {
   }
 
   async savePackPrompt(pack, prompt) {
-    requireInput(typeof prompt.text === 'string' && prompt.text.length > 0 && prompt.text.length <= 200,'Audio text must contain 1–200 characters.');
+    requireInput(typeof prompt.text === 'string' && prompt.text.length > 0 && prompt.text.length <= 300,'Audio text must contain 1-300 characters.');
     const args = [pack.id, pack.version, prompt.key];
     if (this.one('SELECT prompt FROM pack_audio WHERE pack = ? AND version = ? AND prompt = ?', ...args)) return;
     const id = JSON.stringify(args);
@@ -763,7 +766,8 @@ export class VocabularyService {
   }
 
   async scheduleAudio() {
-    const next = this.one('SELECT MIN(due) AS due FROM (SELECT due FROM audio_queue UNION ALL SELECT due FROM teacher_audio_queue)')?.due;
+    let next = this.one('SELECT MIN(due) AS due FROM (SELECT due FROM audio_queue UNION ALL SELECT due FROM teacher_audio_queue)')?.due;
+    if(this.env.WORDLAB_IMAGES && this.one('SELECT id FROM image_assets LIMIT 1'))next=next==null?this.now()+DAY:Math.min(next,this.now()+DAY);
     if (next != null) await this.storage.setAlarm(Math.max(this.now() + 1000, next));
   }
 
@@ -899,6 +903,8 @@ export class VocabularyService {
     if (pathname === '/api/health' && method === 'GET') return json({ ok: true, apiVersion: 1 });
     if (pathname === '/api/config' && method === 'GET') return json(this.publicConfig());
     if (pathname === '/api/access' && method === 'POST') return json(await this.login(request, false));
+    const imageResponse=await this.media.route(request);
+    if(imageResponse)return imageResponse;
     const teacherRoute = pathname.match(/^\/api\/teacher\/(login|accept|profile|keys|testkeys|preferences|sets)(?:\/([^/]{1,288})(?:\/(retry|audio)(?:\/(\d{1,3}-(?:s|[ve]\d)))?)?)?$/);
     if (teacherRoute) {
       let [,action,id,operation,prompt] = teacherRoute;

@@ -5,7 +5,7 @@ const vm=require('node:vm');
 const Settings=require('../src/generation-settings.js');
 
 function harness(){
- const elements=new Map(), context=vm.createContext({GenerationSettings:Settings,URL,URLSearchParams,console,setTimeout,clearTimeout,entryPage:'teacher',now:()=> 'now',
+ const elements=new Map(), context=vm.createContext({ensureTeacherImages:async()=>{},renderQuestionImage(){},renderStudyImage(){},resetMediaUI(){},GenerationSettings:Settings,URL,URLSearchParams,console,setTimeout,clearTimeout,entryPage:'teacher',now:()=> 'now',
   document:{body:{dataset:{entry:'teacher'}}},location:{hostname:'127.0.0.1',origin:'http://127.0.0.1'},
   $:id=>{if(!elements.has(id))elements.set(id,{value:'',checked:false,textContent:'',dataset:{},hidden:false,setAttribute(){}});return elements.get(id);}});
  vm.runInContext(fs.readFileSync('src/teacher.js','utf8'),context);

@@ -5,7 +5,7 @@ const vm = require('node:vm');
 
 function harness(options={}) {
  const elements = new Map();
- const context = vm.createContext({GenerationSettings:require('../src/generation-settings.js'),console, URL, URLSearchParams, setTimeout, clearTimeout,
+ const context = vm.createContext({ensureTeacherImages:async()=>{},renderQuestionImage(){},renderStudyImage(){},resetMediaUI(){},GenerationSettings:require('../src/generation-settings.js'),console, URL, URLSearchParams, setTimeout, clearTimeout,
   localStorage:{setItem(){},getItem(){return null;},removeItem(){}},
   $:id => {if (!elements.has(id)) elements.set(id,{textContent:'',value:'',hidden:false,checked:false}); return elements.get(id);},
   entryPage:options.entryPage || 'teacher', location:options.location || {origin:'https://example.test'},

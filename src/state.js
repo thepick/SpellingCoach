@@ -11,7 +11,7 @@ function newListId() {
 }
 
 function listMetadata(list) {
- const keys = ['vocabKey', 'vocabBackend', 'packId', 'packVersion', 'remoteVersion', 'remoteConflict', 'sharedOrigin', 'orderReceipt'];
+ const keys = ['vocabKey', 'vocabBackend', 'packId', 'packVersion', 'remoteVersion', 'remoteConflict', 'sharedOrigin', 'orderReceipt', 'media'];
  const result = {};
  for (const key of keys) if (Object.prototype.hasOwnProperty.call(list, key)) result[key] = list[key];
  const settings = GenerationSettings.validate(list.generationSettings);

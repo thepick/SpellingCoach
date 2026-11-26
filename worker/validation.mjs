@@ -1,3 +1,4 @@
+import MediaModel from '../src/media-model.js';
 export const MAX_WORDS = 200;
 export const MAX_WORD_LENGTH = 80;
 export const DIALECTS = ['original', 'american', 'british', 'canadian'];
@@ -84,15 +85,15 @@ const explicitWord = (word) => new RegExp('(?:^|[^\\p{L}\\p{M}\\p{N}])'
   + '(?:$|[^\\p{L}\\p{M}\\p{N}])', 'u');
 
 const fields = ['senseId', 'partOfSpeech', 'definition', 'examples', 'clozeQuestions',
-  'meaningDistractors', 'acceptedSpellings', 'readingLevel', 'status'];
+  'meaningDistractors', 'acceptedSpellings', 'readingLevel', 'status', 'contentType'];
 const providerFields = ['word', 'partOfSpeech', 'definition', 'examples', 'clozeQuestions', 'meaningDistractors', 'acceptedSpellings'];
 
 function recordIsValid(entry, approvedOnly) {
-  if (!shape(entry, ['id', 'word', 'vocabulary']) || (entry.id !== undefined && !shortId(entry.id))
+  if (!shape(entry, ['id', 'word', 'vocabulary', 'image', 'promptType']) || (entry.id !== undefined && !shortId(entry.id))
     || !displayWord(entry.word)) return false;
   const { vocabulary: v, word } = entry;
-  if (!shape(v, fields) || !shortId(v.senseId)
-    || !(PARTS_OF_SPEECH.includes(v.partOfSpeech) || (v.status !== 'approved' && v.partOfSpeech === 'unknown'))
+  if (!shape(v, fields) || (v.contentType !== undefined && v.contentType !== 'definition') || !shortId(v.senseId)
+    || !(PARTS_OF_SPEECH.includes(v.partOfSpeech) || ((v.status !== 'approved' || v.contentType === 'definition') && v.partOfSpeech === 'unknown'))
     || !safeContent(v.definition, 300)
     || !integer(v.readingLevel, 1, 12) || !(approvedOnly ? v.status === 'approved' : ['draft', 'approved', 'review'].includes(v.status))
     || !list(v.examples, 2) || !v.examples.every((example) => safeContent(example, 300))
@@ -197,13 +198,17 @@ function mergeRegenerated(record, settings, { item, questionId, previous }) {
 }
 
 export function validatePack(pack, { allowSpellingOnly = false, allowDraft = false } = {}) {
-  requireInput(shape(pack, ['kind', 'v', 'id', 'name', 'version', 'words'])
-    && pack.kind === 'spellingcoach-pack' && pack.v === 1 && shortId(pack.id) && safeContent(pack.name, 120)
+  requireInput(shape(pack, ['kind', 'v', 'id', 'name', 'version', 'words', 'media'])
+    && pack.kind === 'spellingcoach-pack' && [1,2].includes(pack.v) && shortId(pack.id) && safeContent(pack.name, 120)
     && integer(pack.version, 1, Number.MAX_SAFE_INTEGER) && list(pack.words, MAX_WORDS) && pack.words.length > 0, 'Invalid vocabulary pack.');
   for (const entry of pack.words) {
-    requireInput(shape(entry, ['word', 'vocabulary']) && displayWord(entry.word) && Object.hasOwn(entry, 'vocabulary'), 'Invalid vocabulary pack word.');
+    requireInput(shape(entry, pack.v===2 ? ['id','word','vocabulary','image','promptType'] : ['word','vocabulary']) && displayWord(entry.word) && Object.hasOwn(entry, 'vocabulary'), 'Invalid vocabulary pack word.');
+    if(entry.id!==undefined)requireInput(shortId(entry.id),'Invalid entry ID.');
+    if(entry.promptType!==undefined)requireInput(['definition','sentence'].includes(entry.promptType),'Invalid prompt preference.');
+    if(entry.image) {try{MediaModel.validate(entry.image);}catch(e){requireInput(false,e.message);}}
     if (entry.vocabulary !== null) validatedRecord(entry, !allowDraft);
   }
+  if(pack.media) {requireInput(pack.v===2,'Images require a version 2 pack.');try{MediaModel.settings(pack.media);}catch(e){requireInput(false,e.message);}}
   requireInput(allowSpellingOnly || pack.words.some((entry) => entry.vocabulary !== null), 'Add approved vocabulary before publishing this pack.');
   requireInput(unique(pack.words.map(({ word }) => word)), 'Vocabulary packs cannot contain duplicate words.');
   return pack;
@@ -211,7 +216,7 @@ export function validatePack(pack, { allowSpellingOnly = false, allowDraft = fal
 
 export function cacheEligible(record, settings) {
   const v = record.vocabulary;
-  return v.status === 'approved' && v.readingLevel === settings.readingLevel
+  return !record.image && v.status === 'approved' && v.readingLevel === settings.readingLevel
     && v.clozeQuestions.length === settings.practiceSentences && v.examples.length === settings.exampleSentences
     && v.meaningDistractors.length === (settings.distractors ? 3 : 0)
     && v.clozeQuestions.every((q) => Boolean(q.explanation.trim()) === settings.explanations);

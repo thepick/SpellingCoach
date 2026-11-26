@@ -1,5 +1,19 @@
 # WordLab
 
+## Import terms, definitions, and pictures
+
+Choose **Import terms and definitions** from your sets, or from **Prepare & share**. The importer includes a format guide, column examples, a CSV template, and a working example ZIP with pictures.
+
+Use a CSV/TSV with `term` and `definition` columns. An optional `image` column names each picture, including its extension, for example `evaporation.png` or `images/evaporation.png`. Upload the picture files together, or include the terms file and pictures in one ZIP. Pasted spreadsheet rows also work. Up to 200 terms are allowed; images are optional. Native XLSX files and image URLs are not accepted.
+
+Review the image and definition together, correct missing/ambiguous matches, and exclude invalid rows before saving a private draft. Existing terms are preserved unless you explicitly select replacement. The preview counts new, preserved/replaced, and incomplete rows. Imported definitions default to definition questions, without requiring generated sentences or a guessed part of speech. Review and approve them before sharing. Pictures containing answer labels should use **Study only**.
+
+Each picture sits beside its definition on flashcards and vocabulary questions. Tap it to enlarge without losing your answer. Pictures stay hidden during spelling. **Image display** controls study/practice visibility and whether pictures are allowed in formal vocabulary tests. Save privately, then **Update student link** to publish changes. Replacing only a picture reuses unchanged audio and preserves progress. Imported definitions remain intact during optional AI enrichment.
+
+**Export set with images** produces a portable ZIP. Full backups automatically use ZIP when they contain pictures; older JSON backups remain supported. ZIP exports include image bytes, vocabulary, display settings, and attribution, but do not include audio recordings. **Save pictures on this device** downloads published pictures explicitly; opening a link once does not download the whole collection. The offline HTML can import a full image package without network access.
+
+Uploads accept still JPEG, PNG, and WebP originals up to 10 MB/20 megapixels, then store bounded JPEG/PNG copies up to 1600 px and 1 MB each. Sets allow 50 MB of saved images, and each teacher initially has 250 MB of server image storage. ZIP imports allow 50 MB compressed/100 MB expanded and 500 entries. A private R2 binding is required for online sharing; see [image storage setup](worker/README.md#image-storage).
+
 Spelling and vocabulary practice for lists of up to 200 words. The app runs in the browser and keeps learning records on the device.
 
 - **Spelling** reads a word aloud and checks the typed spelling.

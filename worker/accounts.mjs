@@ -261,6 +261,7 @@ export class TeacherAccounts {
     const owner = identity.teacherId;
     const record = this.s.atomic(() => {
       if (!this.unchanged(identity)) fail(409,'account_changed','Your account changed. Reload and try again.');
+      this.s.media.assertAssets(pack,owner);
       const existing = this.readSet(owner,pack.id);
       const samePack = existing && existing.pack.version === pack.version && same(existing.pack,pack);
       const oldVoice = existing?.recordings.some(r => r.status === 'ready' && r.cacheKey !== JSON.stringify([r.skill,r.text,'openrouter','mistralai/voxtral-mini-tts-2603','en_paul_neutral']));

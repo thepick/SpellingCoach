@@ -41,9 +41,9 @@ async function loadVocabulary(list) {
  if (!list) return [];
  const stored = list.vocabKey ? await (await getStore(list.vocabBackend)).get(recordKey(list)) : [];
  if (list.vocabKey && !Array.isArray(stored)) throw Error('Saved vocabulary is unavailable. Reload or restore it from a backup.');
- const records = new Map(Vocabulary.legacyRecords(list).map(row => [wordKey(row.word), row.vocabulary]));
- for (const row of stored || []) records.set(wordKey(row.word), row.vocabulary);
- return list.words.map(word => ({word, vocabulary: records.get(wordKey(word)) || null}));
+ const records = new Map(Vocabulary.legacyRecords(list).map(row => [wordKey(row.word), row]));
+ for (const row of stored || []) records.set(wordKey(row.word), row);
+ return list.words.map(word => ({...records.get(wordKey(word)),word,vocabulary:records.get(wordKey(word))?.vocabulary || null}));
 }
 
 function removeVocabulary(list) {
@@ -160,6 +160,8 @@ async function beginCoach() {
 function beginLearning(list, records, options, dueLists) {
  if (options.type === 'practice') options = {...options, phasedVocabulary:true, sequentialPractice:true};
  const session = Learning.createSession(records, options, dueLists ? dueLists.progress : learningProgress(list));
+ session.media=structuredClone(list.media || {display:'practice',tests:false});
+ session.mediaOrigin={packId:list.packId,packVersion:list.packVersion,sharedOrigin:list.sharedOrigin};
  if (!session.questions.length) { status('There are no questions for this selection.'); return; }
  state.learningSession = {listId: list.id, listName: list.name, session, dueLists: dueLists?.owners || null};
  save();
@@ -309,7 +311,7 @@ function renderLearning(play, corrected = false) {
  if (question !== audioQuestion) { audioQuestion = question; audioReady = false; lastHint = Learning.lastHint(session); }
  show('learning-screen');
  $('learning-label').textContent = entry.listName + ' · ' + (test ? 'Test' : 'Practice');
- $('learning-title').textContent = titleForType[question.type];
+ $('learning-title').textContent = question.type==='word-bank' && question.promptId==='definition' ? 'Name the word with help' : titleForType[question.type];
  const stage = Learning.practiceStage(session);
  $('learning-stage').hidden = stage === null;
  if (stage !== null) $('learning-stage').textContent = (session.mode === 'mixed' ? 'Stage '+(stage+1)+' of 3: ' : '') +
@@ -322,6 +324,7 @@ function renderLearning(play, corrected = false) {
   const {mastered, total, progress} = Learning.practiceWordProgress(session);
   renderMasteryProgress('learning-mastery', mastered, total, progress);
  }
+ renderQuestionImage(entry,question);
  $('learning-prompt').textContent = question.type === 'dictation' ? 'Listen to the word, then type it.' : question.prompt;
  $('learning-audio-actions').hidden = !session.settings.audioReplay || !!result;
  $('learning-autoplay').hidden=test || question.type==='dictation';
@@ -634,6 +637,7 @@ function renderStudy() {
   noUnfamiliar ? 'No unfamiliar cards in this selection.' : 'No flashcards in this selection.';
  $('study-show-all').hidden = !noUnfamiliar;
  $('study-front').textContent = card?.front || '';
+ renderStudyImage(study,card,reverse);
  $('study-back').hidden = !study.revealed || !card;
  $('study-back').replaceChildren();
  if (card && study.revealed) {
@@ -666,7 +670,7 @@ function renderStudy() {
 }
 
 function outputPack(list, records) {
- return Vocabulary.validatePack({kind: 'spellingcoach-pack', v: 1,
+ return Vocabulary.validatePack({kind: 'spellingcoach-pack', v: list.media || records.some(r=>r.image || r.id || r.promptType) ? 2 : 1, ...(list.media ? {media:list.media} : {}),
   id: Dictation.canonicalPackId(list.packId) || list.id, version: list.packVersion || 1, name: list.name, words: records});
 }
 
@@ -749,7 +753,7 @@ async function importPack(pack, origin) {
  }
  listId = list.id;
  try {
-  await saveVocabulary(list, pack.words, {name: pack.name, words, packId: pack.id, packVersion: pack.version, ...(origin ? {sharedOrigin: origin} : {})});
+  await saveVocabulary(list, pack.words, {name: pack.name, words, packId: pack.id, packVersion: pack.version, media:pack.media, ...(origin ? {sharedOrigin: origin} : {})});
  } catch (error) {
   if (state !== owner) throw error;
   if (fresh) { state.lists = state.lists.filter(row => row !== list); delete state.settings.selected[list.id]; }
@@ -780,6 +784,7 @@ async function exportFullBackup() {
  const contents = JSON.stringify({kind: 'spellingcoach-backup', v: 1, state: snapshot, packs, questionHistory: archived,
   theme: themePreference.value});
  if (new Blob([contents]).size > MAX_IMPORT) throw Error('The backup is too large. Export individual vocabulary packs first.');
+ if (await exportBackupImages(JSON.parse(contents))) return;
  download('WordLab full backup.json', contents, 'application/json');
 }
 
@@ -933,6 +938,7 @@ function displayVocabularyEditor(editing) {
  $('vocab-review-content').hidden = editing;
  if (editing) return;
  $('vocab-review-definition').textContent = $('vocab-definition').value;
+ if(typeof renderEditorImage==='function')renderEditorImage(editorRecords.find(row=>row.word===$('vocab-word').value),editorList);
  for (const [target, source] of [['vocab-review-examples', 'vocab-examples'], ['vocab-review-cloze', 'vocab-cloze']]) {
   const container = $(target), sentences = lines($(source).value);
   container.hidden = !sentences.length;
@@ -1192,6 +1198,7 @@ function initCoach() {
   if (submitter) submitter.disabled = true;
   try {
    const record = Vocabulary.validateRecord(word, {
+    ...(before?.contentType ? {contentType:before.contentType} : {}),
     senseId: before?.senseId || newListId(),
     partOfSpeech: $('vocab-pos').value || 'unknown', definition: $('vocab-definition').value,
     readingLevel: Number($('vocab-grade').value), examples: lines($('vocab-examples').value),
@@ -1207,7 +1214,7 @@ function initCoach() {
     const queue = filteredEditorRecords(), index = queue.findIndex(row => row.word === word);
     preferred = nextVocabularyDraft(queue, index)?.word || word;
    }
-   if (await changeVocabulary(editorRecords.map(row => row.word === word ? {word, vocabulary: record} : row), preferred, vocabularyFieldValues())) {
+   if (await changeVocabulary(editorRecords.map(row => row.word === word ? {...row, vocabulary: record} : row), preferred, vocabularyFieldValues())) {
     editorStatusText((record.status === 'approved' ? 'Approved ' : 'Saved ') + word + '.');
     if (editorCard && editorInline && !editorSelection.values.some((value,index) => value !== $(editableVocabularyFields[index]).value)) {
      await closeVocabularyEditor(true);
@@ -1233,12 +1240,13 @@ function initCoach() {
   if (!count || !confirm('Approve all drafts in this set (' + count + '), including drafts you haven’t opened or reviewed? This uses the saved wording.')) return;
   try {
    const next = editorRecords.map(row => isVocabularyDraft(row) ?
-    {word: row.word, vocabulary: Vocabulary.validateRecord(row.word, {...row.vocabulary, status: 'approved'})} : row);
+    {...row, vocabulary: Vocabulary.validateRecord(row.word, {...row.vocabulary, status: 'approved'})} : row);
    await changeVocabulary(next, $('vocab-word').value); editorStatusText('Drafts approved.');
   } catch (error) { editorStatusText(error.message); }
  };
  $('vocab-export').onclick = () => {
-  try { download('WordLab vocabulary.json', JSON.stringify(outputPack(editorList, editorRecords), null, 2), 'application/json'); }
+  try { if(editorRecords.some(row=>row.image)) {exportSetImages().catch(e=>editorStatusText(e.message));return;}
+   download('WordLab vocabulary.json', JSON.stringify(outputPack(editorList, editorRecords), null, 2), 'application/json'); }
   catch (error) { editorStatusText(error.message); }
  };
  $('pack-decline').onclick = () => $('pack-preview').close();
@@ -1256,7 +1264,8 @@ function initCoach() {
   const file = event.target.files[0]; event.target.value = '';
   if (!file) return;
   try {
-   const data = await readImport(file);
+   const signature=new Uint8Array(await file.slice(0,4).arrayBuffer());
+   const data = /\.zip$/i.test(file.name) || signature[0]===80 && signature[1]===75 ? await readMediaArchive(file,true) : await readImport(file);
    if (state !== owner || ai.token !== token) return;
    if (data.kind === 'spellingcoach-pack') {
     $('tools-dialog').close(); previewPack(data);

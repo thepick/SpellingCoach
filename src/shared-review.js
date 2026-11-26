@@ -43,7 +43,7 @@ let sharedLoad = 0;
 const parkedKey = (id, type) => 'paused-activity:' + JSON.stringify([id, type]);
 
 function findPackList(id, origin) {
- const lists = state.lists.filter(list => Dictation.canonicalPackId(list.packId) === Dictation.canonicalPackId(id));
+ const lists = state.lists.filter(list => Dictation.canonicalPackId(list.packId || list.id) === Dictation.canonicalPackId(id));
  return (origin && lists.find(list => list.sharedOrigin === origin)) ||
   lists.find(list => !list.sharedOrigin) || (!origin ? lists[0] : undefined);
 }
@@ -217,6 +217,7 @@ async function openSharedReview() {
    if (local?.ticket !== previewTicket || local.expiresAt < Date.now()) throw Error('Preview expired.');
    localStorage.removeItem(LOCAL_PREVIEW_KEY);
    pack = Vocabulary.validatePack(local.pack);
+   if(typeof mediaPreviewScope!=='undefined')mediaPreviewScope=local.imageScope;
    practice = local.practice;
   } else {
    const token = ai.root === origin ? ai.token : '';

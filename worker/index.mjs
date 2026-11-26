@@ -11,8 +11,9 @@ export class VocabularyCoordinator extends DurableObject {
     return this.service.fetch(request);
   }
 
-  alarm() {
-    return this.service.processAudioQueue();
+  async alarm() {
+    await this.service.processAudioQueue();
+    await this.service.media.cleanup();
   }
 }
 

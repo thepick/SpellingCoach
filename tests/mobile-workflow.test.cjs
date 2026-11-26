@@ -62,7 +62,7 @@ function cards() {
   querySelector(){return get('body');}};}
  const get=id=>{if(!nodes.has(id))nodes.set(id,element());return nodes.get(id);};
  const row=records[0], list={id:'local',packId:'pack',updatedAt:'one',audioStatus:{recordings:Learning.practiceAudioPrompts(row,0).map(p=>({...p,status:'ready'}))}};
- const context=vm.createContext({Learning,GenerationSettings:require('../src/generation-settings.js'),URL,Blob,Uint8Array,console,$:get,
+ const context=vm.createContext({definitionCard:(row,text)=>text,imageEditControls:()=>element(),Learning,GenerationSettings:require('../src/generation-settings.js'),URL,Blob,Uint8Array,console,$:get,
   document:{body:{dataset:{entry:'teacher'}},createElement:element,createTextNode:text=>({...element('text'),textContent:text})},
   location:{origin:'https://site.test'},entryPage:'teacher',dictationRequest:0,
   stopRecording(){context.dictationRequest++;},selectedList:()=>list,
@@ -90,7 +90,7 @@ test('generated rows show sentences, play prepared audio, and edit the requested
 test('audio refresh preserves collapsed rows and never rebuilds an active editor',()=>{
  const h=cards(),host=h.get('workspace-generated-list'),card=host.children[0];card.open=false;
  h.list.audioStatus.recordings[0].status='pending';h.run('renderWorkspaceVocabulary()');
- assert.equal(host.children[0].open,false);assert.equal(host.children[0].children[1].children[1].children[1].disabled,true);
+ assert.equal(host.children[0].open,false);assert.equal(host.children[0].children[1].children[2].children[1].disabled,true);
  const stable=host.children[0];h.context.editorInline=true;h.list.updatedAt='two';h.run('renderWorkspaceVocabulary()');
  assert.equal(host.children[0],stable);
 });

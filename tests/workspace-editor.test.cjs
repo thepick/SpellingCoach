@@ -23,7 +23,7 @@ function harness() {
   $:get,document:{createElement:()=>element('created')},location:{protocol:'https:'},entryPage:'teacher',
   ai:{role:'teacher',token:'teacher-a'},state:{lists:[],learning:{},familiar:{},settings:{selected:{}}},
   save:()=>true,now:()=> 'now',newListId:()=> 'new-id',status:message=>events.push('status:'+message),
-  initTeacher(){},initDictation(){},initSharedReview(){},prefillTroySentence(){},renderRecordingControls(){},
+  renderStudyImage(){},initTeacher(){},initDictation(){},initSharedReview(){},prefillTroySentence(){},renderRecordingControls(){},
   backToSetup(){},show(){},speech:false,sharedReview:null,
   stopRecording:()=>events.push('stop'),refreshSetWorkspace:async()=>events.push('refresh'),confirm:()=>true,
  });

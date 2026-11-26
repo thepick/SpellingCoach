@@ -693,7 +693,7 @@ test('Paul speech rejects JSON and incorrect PCM types/rates without accepting g
   for (const type of ['application/json','audio/mpeg','audio/L16;rate=24000;channels=1','audio/pcm;rate=48000','audio/pcm;channels=2']) {
     await assert.rejects(synthesizeDictation('fake-key','textile',async()=>new Response(new Uint8Array([1,2,3,4]),{headers:{'Content-Type':type}})));
   }
-  await assert.rejects(synthesizeDictation('fake-key','x'.repeat(201),async()=>{throw Error('must not call');}));
+  await assert.rejects(synthesizeDictation('fake-key','x'.repeat(301),async()=>{throw Error('must not call');}));
 });
 
 test('default connection transport preserves the Workers fetch receiver',async () => {

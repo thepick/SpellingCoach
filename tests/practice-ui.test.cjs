@@ -13,7 +13,7 @@ function harness(draws = [0,0]) {
    reset(){},showModal(){this.open=true;},setAttribute(k,v){attrs[k]=String(v);},setCustomValidity(){},replaceChildren(){},append(){},focus(){},
    classList:{toggle(){}},querySelector(selector){if(!children.has(selector))children.set(selector,element());return children.get(selector);}};
  }
- const context = vm.createContext({Learning,Vocabulary,Uint32Array,console,
+ const context = vm.createContext({ensureTeacherImages:async()=>{},renderQuestionImage(){},renderStudyImage(){},resetMediaUI(){},Learning,Vocabulary,Uint32Array,console,
   crypto:{getRandomValues(array){assert(draws.length,'Unexpected extra random draw');array[0]=draws.shift();return array;}},
   $:id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);},
   document:{createElement:element}, setTimeout:()=>0,clearTimeout(){},studentPreview:false,

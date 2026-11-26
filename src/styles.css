@@ -322,3 +322,34 @@ details > summary { cursor: pointer; }
  #learning-choices .word-bank { padding: .4rem .5rem; }
  .lesson-controls, #learning-answer { gap: .35rem; }
 }
+/* A picture and its definition travel together in every vocabulary view. */
+.definition-card{display:grid;grid-template-columns:clamp(120px,22vw,190px) minmax(0,1fr);gap:1rem;align-items:start;min-width:0}
+.definition-card.without-picture{display:block}
+.definition-copy{min-width:0;overflow-wrap:anywhere}
+.definition-copy p{margin-top:0}
+.definition-picture{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;padding:.35rem;border:1px solid var(--line,#ccd5e0);border-radius:.65rem;background:transparent;min-height:64px;overflow:hidden}
+.definition-picture img{display:block;width:100%;height:auto;max-height:190px;object-fit:contain}
+.definition-picture img:not([src]){display:none}
+.definition-picture .hint{font-size:.875rem;overflow-wrap:anywhere}
+.terms-import-panel{margin-top:1.5rem;scroll-margin-top:1rem}
+.import-guide{padding:1rem;border:1px solid var(--line,#ccd5e0);border-radius:.75rem}
+.import-guide summary{font-weight:700;font-size:1rem}
+.import-guide li{margin-block:.5rem}
+.import-table-scroll{overflow:auto}
+.import-guide table{border-collapse:collapse;width:100%;font-size:1rem}
+.import-guide th,.import-guide td{border:1px solid var(--line,#ccd5e0);padding:.65rem;text-align:left;vertical-align:top}
+.term-import-row{padding:1rem;border:1px solid var(--line,#ccd5e0);border-radius:.75rem;content-visibility:auto;contain-intrinsic-size:auto 360px}
+.term-import-row textarea{min-height:5rem}
+.image-viewer{width:min(94vw,1100px);max-height:94dvh;padding:1rem}
+.image-viewer-scroll{overflow:auto;max-height:72dvh;text-align:center}
+.image-viewer-scroll img{max-width:100%;height:auto;object-fit:contain}
+#study-picture{grid-row:1}
+@media(max-width:600px){
+ .definition-card{grid-template-columns:clamp(80px,22vw,96px) minmax(0,1fr);gap:.65rem}
+ .definition-picture img{max-height:125px}
+ .definition-copy,.definition-copy textarea{font-size:1rem}
+ .term-import-row,.import-guide{padding:.75rem}
+ .image-viewer{width:96vw;padding:.65rem}
+ body.keyboard-open #learning-picture .definition-picture img{max-height:70px}
+}
+@media(max-width:19rem){.definition-card{grid-template-columns:1fr}.definition-picture{max-width:120px}}

@@ -29,7 +29,7 @@ test('dictation accepts a bounded WAV and rejects truncated or mislabeled data',
  const view = bytes => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length);
  assert.doesNotThrow(() => validateRecording(view(wave)));
  assert.throws(() => validateRecording(view(wave.subarray(0, 44))), /WAV/);
- assert.throws(() => validateRecording(new ArrayBuffer(1048577)), /1 MB/);
+ assert.throws(() => validateRecording(new ArrayBuffer(2097153)), /2 MB/);
 });
 
 test('dictation suggestions match multiword targets and reject changed endings', () => {

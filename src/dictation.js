@@ -1,5 +1,5 @@
 const Dictation = (() => {
- const MAX_WAV_BYTES = 1024 * 1024;
+ const MAX_WAV_BYTES = 2 * 1024 * 1024;
  const demoPackId = 'matter-mixed';
  const legacyDemoPackId = 'matter-mixed-troy';
  const canonicalPackId = id => id === legacyDemoPackId ? demoPackId : id;
@@ -35,7 +35,7 @@ const Dictation = (() => {
  }
 
  function validateRecording(bytes) {
-  if (bytes.byteLength > MAX_WAV_BYTES) throw Error('Choose a WAV file up to 1 MB.');
+  if (bytes.byteLength > MAX_WAV_BYTES) throw Error('Choose a WAV file up to 2 MB.');
   const wav = new DataView(bytes);
   const invalid = () => { throw Error('Choose a complete PCM WAV recording.'); };
   if (wav.byteLength < 44 || wav.getUint32(0) !== 0x52494646 ||

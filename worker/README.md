@@ -119,3 +119,21 @@ Generation jobs checkpoint each valid batch. Missing or invalid responses are re
 An approved pack can contain spelling-only words alongside approved vocabulary. Publishing a changed pack requires a higher version. A public pack can be reused by generation when the publish request includes cacheSettings matching its content and the teacher confirms the content is generic. Context-specific jobs and unapproved drafts stay out of the shared cache. Approved content is reused per word and context; a fully cached list consumes no provider calls. When regenerating a single cloze question, the service sends only the information needed to replace that question and preserves the prior question ID.
 
 The local test suite exercises simulated inference, retry delays and a 200-word job. Live Groq and OpenRouter output, physical devices, account billing settings and production Cloudflare CPU and storage usage require the deployment and pilot checks above.
+## Image storage
+
+The WordLab deployment uses a private R2 bucket named `wordlab-images`, bound as `WORDLAB_IMAGES` in `wrangler.wordlab.jsonc`. Provision the bucket in the existing Cloudflare account before deploying this configuration:
+
+```sh
+wrangler r2 bucket create wordlab-images
+wrangler deploy --config worker/wrangler.wordlab.jsonc
+```
+
+Keep the bucket private. Browser requests pass through authenticated WordLab routes; no R2 browser keys or public bucket URL are needed. Public assignment images are shareable through their published pack; class images require the pack's class authorization. Responses use `no-store` and bearer tokens are never placed in image URLs.
+
+`IMAGE_IMPORTS_ENABLED=false` prevents new image uploads while retaining access to existing images and compatible packs. `IMAGE_OWNER_QUOTA_MB` defaults to 250. The service exposes `packFormats: [1,2]` and `imagesEnabled` in `/api/config`. Version 1 packs stay readable; version 2 adds image references, entry IDs, prompt preferences, and image display settings. Image bytes are never put in pack JSON or localStorage.
+
+Images use owner-scoped immutable objects. Upload sessions reserve quota, validate hashes, dimensions, format and decoded content, and expire after one day. Raw uploads are bounded separately from JSON requests. The existing Durable Object owns authorization, metadata and references; binary uploads are limited to 1 MB and processed one at a time by the client. A daily alarm cleans abandoned objects after seven days, with reference checks and a deletion state that prevents concurrent attachment. Cleanup rotates its scan so referenced older objects do not starve abandoned ones.
+
+The decoder accepts the browser's normalized JPEG or noninterlaced 8-bit RGB/RGBA PNG output. PNG chunks/CRC, decompressed scanline bounds and filters are checked; JPEG pixels are decoded with explicit resolution/memory bounds. WebP originals are converted in the browser before upload. Neither SVG nor animated images are stored. Prepared speech supports the existing 300-character vocabulary text limit and bounded WAVs up to 2 MB; the manual dictation form retains its 200-character input limit.
+
+Deploy the generated teacher, student and offline pages with the matching Worker. Do not roll back to a server that rejects v2 packs after image sets have been created. Disabling new imports is the safe first response to a media incident. No existing Durable Object binding, identity, migration or secret changes are needed.
