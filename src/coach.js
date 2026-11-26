@@ -11,6 +11,9 @@ let pendingPack = null;
 let undoVocabulary = null;
 const wordKey = Vocabulary.wordKey;
 const recordKey = list => list.vocabKey || 'list:' + list.id;
+const vocabularyRevision = list => ({vocabKey:list.vocabKey,packVersion:list.packVersion,updatedAt:list.updatedAt});
+const sameVocabularyRevision = (list, revision) => revision && list.vocabKey === revision.vocabKey && list.packVersion === revision.packVersion && list.updatedAt === revision.updatedAt;
+const VOCABULARY_CHANGED = 'Vocabulary changed. Close and reopen vocabulary review before saving again.';
 function getStore(backend) {
  if (studentPreview) return Promise.resolve(previewStore);
  if (!vocabularyStores.has(backend)) {
@@ -635,26 +638,37 @@ function outputPack(list, records) {
   id: Dictation.canonicalPackId(list.packId) || list.id, version: list.packVersion || 1, name: list.name, words: records});
 }
 
-async function saveVocabulary(list, records, metadata) {
- const owner = state;
+async function saveVocabulary(list, records, metadata, commit) {
+ const owner = state, revision = vocabularyRevision(list);
  const store = await getStore();
  if (state !== owner || !owner.lists.includes(list)) throw Error('This workspace changed. Sign in again to continue.');
+ if (!sameVocabularyRevision(list,revision)) throw Error(VOCABULARY_CHANGED);
  const before = list.vocabKey, beforeBackend = list.vocabBackend;
  const next = 'list:' + list.id + ':' + newListId();
  await store.put(next, records);
- if (state !== owner || !owner.lists.includes(list)) { await store.remove(next).catch(()=>{}); throw Error('This workspace changed. Sign in again to continue.'); }
+ if (state !== owner || !owner.lists.includes(list) || !sameVocabularyRevision(list,revision)) {
+  await store.remove(next).catch(()=>{});
+  throw Error(state !== owner || !owner.lists.includes(list) ? 'This workspace changed. Sign in again to continue.' : VOCABULARY_CHANGED);
+ }
  const snapshot = {...list};
- Object.assign(list, metadata, {vocabKey: next, vocabBackend: store.kind, audioStatus:null, updatedAt: now()});
- if (!save()) {
+ let rollback, writtenRevision;
+ try {
+  Object.assign(list, metadata, {vocabKey: next, vocabBackend: store.kind, audioStatus:null, updatedAt: now()});
+  writtenRevision = vocabularyRevision(list);
+  if (commit) rollback = commit();
+  if (!save()) throw Error('Browser storage could not save your changes.');
+ } catch (error) {
+  if (rollback) rollback();
   for (const key of Object.keys(list)) delete list[key];
   Object.assign(list, snapshot);
   await store.remove(next).catch(() => {});
-  throw Error('Browser storage could not save your changes.');
+  throw error;
  }
  if (before) getStore(beforeBackend).then(oldStore => oldStore.remove(before)).catch(() => {});
  renderSetup();
  if (ai.role === 'teacher' && ai.token && !restoringTeacherSets) await autosaveTeacherSet(list);
  if (state !== owner) throw Error('This workspace changed. Sign in again to continue.');
+ return writtenRevision;
 }
 
 function previewPack(pack) {
@@ -808,6 +822,12 @@ async function restoreFullBackup(backup) {
 let editorRecords = [];
 let editorList = null;
 let editorPage = 0;
+let editorInline = false;
+let editorWorkspace = null;
+let editorToken = '';
+let vocabularyEditorRequest = 0;
+let editorRevision = null;
+let editorSaving = false;
 const editorPageSize = 30;
 const fields = {
  definition: 'vocab-definition', examples: 'vocab-examples', meaningDistractors: 'vocab-distractors',
@@ -864,47 +884,95 @@ function renderEditFields() {
 }
 
 async function changeVocabulary(next, preferred) {
- const owner = state;
+ if (editorSaving) throw Error('A vocabulary save is already in progress. Wait for it to finish before saving again.');
+ const owner = state, token = ai.token, request = vocabularyEditorRequest;
  const list = editorList, before = editorRecords;
- const oldLearning = structuredClone(state.learning[list.id] || {});
- const oldFamiliar = (state.familiar[list.id] || []).slice();
- const oldRows = new Map(before.map(row => [wordKey(row.word), row.vocabulary]));
- for (const row of next) {
-  const key = wordKey(row.word), previous = oldRows.get(key);
-  if (previous && (previous.senseId !== row.vocabulary?.senseId || previous.definition !== row.vocabulary.definition ||
-      previous.partOfSpeech !== row.vocabulary.partOfSpeech)) {
-   if (state.learning[list.id]?.[key]) delete state.learning[list.id][key].vocabulary;
-   if (state.familiar[list.id]) state.familiar[list.id] = state.familiar[list.id].filter(word => word !== key);
-  }
- }
+ const current = () => state === owner && ai.token === token && editorWorkspace === owner && editorToken === token && editorList === list && selectedList() === list && vocabularyEditorRequest === request;
+ if (!list || !current()) throw Error('This workspace changed. Sign in again to continue.');
+ const revision = editorRevision;
+ if (!sameVocabularyRevision(list,revision)) throw Error(VOCABULARY_CHANGED);
+ editorSaving = true;
  try {
-  await saveVocabulary(list, next, {packVersion: (list.packVersion || 0) + 1});
- } catch (error) {
-  if (state === owner) { state.learning[list.id] = oldLearning; state.familiar[list.id] = oldFamiliar; }
-  throw error;
+  const invalidated = new Set();
+  const oldRows = new Map(before.map(row => [wordKey(row.word), row.vocabulary]));
+  for (const row of next) {
+   const key = wordKey(row.word), previous = oldRows.get(key);
+   if (previous && (previous.senseId !== row.vocabulary?.senseId || previous.definition !== row.vocabulary.definition ||
+       previous.partOfSpeech !== row.vocabulary.partOfSpeech)) {
+    invalidated.add(key);
+   }
+  }
+  const writtenRevision = await saveVocabulary(list, next, {packVersion: (list.packVersion || 0) + 1}, () => {
+   if (!current()) throw Error('This workspace changed. Sign in again to continue.');
+   if (!invalidated.size) return;
+   const oldLearning = owner.learning[list.id], oldFamiliar = owner.familiar[list.id];
+   const learning = oldLearning && structuredClone(oldLearning);
+   const familiar = oldFamiliar && oldFamiliar.filter(key => !invalidated.has(key));
+   for (const key of invalidated) if (learning?.[key]) delete learning[key].vocabulary;
+   if (oldLearning) owner.learning[list.id] = learning;
+   if (oldFamiliar) owner.familiar[list.id] = familiar;
+   return () => {
+    if (oldLearning) owner.learning[list.id] = oldLearning;
+    if (oldFamiliar) owner.familiar[list.id] = oldFamiliar;
+   };
+  });
+  if (!current()) return;
+  if (!sameVocabularyRevision(list,writtenRevision)) throw Error(VOCABULARY_CHANGED);
+  editorRevision = writtenRevision;
+  editorRecords = next;
+  undoVocabulary = before;
+  renderVocabularyEditor(preferred);
+  if (editorInline && typeof refreshSetWorkspace === 'function') await refreshSetWorkspace();
+ } finally {
+  editorSaving = false;
  }
- if (state !== owner) return;
- editorRecords = next;
- undoVocabulary = before;
- renderVocabularyEditor(preferred);
 }
 
-async function openVocabularyEditor(filter = '') {
+async function closeVocabularyEditor() {
+ // Cancel an open that is still loading before its panel mounts.
+ vocabularyEditorRequest++;
+ if (!editorInline) return false;
+ const owner = editorWorkspace, token = editorToken, list = editorList;
+ editorInline = false;
+ stopRecording();
+ $('workspace-review').hidden = true;
+ $('vocab-dialog').append($('vocab-editor-panel'));
+ $('vocab-close').textContent = 'Close';
+ if (state === owner && ai.token === token && selectedList() === list && typeof refreshSetWorkspace === 'function') await refreshSetWorkspace();
+ return true;
+}
+
+async function openVocabularyEditor(filter = '', inline = false) {
  const list = selectedList();
  if (!list) return;
+ const owner = state, token = ai.token, revision = vocabularyRevision(list), request = ++vocabularyEditorRequest;
+ const current = () => state === owner && ai.token === token && selectedList() === list && sameVocabularyRevision(list,revision) && vocabularyEditorRequest === request;
  try {
-  editorRecords = await loadVocabulary(list);
-  if (selectedList() !== list) return;
+  const records = await loadVocabulary(list);
+  if (!current()) return;
+  editorRecords = records;
+  editorRevision = revision;
   editorList = list; editorPage = 0; undoVocabulary = null;
+  editorInline = inline; editorWorkspace = owner; editorToken = token;
+  const dialog = $('vocab-dialog'), panel = $('vocab-editor-panel');
+  if (inline) {
+   if (dialog.open) dialog.close();
+   $('workspace-review').append(panel);
+   $('workspace-review').hidden = false;
+  } else {
+   $('workspace-review').hidden = true;
+   dialog.append(panel);
+  }
+  $('vocab-close').textContent = inline ? 'Finish reviewing' : 'Close';
   $('vocab-search').value = ''; $('vocab-filter').value = filter;
   $('vocab-filters').open = !!filter;
   $('vocab-advanced').open = false;
   $('vocab-audio').open = false;
   editorStatusText('');
   renderVocabularyEditor();
-  $('vocab-dialog').showModal();
+  if (!inline) dialog.showModal();
   return true;
- } catch (error) { status(error.message); }
+ } catch (error) { if (current()) status(error.message); }
 }
 
 function initCoach() {
@@ -972,7 +1040,7 @@ function initCoach() {
  $('study-shuffle').onclick = () => openShuffle('study');
  $('shuffle-undo').onclick = () => undoWordShuffle('list');
  $('study-shuffle-undo').onclick = () => undoWordShuffle('study');
- $('vocab-close').onclick = () => $('vocab-dialog').close();
+ $('vocab-close').onclick = () => editorInline ? closeVocabularyEditor() : $('vocab-dialog').close();
  for (const id of ['vocab-search', 'vocab-filter']) $(id).oninput = () => { editorPage = 0; renderVocabularyEditor(); };
  $('vocab-prev').onclick = () => { editorPage--; renderVocabularyEditor(); };
  $('vocab-next').onclick = () => { editorPage++; renderVocabularyEditor(); };
