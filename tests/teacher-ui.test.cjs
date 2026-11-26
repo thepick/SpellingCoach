@@ -145,7 +145,7 @@ test('spelling can share after word audio is ready while vocabulary waits for it
  h.elements.get('shared-mode').value='mixed';
  h.run('renderSharing()');
  assert.equal(h.elements.get('ai-publish').disabled,true);
- assert.match(h.elements.get('ai-publish-readiness').textContent,/missing recordings/);
+ assert.match(h.elements.get('ai-publish-readiness').textContent,/Waiting for recordings/);
  h.run("sharing.list.audioStatus.recordings[1].status='ready';renderSharing()");
  assert.equal(h.elements.get('ai-publish').disabled,false);
 });
@@ -365,4 +365,13 @@ test('standalone teacher and class sign-ins retain a main-page sign-out control'
  }
  const css=fs.readFileSync('src/styles.css','utf8');
  assert.match(css,/#teacher-dialog #teacher-logout\s*\{ display: none;/);
+});
+
+
+test('automatic generation fills only missing rows and preserves newer teacher-written drafts',async()=>{
+ const h=savingHarness();
+ h.run("wordKey=word=>word;Vocabulary={validateRecord:(word,value)=>value};refreshTeacher=()=>{};list.rows=[{word:'solid',vocabulary:{status:'draft',definition:'Teacher wrote this.'}},{word:'liquid',vocabulary:null}];ai.listId=list.id;ai.job={words:[{word:'solid',vocabulary:{status:'draft',definition:'Generated overwrite.'}},{word:'liquid',vocabulary:{status:'draft',definition:'New generated word.'}}]};saveVocabulary=async(target,rows,metadata)=>{target.rows=rows;Object.assign(target,metadata);savedCount++}");
+ await h.run('applyTeacherDrafts()');
+ assert.equal(h.run('list.rows[0].vocabulary.definition'),'Teacher wrote this.');
+ assert.equal(h.run('list.rows[1].vocabulary.definition'),'New generated word.');
 });

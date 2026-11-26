@@ -158,3 +158,56 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 @media (max-width: 640px) { #audio-settings-grid { grid-template-columns: 1fr; } }
 
 #shared-study:not([hidden]) { display: block; margin: .85rem auto 0; }
+
+#prepare-share-screen { max-width: 54rem; margin-inline: auto; }
+.workspace-heading { align-items: flex-start; gap: 1rem; }
+#workspace-title { margin: 0; overflow-wrap: anywhere; }
+#prepare-share-screen .workspace-section { border-top: 1px solid var(--line); margin-top: 1.5rem; padding-top: 1.5rem; }
+#prepare-share-screen .workspace-words { border-top: 0; padding-top: 0; }
+.workspace-words h2 { margin-bottom: 1rem; }
+#workspace-name { max-width: 36rem; }
+#workspace-words { min-height: 12rem; }
+#workspace-words-help { max-width: 65ch; margin: .5rem 0 0; line-height: 1.5; }
+.workspace-save-status { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem 1rem; margin-top: .65rem; }
+.workspace-save-status .status, #audio-word-summary { margin: 0; }
+#audio-word-summary { padding-top: .4rem; }
+#prepare-share-screen summary, #teacher-settings-disclosure > summary { cursor: pointer; padding: .45rem 0; }
+#prepare-share-screen summary:focus-visible, #teacher-settings-disclosure > summary:focus-visible { outline-offset: 4px; }
+#workspace-vocabulary > summary { font-size: 1.2rem; font-weight: 700; }
+#workspace-vocabulary-summary { margin-left: .6rem; font-weight: 400; }
+.workspace-vocabulary-body { padding-top: 1rem; }
+#workspace-settings-summary { margin: 0; line-height: 1.5; }
+#prepare-share-screen :is(#teacher-job, #teacher-admin, #teacher-private-audio) { border: 0; margin: 0; padding: 0; }
+#prepare-share-screen #teacher-draft-intro h2 { font-size: 1.05rem; margin-bottom: .4rem; }
+#prepare-share-screen #teacher-draft-intro p { margin: 0; max-width: 65ch; line-height: 1.5; }
+#workspace-vocabulary-settings > .stack { padding-top: .8rem; }
+#prepare-share-screen .teacher-fields { align-items: end; }
+#prepare-share-screen .teacher-fields input { max-width: none; }
+#prepare-share-screen .teacher-fields :is(input, select) { display: block; min-height: 46px; }
+#prepare-share-screen .teacher-checkboxes { align-items: start; }
+#prepare-share-screen .teacher-checkboxes label { align-items: baseline; margin: 0; }
+#prepare-share-screen .teacher-checkboxes input { flex: none; margin: 0; }
+#prepare-share-screen label:has(#ai-only-missing) { display: none; }
+#prepare-share-screen #teacher-job textarea { min-height: 3.5rem; }
+#workspace-audio-slot { padding-top: .75rem; }
+#workspace-audio-slot #teacher-private-audio-title { font-size: 1rem; margin: 0; }
+#prepare-share-screen #ai-vocabulary-words { white-space: pre-line; overflow-wrap: anywhere; }
+#prepare-share-screen :is(.hint, .status, .notice) { line-height: 1.5; }
+#prepare-share-screen .checkline { align-items: baseline; }
+#prepare-share-screen .checkline input { flex: none; }
+#workspace-review { border-top: 1px solid var(--line); margin-top: .35rem; padding-top: 1.25rem; }
+#workspace-review #vocab-editor-panel { padding: 0; }
+#workspace-review #vocab-editor-heading { align-items: baseline; }
+#workspace-review #vocab-title { font-size: 1.1rem; margin: 0; }
+#workspace-review #vocab-count { margin: .35rem 0 0; }
+#prepare-share-screen :is(#workspace-word-status, #workspace-status, #workspace-unshared, #workspace-settings-summary, #teacher-settings-status, #ai-progress, #ai-publish-status, #vocab-status):empty { display: none; }
+#teacher-settings-disclosure { width: 100%; }
+#teacher-settings-disclosure > .actions { margin-top: .6rem; }
+#teacher-settings-menu > .actions { gap: .75rem; }
+@media (max-width: 640px) {
+ .workspace-heading > .actions { width: 100%; }
+ #prepare-share-screen .workspace-section { margin-top: 1.25rem; padding-top: 1.25rem; }
+ #prepare-share-screen .workspace-words { padding-top: 0; }
+ #prepare-share-screen .actions > button { min-height: 44px; }
+ #workspace-vocabulary-summary { display: block; margin: .35rem 0 0 1.15rem; font-size: .9rem; }
+}

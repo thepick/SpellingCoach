@@ -242,8 +242,9 @@ $('create-list-words').oninput=()=>{
  $('create-list-words').setCustomValidity('');
  $('split-list').hidden=draftWords().length<=Vocabulary.MAX_WORDS;
 };
-$('create-list-form').onsubmit=e=>{
+$('create-list-form').onsubmit=async e=>{
  e.preventDefault();if(!listDraft||$('save-list-draft').disabled)return;
+ const owner=state,token=ai.token;
  const name=$('create-list-name').value.trim();
  let ws;try{ws=Vocabulary.normalizeWords(draftWords());}catch(error){editorStatus(error.message+' Split the list into smaller lists if needed.');return;}
  $('create-list-name').setCustomValidity(name?'':'Enter a name for this word list.');
@@ -260,6 +261,7 @@ $('create-list-form').onsubmit=e=>{
  if (l && ai.role === 'teacher' && ai.token) autosaveTeacherSet(l).catch(error=>status('Saved in this browser. '+error.message));
  $('create-list-dialog').close();
  status((l?'Saved “':'Created “')+name+'” with '+ws.length+' words. Choose words to practice or begin your session.');
+ if(entryPage==='teacher'&&ai.role==='teacher'&&token&&state===owner&&ai.token===token)await showTeacherTools('workspace');
 };
 $('split-list').onclick=()=>{
  if(!listDraft)return;

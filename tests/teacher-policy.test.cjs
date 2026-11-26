@@ -6,22 +6,23 @@ const vm=require('node:vm');
 function harness(){
  const nodes=new Map(), stored=new Map();
  const node=()=>({value:'',checked:false,hidden:false,disabled:false,dataset:{},textContent:'',open:false,
-  addEventListener(){},setAttribute(){},replaceChildren(){},querySelector(){return node();},close(){this.open=false;},showModal(){this.open=true;}});
+  addEventListener(){},setAttribute(){},replaceChildren(){},append(){},focus(){},querySelector(){return node();},close(){this.open=false;},showModal(){this.open=true;}});
  const context=vm.createContext({GenerationSettings:require('../src/generation-settings.js'),SharedReview:require('../src/shared-review.js'),
   URL,URLSearchParams,console,setTimeout:()=>0,clearTimeout(){},entryPage:'teacher',
   LOCAL_PREVIEW_KEY:'wordlab.local-preview',
   document:{body:{dataset:{entry:'teacher'}}},location:{origin:'https://site.test',href:'https://site.test/',hash:'',pathname:'/'},
   localStorage:{getItem:key=>stored.get(key)||null,setItem:(key,value)=>stored.set(key,value)},
   $:id=>{if(!nodes.has(id))nodes.set(id,node());return nodes.get(id);},window:{open(){}},
-  Dictation:{canonicalPackId:id=>id},Vocabulary:{validatePack:pack=>pack}});
+  Dictation:{canonicalPackId:id=>id},Vocabulary:{validatePack:pack=>pack,normalizeWords:require('../src/vocabulary.js').normalizeWords},
+  now:()=>String(Date.now()),copy:async()=>false,show(){}});
  vm.runInContext(fs.readFileSync('src/teacher.js','utf8'),context);
- vm.runInContext(`state={settings:{retypeOnMiss:true,allowVariants:false},lists:[]};
+ vm.runInContext(`state={settings:{selected:{},retypeOnMiss:true,allowVariants:false},lists:[]};
   let list={id:'local',packId:'pack',packVersion:1,name:'Week',words:['atom'],updatedAt:'same',audioStatus:{recordings:[{key:'0-s',status:'ready'}]}};state.lists=[list];
   let records=[{word:'atom',vocabulary:null}];selectedList=()=>list;loadVocabulary=async()=>records;outputPack=(list,words)=>({id:'pack',version:list.packVersion,name:list.name,words});
   refreshTeacher=()=>{};watchPracticeAudio=()=>{};autosaveTeacherSet=async()=>{};save=()=>true;newListId=()=> 'ticket';
   ai={root:'https://service.test',token:'token',role:'teacher',teacher:{id:'teacher'},config:{dictationEnabled:true}};
   initTeacherAccounts=()=>{};initTeacherViewNavigation=()=>{};initTeacher();
-  $('shared-mode').value='spelling';$('shared-hints').checked=true;`,context);
+  $('shared-mode').value='spelling';$('shared-hints').checked=true;$('prepare-share-screen').hidden=true;`,context);
  return {nodes,stored,context,run:code=>vm.runInContext(code,context)};
 }
 
@@ -44,7 +45,7 @@ test('legacy rules stay undefined in the published snapshot until an explicit up
  assert.equal(h.nodes.get('shared-variants').checked,false);
  assert.equal(h.run('ai.publishedRetype'),undefined);
  assert.equal(h.run('ai.publishedVariants'),undefined);
- assert.equal(h.nodes.get('ai-link-actions').hidden,true);
+ assert.equal(h.nodes.get('ai-link-actions').hidden,false);
  assert.equal(h.nodes.get('ai-publish').textContent,'Update student link');
 });
 
@@ -59,7 +60,7 @@ test('publish and local student preview use the same explicit per-link rules',as
  assert.deepEqual(preview.practice,{mode:body.mode,allowHints:body.allowHints,retypeOnMiss:body.retypeOnMiss,allowVariants:body.allowVariants});
  assert.equal(h.run('ai.publishedRetype'),false);assert.equal(h.run('ai.publishedVariants'),true);
  h.nodes.get('shared-retype').checked=true;h.nodes.get('shared-retype').onchange();
- assert.equal(h.nodes.get('ai-link-actions').hidden,true);
+ assert.equal(h.nodes.get('ai-link-actions').hidden,false);
 });
 
 test('a rule change during existing-link lookup cannot overwrite the author controls',async()=>{
@@ -69,7 +70,7 @@ test('a rule change during existing-link lookup cannot overwrite the author cont
  h.nodes.get('shared-retype').checked=false;h.nodes.get('shared-variants').checked=false;
  h.run('release()');await h.run('pending');
  assert.equal(h.nodes.get('shared-variants').checked,false);
- assert.equal(h.nodes.get('ai-link-actions').hidden,true);
+ assert.equal(h.nodes.get('ai-link-actions').hidden,false);
  assert.equal(h.run('ai.publishedVariants'),true);
 });
 
@@ -115,7 +116,7 @@ test('existing rules survive private content edits and reload without changing l
  assert.equal(h.nodes.get('shared-retype').checked,false);
  assert.equal(h.nodes.get('shared-variants').checked,true);
  assert.equal(h.run('state.settings.retypeOnMiss'),true);
- assert.equal(h.nodes.get('ai-link-actions').hidden,true);
+ assert.equal(h.nodes.get('ai-link-actions').hidden,false);
  assert.equal(h.run('ai.publishedUpdatedAt'),null);
  await h.nodes.get('ai-publish').onclick();
  assert.equal(h.run('body.retypeOnMiss'),false);
@@ -139,7 +140,7 @@ test('404 allows a new link while transient lookup errors require reopening to r
  h.run("let status=503;service=async()=>{const error=Error('Lookup failed');error.status=status;throw error}");
  await h.run("showTeacherTools('share')");
  assert.equal(h.nodes.get('ai-publish').disabled,true);
- assert.match(h.nodes.get('ai-publish-readiness').textContent,/Reopen Student link to retry/);
+ assert.match(h.nodes.get('ai-publish-readiness').textContent,/Retry loading the link/);
  h.run('status=404');await h.run("showTeacherTools('share')");
  assert.equal(h.nodes.get('ai-publish').disabled,false);
  assert.equal(h.run('sharing.linkLookup'),'missing');
@@ -171,7 +172,7 @@ test('touching and restoring the same checkbox value during lookup preserves the
  h.nodes.get('shared-retype').checked=true;h.nodes.get('shared-retype').onchange();
  h.run('release()');await h.run('pending');
  assert.equal(h.nodes.get('shared-retype').checked,true);
- assert.equal(h.nodes.get('ai-link-actions').hidden,true);
+ assert.equal(h.nodes.get('ai-link-actions').hidden,false);
 });
 
 test('correction retyping is hidden for vocabulary-only links without changing its selected policy',()=>{
@@ -189,4 +190,87 @@ test('an obsolete lookup response cannot hydrate policies after the publishing g
  assert.equal(h.nodes.get('shared-retype').checked,true);
  assert.equal(h.run('ai.published'),undefined);
  assert.equal(h.nodes.get('ai-publish').disabled,true);
+});
+
+
+test('current links use one Copy action, while private edits retain the published link and preview the draft',async()=>{
+ const h=harness();h.run("let posts=0,copies=0;copy=async()=>{copies++;return true};service=async()=>({visibility:'public',pack:outputPack(list,records),practice:{mode:'spelling',allowHints:true,retypeOnMiss:true,allowVariants:false},audioStatus:{ready:1,total:1}})");
+ await h.run("showTeacherTools('share')");
+ assert.equal(h.nodes.get('ai-publish').textContent,'Copy student link');
+ await h.nodes.get('ai-publish').onclick();assert.equal(h.run('copies'),1);
+ h.run("list.name='Private revision';list.updatedAt='changed';renderSharing()");
+ assert.equal(h.nodes.get('ai-publish').textContent,'Update student link');
+ assert.equal(h.nodes.get('ai-link-actions').hidden,false);
+ assert.equal(h.nodes.get('workspace-unshared').hidden,false);
+ assert.match(h.nodes.get('ai-student-link').value,/#pack=pack/);
+ h.nodes.get('ai-preview').onclick();
+ assert.equal(JSON.parse(h.stored.get('wordlab.local-preview')).pack.name,'Private revision');
+});
+
+test('workspace words validate before autosave and block generation, publication, and preview until saved',async()=>{
+ const h=harness();
+ h.run("let saves=0;renderSetup=()=>{};autosaveTeacherSet=async()=>{saves++};sharing={list,records};workspaceEdit={list,owner:state,token:ai.token,revision:0,pending:false,error:''};$('workspace-name').value='Week';$('workspace-words').value='atom';$('prepare-share-screen').hidden=false;ai.config.generationEnabled=true");
+ h.nodes.get('workspace-words').value='';h.nodes.get('workspace-words').oninput();
+ assert.equal(h.nodes.get('ai-publish').disabled,true);assert.equal(h.nodes.get('ai-generate').disabled,true);
+ assert.equal(await h.run('flushWorkspaceWords()'),false);
+ assert.equal(h.run('JSON.stringify(list.words)'), '["atom"]');assert.equal(h.run('saves'),0);
+ h.nodes.get('workspace-words').value='atom\n\nsolid\natom\n';h.nodes.get('workspace-words').oninput();
+ assert.equal(await h.run('flushWorkspaceWords()'),true);
+ assert.equal(h.run('JSON.stringify(list.words)'), '["atom","solid"]');assert.equal(h.run('saves'),1);
+ assert.equal(h.run('list.packVersion'),2);assert.equal(h.run('workspaceEdit.pending'),false);
+});
+
+test('an old words-save response cannot clear a newer edit or cross accounts',async()=>{
+ const h=harness();h.run("renderSetup=()=>{};let release;autosaveTeacherSet=async()=>{await new Promise(resolve=>release=resolve)};sharing={list,records};workspaceEdit={list,owner:state,token:ai.token,revision:1,pending:true,error:''};$('workspace-name').value='Week';$('workspace-words').value='solid';let pending=flushWorkspaceWords()");
+ await new Promise(resolve=>setImmediate(resolve));
+ h.nodes.get('workspace-words').value='solid\ngas';h.nodes.get('workspace-words').oninput();
+ h.run('release()');await h.run('pending');
+ assert.equal(h.run('workspaceEdit.pending'),true);assert.equal(h.nodes.get('workspace-words').value,'solid\ngas');
+ h.run("autosaveTeacherSet=async()=>{await new Promise(resolve=>release=resolve)};pending=flushWorkspaceWords()");
+ await new Promise(resolve=>setImmediate(resolve));
+ h.run("ai.token='another-account';release()");await h.run('pending');
+ assert.equal(h.nodes.get('workspace-words').value,'solid\ngas');
+ assert.doesNotMatch(h.nodes.get('workspace-word-status').textContent,/Saved automatically/);
+});
+
+test('a copy failure leaves a ready visible link and Copy action without republishing',async()=>{
+ const h=harness();h.run("sharing={list,records};let posts=0;copy=async()=>{throw Error('Clipboard denied')};service=async(path,options)=>{posts++;return {pack:options.body.pack,audioStatus:{ready:1,total:1}}}");
+ await h.nodes.get('ai-publish').onclick();
+ assert.equal(h.run('posts'),1);assert.equal(h.nodes.get('ai-link-actions').hidden,false);
+ assert.equal(h.nodes.get('ai-publish').textContent,'Copy student link');
+ assert.match(h.nodes.get('ai-publish-status').textContent,/Student link ready/);
+ assert.match(h.nodes.get('ai-student-link').value,/#pack=pack/);
+});
+
+
+test('returning to the same set reloads words changed from the set list',async()=>{
+ const h=harness();h.run("renderSetup=()=>{};show=id=>{$('prepare-share-screen').hidden=id!=='prepare-share-screen'};service=async()=>{const error=Error('No link');error.status=404;throw error}");
+ await h.run("showTeacherTools('workspace')");
+ await h.nodes.get('workspace-back').onclick();
+ h.run("list.words=['newer'];list.updatedAt='newer-revision';list.packVersion++");
+ await h.run("showTeacherTools('workspace')");
+ assert.equal(h.nodes.get('workspace-words').value,'newer');
+});
+
+test('generation locks before loading and snapshots the selected set settings',async()=>{
+ const h=harness();h.run("let releases=[],posts=0,sent;ai.config.generationEnabled=true;let generationSettings={readingLevel:4};aiSettings=()=>({...generationSettings});loadVocabulary=async()=>{await new Promise(resolve=>releases.push(resolve));return records};runJob=async()=>{};applyJob=job=>{ai.job=job};service=async(path,options)=>{posts++;sent=options.body.settings;return {id:'job',status:'complete',words:[]}};let first=$('ai-generate').onclick();let second=$('ai-generate').onclick()");
+ await new Promise(resolve=>setImmediate(resolve));
+ h.run("generationSettings.readingLevel=8;releases.forEach(resolve=>resolve())");
+ await h.run('Promise.all([first,second])');assert.equal(h.run('posts'),1);assert.equal(h.run('sent.readingLevel'),4);
+});
+
+test('switching sets during the generation read cancels before dispatch',async()=>{
+ const h=harness();h.run("let release,posts=0;aiSettings=()=>({readingLevel:4});loadVocabulary=async()=>{await new Promise(resolve=>release=resolve);return records};service=async()=>{posts++;return {}};let pending=$('ai-generate').onclick()");
+ await new Promise(resolve=>setImmediate(resolve));
+ h.run("selectedList=()=>({id:'other'});release()");await h.run('pending');assert.equal(h.run('posts'),0);
+});
+
+
+test('reopening recovers completed missing drafts without making another generation request',async()=>{
+ const h=harness();h.run("wordKey=word=>word;Vocabulary.validateRecord=(word,value)=>value;ai.listId=list.id;ai.job={status:'complete',words:[{word:'atom',vocabulary:{status:'draft',definition:'Recovered draft'}}]};let generations=0;service=async path=>{if(path==='/generate')generations++;const error=Error('No public link');error.status=404;throw error};saveVocabulary=async(target,rows,metadata)=>{records=rows;Object.assign(target,metadata)}");
+ await h.run("showTeacherTools('workspace')");
+ assert.equal(h.run('records[0].vocabulary.definition'),'Recovered draft');assert.equal(h.run('generations'),0);
+ h.run("$('prepare-share-screen').hidden=false;ai.config.generationEnabled=true;renderSetWorkspace()");
+ assert.equal(h.nodes.get('ai-generate').hidden,true);
+ assert.equal(h.nodes.get('workspace-edit-vocabulary').textContent,'Review vocabulary');
 });
