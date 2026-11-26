@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>WordLab</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content"><meta name="color-scheme" content="light dark"><title>WordLab</title>
 <meta name="apple-mobile-web-app-title" content="WordLab">
 
 <script id="theme-preferences">
@@ -262,6 +262,99 @@ details > summary { cursor: pointer; }
 
 #set-more-actions > .actions { margin-top: .6rem; }
 
+.lesson-stage { margin: .35rem 0; color: var(--accent); font-size: .95rem; font-weight: 650; }
+.lesson-controls { display: grid; gap: .65rem; }
+.lesson-controls #learning-answer { margin-top: 0; }
+.lesson-controls #learning-next { margin-top: 0; }
+.generated-word { border: 1px solid var(--line); border-radius: 12px; padding: .75rem 1rem; background: var(--bg); }
+.generated-word > summary { font-weight: 700; overflow-wrap: anywhere; }
+.generated-word > summary span { color: var(--muted); font-weight: 400; font-size: .9rem; margin-left: .6rem; }
+.generated-word-body { padding-top: .6rem; }
+.generated-word-body > p { margin: .25rem 0; line-height: 1.5; }
+.generated-clip { display: flex; align-items: center; gap: .75rem; padding: .6rem 0; border-top: 1px solid var(--line); }
+.generated-clip p { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; line-height: 1.5; }
+.generated-clip button { flex: none; min-height: 44px; }
+.generated-word-body > .actions { margin-top: .5rem; }
+#workspace-generated-list:empty { display: none; }
+#workspace-review .tools-panel { background: var(--panel); padding: 1rem; border-radius: 12px; }
+/* Phones and tablets use the visible viewport as the practice surface. */
+@media (max-width: 1024px), (max-height: 600px) and (pointer: coarse) {
+ body:has(.practice:not([hidden])) { overflow: hidden; }
+ .app:has(.practice:not([hidden])) { padding: 8px max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); }
+ .app:has(.practice:not([hidden])) > .topbar { display: none; }
+ .practice:not([hidden]) { display: flex; flex-direction: column; width: 100%; max-width: 900px; height: calc(var(--practice-height, 100dvh) - 16px - env(safe-area-inset-bottom)); margin: 0 auto; padding: 12px; overflow: auto; overscroll-behavior: contain; }
+ .practice .practice-head { flex-direction: row; align-items: center; flex-wrap: nowrap; gap: .5rem; }
+ .practice .practice-head > div:first-child { min-width: 0; }
+ .practice .practice-head h1 { font-size: clamp(1.15rem, 3vw, 1.6rem); margin: .15rem 0; }
+ .practice .practice-head .hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55vw; }
+ .practice .practice-head .actions { gap: .3rem; }
+ .practice .practice-head button { min-height: 44px; padding: .5rem .65rem; }
+ .practice .kbd { display: none; }
+ .practice .mastery-meter { margin: .5rem 0; flex: none; }
+ .practice .mastery-meta { font-size: .9rem; }
+ .practice .mastery-meter .progressline { margin: .35rem 0; height: 6px; }
+ .practice .mastery-foot { font-size: .85rem; }
+ #learning-count, .lesson-stage { margin: .3rem 0; flex: none; }
+ #learning-prompt { flex: 1; min-height: 2.7rem; overflow: auto; margin: .5rem 0; font-size: clamp(1.15rem, 3vw, 1.6rem); }
+ .lesson-controls { position: sticky; bottom: 0; flex: none; background: var(--panel); padding-top: .4rem; gap: .4rem; }
+ #learning-answer { gap: .5rem; }
+ #learning-input { font-size: 1.1rem; min-height: 44px; padding: .6rem .7rem; }
+ #learning-typed label { margin-bottom: .25rem; }
+ #learning-audio-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .4rem; }
+ #learning-audio-actions button { padding: .5rem .35rem; min-height: 44px; font-size: .9rem; }
+ .lesson-submit-actions { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto; gap: .4rem; }
+ .lesson-submit-actions button { min-height: 48px; padding: .6rem .5rem; }
+ #learning-choices { max-height: calc(var(--practice-height, 100dvh) * .25); overflow: auto; }
+ #learning-choices .word-bank { margin: 0; padding: .65rem; line-height: 1.5; }
+ #learning-choices .choice { padding: .55rem; }
+ #learning-hint-text, #learning-audio-error { margin: 0; max-height: 18vh; overflow: auto; }
+ #learning-feedback { margin: 0; padding: .65rem; max-height: 24vh; overflow: auto; min-height: 0; }
+ #learning-correction { padding: .6rem .75rem; max-height: 20vh; overflow: auto; }
+ #learning-next { min-height: 48px; width: 100%; }
+ #spelling-mastery > p { display: none; }
+ #tiles { max-height: 44px; overflow: auto; margin: .25rem 0; gap: 5px; flex: none; }
+ #tiles .tile { width: 14px; height: 14px; border-radius: 4px; }
+ #practice-screen .prompt { margin-top: auto; padding: .5rem 0 0; }
+ #practice-screen .word-input { margin: .6rem auto; }
+ #practice-screen #answer-form > .hint { display: none; }
+ #practice-screen #feedback { margin: .5rem 0 0; padding: .65rem; min-height: 0; }
+ #study-screen .study-card { flex: 1; min-height: 0; overflow: auto; margin: .5rem 0; }
+ #study-screen > .actions:last-child { position: sticky; bottom: 0; background: var(--panel); }
+ #study-screen > .actions:last-child button { flex: 1; min-height: 48px; }
+}
+@media (min-width: 601px) and (max-width: 1024px) {
+ .lesson-controls { padding: .75rem 1rem; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; }
+ #learning-audio-actions { max-width: 32rem; }
+ #learning-typed { display: grid; grid-template-columns: 7rem 1fr; align-items: center; gap: .75rem; }
+ #learning-choices { max-height: calc(var(--practice-height, 100dvh) * .3); }
+}
+@media (max-height: 500px) and (max-width: 1024px) {
+ .practice .mastery-meta, .practice .mastery-foot, #learning-label { display: none; }
+ .practice .mastery-meter { margin: .2rem 0; }
+ .practice .practice-head h1 { font-size: 1.05rem; }
+ .lesson-stage { font-size: .85rem; }
+ #learning-typed label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+ #learning-typed { display: block; }
+ .lesson-controls { padding: 0; border: 0; }
+}
+
+#vocab-editor-panel[data-card=true] :is(:has(> #vocab-word), :has(> #vocab-word-prev), #vocab-filters, #vocab-pagination) { display: none; }
+@media (max-height: 500px) and (max-width: 1024px) {
+ #learning-screen { overflow: hidden; padding: 8px; }
+ #learning-mastery { display: none; }
+ #learning-screen .practice-head h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45vw; font-size: 1rem; }
+ #learning-screen .practice-head .actions { flex-wrap: nowrap; }
+ #learning-screen .practice-head button { font-size: .85rem; padding: .4rem; }
+ #learning-stage { font-size: .8rem; margin: .1rem 0; }
+ #learning-prompt { min-height: 3rem; font-size: 1rem; margin: .25rem 0; }
+ #learning-audio-actions button { font-size: .85rem; min-height: 44px; padding: .3rem; }
+ .lesson-submit-actions button { font-size: .9rem; min-height: 48px; padding: .4rem; }
+ #learning-audio-error, #learning-hint-text { max-height: 2.5rem; padding: .35rem .5rem; font-size: .85rem; }
+ #learning-choices { max-height: 2.75rem; }
+ #learning-choices .word-bank { padding: .4rem .5rem; }
+ .lesson-controls, #learning-answer { gap: .35rem; }
+}
+
 </style></head><body data-entry="offline">
 <div class="app"><header class="topbar"><div class="brand"><img class="brand-icon" src="data:image/x-icon;base64,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" width="32" height="32" alt=""><span>WordLab</span></div><label class="theme-control" for="theme-select"><span>Theme</span><select id="theme-select"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label><div id="storage-warning" class="notice" hidden role="status">Your progress will not be saved in this browser.</div></header><main><p id="local-preview-notice" class="notice" role="status" hidden>Draft preview uses this device’s voice. Use recording previews in the teacher workspace to check Paul. This preview makes no AI requests.</p>
 <section id="teacher-signin-screen" class="screen panel" hidden aria-labelledby="teacher-signin-title">
@@ -315,6 +408,7 @@ details > summary { cursor: pointer; }
  <details id="workspace-vocabulary" class="workspace-section"><summary>Vocabulary <span id="workspace-vocabulary-summary" class="hint">Optional</span></summary><div class="workspace-vocabulary-body stack">
   <p id="workspace-settings-summary" class="hint"></p><div id="workspace-generation-slot"></div>
   <div class="actions"><button id="workspace-edit-vocabulary" type="button" class="secondary">Edit vocabulary</button></div>
+  <div id="workspace-generated-list" class="stack" aria-label="Generated vocabulary and recordings"></div>
   <div id="workspace-review" hidden aria-label="Vocabulary review"></div>
  </div></details>
  <div id="workspace-share-slot" class="workspace-section"></div>
@@ -343,26 +437,29 @@ details > summary { cursor: pointer; }
    <div><label for="speech-rate">Local playback speed <span id="rate-label">0.85</span></label><input id="speech-rate" aria-describedby="device-rate-help" type="range" min="0.5" max="1.2" step="0.05"><div id="device-rate-help" class="hint">Changes device speech and recordings saved on this device, including local Paul clips. Use Listen slowly for shared recordings.</div></div>
   </div><div class="actions"><button id="preview-voice" class="ghost small">Preview device voice</button></div></div><div class="actions"><a id="offline-download" href="WordLab%20v0.2.0.html" download>Download offline app</a></div>
  </details>
- <div class="row between tools-footer"><div><p id="tools-save-help" class="hint">Local practice settings save automatically. API keys have their own Save button.</p><span id="tools-version" class="hint">WordLab v0.2.0</span><span id="release-build" class="hint">Build 4e5e2bdf4ac2</span></div><button id="done-tools">Close</button></div>
+ <div class="row between tools-footer"><div><p id="tools-save-help" class="hint">Local practice settings save automatically. API keys have their own Save button.</p><span id="tools-version" class="hint">WordLab v0.2.0</span><span id="release-build" class="hint">Build 5c2f6e38a530</span></div><button id="done-tools">Close</button></div>
 </div></dialog><dialog id="create-list-dialog" class="tools-dialog create-list-dialog" aria-labelledby="create-list-title"><form id="create-list-form" class="tools-panel create-list-form"><div class="tools-heading"><h1 id="create-list-title">Create a word list</h1><p id="create-list-intro" class="subhead">Give your list a name, then add or import the words to practice.</p></div><div class="stack"><div><label for="create-list-name">Name</label><input id="create-list-name" type="text" maxlength="80" autocomplete="off" placeholder="For example, Week 3 spelling" required autofocus></div><div id="create-list-grade-field"><label for="create-list-grade">Grade preset for this new set</label><select id="create-list-grade"><option value="3">Grade 3</option><option value="4">Grade 4</option><option value="5" selected>Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option></select><p class="hint">Copies your grade defaults into this set. You can adjust them in Prepare &amp; share.</p></div><div><label for="create-list-words">Words or phrases</label><textarea id="create-list-words" spellcheck="false" placeholder="because&#10;different&#10;important" aria-describedby="create-list-help" required></textarea><div id="create-list-help" class="hint">Enter up to 200 words or phrases, one per line. Repeated words are removed.</div></div></div><div class="actions"><button id="import-csv" type="button" class="secondary">Import CSV</button><button id="split-list" type="button" class="secondary" hidden>Split into lists</button><details><summary>Export words</summary><button id="copy-list" type="button" class="ghost">Copy as CSV</button></details></div><p class="hint">CSV: words on separate lines or separated by commas. No headings needed.</p><input id="csv-file" type="file" accept=".csv,text/csv" hidden><div id="list-editor-status" class="status" role="status" aria-live="polite"></div><div class="row between"><button id="cancel-create-list" type="button" class="ghost">Cancel</button><button id="save-list-draft" type="submit">Create this list</button></div></form></dialog>
 <section id="practice-screen" class="screen practice panel" hidden><div class="practice-head"><div><div id="list-name-practice" class="hint"></div><h1>Listen, then spell</h1></div><button id="pause-button" class="ghost">Pause practice <span class="kbd">Esc</span></button></div><div id="spelling-mastery" class="mastery-meter"><div class="mastery-meta"><span class="mastery-label">Progress toward mastery</span><span class="mastery-percent"></span></div><div id="mastery-progress" class="progressline" role="progressbar" aria-label="Progress toward mastery" aria-valuemax="100" aria-valuemin="0" aria-valuenow="0"><div id="progress-fill" class="progressfill"></div></div><div class="mastery-foot"><span id="progress-text" class="mastery-count" aria-live="polite"></span><span id="round-text"></span></div><p class="hint">Two correct spellings in a row to master each word.</p></div><div id="tiles" class="tiles" aria-label="Word progress"></div>
 <div class="prompt"><div class="actions" style="justify-content:center"><button id="replay-button" class="secondary">Replay word <span class="kbd">R</span></button><button id="slow-replay" class="ghost">Replay slowly <span class="kbd">S</span></button></div><div id="definition" class="definition"></div><form id="answer-form"><div id="spelling-correction" class="correction" hidden><span>Correct answer</span><strong></strong><span>Type it to continue.</span><p class="correction-detail" hidden></p></div><label class="sr" for="answer-input">Type the word you hear</label><input id="answer-input" class="word-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"><div class="hint">Type the word and press Enter to submit your answer.</div><div class="actions" style="justify-content:center;margin-top:10px"><button id="dont-know" type="button" class="ghost">I’m not sure</button><button id="submit-answer" type="submit">Submit answer</button></div></form></div><div id="feedback" class="feedback" aria-live="polite"></div></section>
 <section id="summary-screen" class="screen panel" hidden><div class="row between"><div><div id="summary-list" class="hint"></div><h1 id="summary-title">Practice summary</h1></div><button id="summary-setup" class="ghost">Return to setup</button></div><div id="summary-stats" class="summary-stat"></div><div class="grid section"><div><h2>Words for more practice</h2><div id="missed-empty" class="hint">No words need additional review from this session.</div><ol id="missed-list" class="missed"></ol><div class="actions"><button id="practice-missed" disabled>Practice these words</button><button id="copy-missed" class="secondary" disabled>Copy review words</button></div></div><div><details><summary>Recent practice sessions</summary><ol id="history-list" class="history"></ol></details></div></div></section>
 <section id="learning-screen" class="screen practice panel" hidden>
  <div class="practice-head"><div><div id="learning-label" class="hint"></div><h1 id="learning-title" tabindex="-1"></h1></div><div class="actions"><button id="learning-pause" type="button" class="ghost small">Pause</button><button id="learning-end" type="button" class="ghost small">End session</button></div></div>
+ <p id="learning-stage" class="lesson-stage" role="status" hidden></p>
  <p id="learning-count" class="hint" aria-live="polite"></p>
  <div id="learning-mastery" class="mastery-meter" hidden><div class="mastery-meta"><span class="mastery-label">Progress toward mastery</span><span class="mastery-percent"></span></div><div class="progressline" role="progressbar" aria-label="Progress toward mastery" aria-valuemax="100" aria-valuemin="0" aria-valuenow="0"><div class="progressfill"></div></div><p class="mastery-foot mastery-count" aria-live="polite"></p></div>
  <p id="learning-prompt" class="lesson-prompt"></p>
+ <div class="lesson-controls">
  <div id="learning-audio-actions" class="actions"><button id="learning-audio" type="button" class="secondary small">Listen</button><button id="learning-slow" type="button" class="ghost small">Listen slowly</button><button id="learning-autoplay" type="button" class="ghost small" aria-label="Automatic sentence audio" aria-pressed="true">Auto audio: on</button></div>
  <p id="learning-audio-error" class="notice" role="alert" hidden></p>
  <form id="learning-answer" class="stack">
   <div id="learning-choices" class="stack"></div>
   <div id="learning-correction" class="correction" hidden><span>Correct answer</span><strong></strong><span>Type it to continue.</span><p class="correction-detail" hidden></p></div>
   <div id="learning-typed"><label for="learning-input">Your answer</label><input id="learning-input" type="text" maxlength="120" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"></div>
-  <div class="actions"><button id="learning-submit" type="submit">Check answer</button><button id="learning-skip" type="button" class="ghost">I’m not sure</button><button id="learning-hint" type="button" class="ghost">Hint</button></div>
+  <div class="actions lesson-submit-actions"><button id="learning-submit" type="submit">Check answer</button><button id="learning-skip" type="button" class="ghost">I’m not sure</button><button id="learning-hint" type="button" class="ghost">Hint</button></div>
  </form>
  <p id="learning-hint-text" class="notice" role="status" hidden></p>
  <div id="learning-feedback" class="feedback" role="status" hidden></div><button id="learning-next" type="button" hidden>Next question</button>
+ </div>
 </section>
 <section id="study-screen" class="screen practice panel" hidden>
  <div class="row between"><h1 tabindex="-1" id="study-title">Flashcards</h1><button type="button" class="ghost" id="study-exit">Return to setup</button></div>
@@ -3369,6 +3466,7 @@ const Learning = (() => {
   }
 
   function taskMastered(session, task) {
+    if (session.settings.sequentialPractice) return task.streak >= 1 && (task.skill === 'spelling' || task.bankPassed);
     if (session.settings.phasedVocabulary) return task.streak >= 2 && (task.skill === 'spelling' || task.bankPassed);
     const skill = wordProgress(session.progress, session.records[task.recordIndex])[task.skill];
     return skill.mastered && skill.streak >= 2;
@@ -3384,16 +3482,29 @@ const Learning = (() => {
   }
 
   function upgradePractice(session) {
-    if (session.type !== 'practice' || session.status !== 'active' || session.settings.phasedVocabulary) return;
-    Object.assign(session.settings, {phasedVocabulary:true, masteryPractice:true});
+    if (session.type !== 'practice' || session.status !== 'active' || session.settings.sequentialPractice) return;
+    Object.assign(session.settings, {phasedVocabulary:true, masteryPractice:true, sequentialPractice:true});
     for (const task of session.tasks) Object.assign(task, {bankPassed:false, streak:0, lastRecall:''});
     for (const result of session.results) recordPhase(session.tasks[result.question.taskId], result);
-    session.queue = session.queue.filter(id => !taskMastered(session, session.tasks[id]));
+    session.queue = session.tasks.filter(task => !taskMastered(session, task)).map(task => task.id);
     const question = current(session);
-    if (!session.feedback && question && question.type !== 'dictation' && !session.hintStage) {
-      const replacement = choosePhased(session, session.tasks[question.taskId]);
-      session.questions[session.index] = {...replacement, id:question.id, taskId:question.taskId, promptId:replacement.id};
+    if (session.feedback) session.queue = session.queue.filter(id => id !== question.taskId || !taskMastered(session, session.tasks[id]));
+    else if (question && !session.hintStage) {
+      session.questions.pop();
+      schedule(session);
+      if (session.status === 'finished') session.finishedAt = Date.now();
+    } else if (question) session.queue = session.queue.filter(id => id !== question.taskId);
+    for (const task of session.tasks) if (taskMastered(session, task)) {
+      const stats = progressFor(session.progress, session.records[task.recordIndex])[task.skill];
+      spacing(stats, true, stats.lastAt, session.settings.reviewIntervals, 1);
     }
+  }
+
+  function practiceStage(session, task) {
+    if (!session.settings.sequentialPractice || session.type !== 'practice') return null;
+    const question = task ? null : current(session);
+    task = task || (question && session.tasks[question.taskId]);
+    return task ? task.skill === 'spelling' ? 0 : task.bankPassed && question?.type !== 'word-bank' ? 2 : 1 : null;
   }
 
   function practiceWordProgress(session) {
@@ -3404,9 +3515,10 @@ const Learning = (() => {
     for (const task of session.tasks) {
       const word = words.get(task.recordIndex) || {mastered:true, credit:0, skills:0};
       const mastered = !pending.has(task.id) && taskMastered(session, task);
-      const streak = Math.min(2, Math.max(0, task.streak || 0));
+      const required = session.settings.sequentialPractice ? 1 : 2;
+      const streak = Math.min(required, Math.max(0, task.streak || 0));
       const credit = session.settings.phasedVocabulary
-        ? task.skill === 'spelling' ? streak/2 : task.bankPassed ? (1+streak)/3 : 0
+        ? task.skill === 'spelling' ? streak/required : task.bankPassed ? (1+streak)/(1+required) : 0
         : Number(mastered);
       word.mastered = word.mastered && mastered;
       word.credit += credit;
@@ -3433,7 +3545,12 @@ const Learning = (() => {
       session.status = 'finished';
       return;
     }
-    const nextIndex = session.queue.findIndex(id => session.tasks[id].recordIndex !== previous?.recordIndex);
+    // Finish the whole set's current stage before starting the next one.
+    const stage = task => task.skill === 'spelling' ? 0 : task.bankPassed ? 2 : 1;
+    const firstStage = session.settings.sequentialPractice ? Math.min(...session.queue.map(id => stage(session.tasks[id]))) : null;
+    const eligible = id => firstStage === null || stage(session.tasks[id]) === firstStage;
+    let nextIndex = session.queue.findIndex(id => eligible(id) && session.tasks[id].recordIndex !== previous?.recordIndex);
+    if (nextIndex < 0) nextIndex = session.queue.findIndex(eligible);
     const [taskId] = session.queue.splice(Math.max(0, nextIndex), 1);
     const task = session.tasks[taskId];
     pushQuestion(session, task, choose(session, task));
@@ -3446,7 +3563,8 @@ const Learning = (() => {
       choiceOffset: Number.isInteger(options.choiceOffset) && options.choiceOffset >= 0 ? options.choiceOffset : 0,
       reviewIntervals: options.reviewIntervals?.length && options.reviewIntervals.every(days => Number.isFinite(days) && days > 0)
         ? [...options.reviewIntervals] : [1, 3, 7, 14, 30]};
-    if (settings.type === 'test') settings.phasedVocabulary = false;
+    if (settings.type === 'test') { settings.phasedVocabulary = false; settings.sequentialPractice = false; }
+    if (settings.sequentialPractice) settings.phasedVocabulary = true;
     if (settings.phasedVocabulary) settings.masteryPractice = true;
     const now = typeof options.now === 'number' ? options.now : Date.now();
     const session = {v: 1, type: settings.type, mode: settings.mode, settings, status: 'active', records: copy(describe(records)),
@@ -3532,13 +3650,13 @@ const Learning = (() => {
     return lastHint(session);
   }
 
-  function spacing(stats, correct, now, intervals) {
+  function spacing(stats, correct, now, intervals, required = 2) {
     if (stats.mastered && (stats.nextReview <= now || !correct)) {
       const previous = Math.max(0, intervals.indexOf(stats.interval));
       const index = correct ? Math.min(previous + 1, intervals.length - 1) : Math.max(0, previous - 1);
       stats.interval = intervals[index];
       stats.nextReview = now + stats.interval * DAY;
-    } else if (!stats.mastered && stats.streak >= 2) {
+    } else if (!stats.mastered && stats.streak >= required) {
       stats.mastered = true;
       stats.interval = intervals[0];
       stats.nextReview = now + stats.interval * DAY;
@@ -3560,7 +3678,7 @@ const Learning = (() => {
         if (!correct) skill.misses++;
         skill.lastAt = at;
         skill.streak = correct ? skill.streak + 1 : 0;
-        spacing(skill, correct, at, session.settings.reviewIntervals);
+        spacing(skill, correct, at, session.settings.reviewIntervals, session.settings.sequentialPractice ? 1 : 2);
       }
       return;
     }
@@ -3584,7 +3702,7 @@ const Learning = (() => {
       } else {
         vocabulary.streak = 0;
       }
-      spacing(vocabulary, correct, at, session.settings.reviewIntervals);
+      spacing(vocabulary, correct, at, session.settings.reviewIntervals, session.settings.sequentialPractice ? 1 : 2);
     }
     if (!correct && !assisted) vocabulary.misses++;
   }
@@ -3797,7 +3915,7 @@ const Learning = (() => {
     }), order);
   }
 
-  return {createSession, current, evaluate, audio, hint, lastHint, submit, skip, correct, advance, finish, resume, upgradePractice, sessionOK, report, mastery, practiceMastered, practiceWordProgress, practiceAudioPrompts, flashcards};
+  return {createSession, current, evaluate, audio, hint, lastHint, submit, skip, correct, advance, finish, resume, upgradePractice, sessionOK, report, mastery, practiceMastered, practiceWordProgress, practiceStage, practiceAudioPrompts, flashcards};
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Learning;
@@ -4210,7 +4328,7 @@ async function beginCoach() {
 }
 
 function beginLearning(list, records, options, dueLists) {
- if (options.type === 'practice') options = {...options, phasedVocabulary:true};
+ if (options.type === 'practice') options = {...options, phasedVocabulary:true, sequentialPractice:true};
  const session = Learning.createSession(records, options, dueLists ? dueLists.progress : learningProgress(list));
  if (!session.questions.length) { status('There are no questions for this selection.'); return; }
  state.learningSession = {listId: list.id, listName: list.name, session, dueLists: dueLists?.owners || null};
@@ -4362,6 +4480,10 @@ function renderLearning(play, corrected = false) {
  show('learning-screen');
  $('learning-label').textContent = entry.listName + ' · ' + (test ? 'Test' : 'Practice');
  $('learning-title').textContent = titleForType[question.type];
+ const stage = Learning.practiceStage(session);
+ $('learning-stage').hidden = stage === null;
+ if (stage !== null) $('learning-stage').textContent = (session.mode === 'mixed' ? 'Stage '+(stage+1)+' of 3: ' : '') +
+  ['Spelling', 'Vocabulary with choices', 'Vocabulary without choices'][stage];
  $('learning-count').hidden = !test;
  const progress = 'Question ' + (session.index + 1) + ' of ' + session.questions.length;
  if ($('learning-count').textContent !== progress) $('learning-count').textContent = progress;
@@ -4903,6 +5025,7 @@ let editorRecords = [];
 let editorList = null;
 let editorPage = 0;
 let editorInline = false;
+let editorCard = false;
 let editorWorkspace = null;
 let editorToken = '';
 let vocabularyEditorRequest = 0;
@@ -5012,7 +5135,7 @@ function renderEditFields(filtered = filteredEditorRecords()) {
  editorSelection.values = vocabularyFieldValues();
  displayVocabularyEditor(!v);
  $('vocab-approve').textContent = v?.status === 'approved' ? 'Save changes' :
-  nextVocabularyDraft(filtered, index) ? 'Approve & next' : 'Save and approve';
+  !editorCard && nextVocabularyDraft(filtered, index) ? 'Approve & next' : 'Save and approve';
  $('vocab-regenerate').disabled = !v || ai.role !== 'teacher';
  renderRecordingControls();
 }
@@ -5091,7 +5214,7 @@ async function closeVocabularyEditor(discardConfirmed = false) {
  return true;
 }
 
-async function openVocabularyEditor(filter = '', inline = false) {
+async function openVocabularyEditor(filter = '', inline = false, preferred = '') {
  const list = selectedList();
  if (!list || !canLeaveVocabularyEditor()) return;
  const selection = editorSelection, values = vocabularyFieldValues();
@@ -5106,7 +5229,9 @@ async function openVocabularyEditor(filter = '', inline = false) {
   editorRevision = revision;
   editorList = list; editorPage = 0; undoVocabulary = null;
   editorInline = inline; editorWorkspace = owner; editorToken = token;
+  editorCard = inline && !!preferred;
   const dialog = $('vocab-dialog'), panel = $('vocab-editor-panel');
+  panel.dataset.card = String(editorCard);
   if (inline) {
    if (dialog.open) dialog.close();
    $('workspace-review').append(panel);
@@ -5121,7 +5246,7 @@ async function openVocabularyEditor(filter = '', inline = false) {
   $('vocab-advanced').open = false;
   $('vocab-audio').open = false;
   editorStatusText('');
-  renderVocabularyEditor();
+  renderVocabularyEditor(preferred);
   if (!inline) dialog.showModal();
   return true;
  } catch (error) { if (current()) status(error.message); }
@@ -5248,12 +5373,16 @@ function initCoach() {
     }))
    });
    let preferred = word;
-   if (record.status === 'approved' && before?.status !== 'approved') {
+   if (!editorCard && record.status === 'approved' && before?.status !== 'approved') {
     const queue = filteredEditorRecords(), index = queue.findIndex(row => row.word === word);
     preferred = nextVocabularyDraft(queue, index)?.word || word;
    }
    if (await changeVocabulary(editorRecords.map(row => row.word === word ? {word, vocabulary: record} : row), preferred, vocabularyFieldValues())) {
     editorStatusText((record.status === 'approved' ? 'Approved ' : 'Saved ') + word + '.');
+    if (editorCard && editorInline && !editorSelection.values.some((value,index) => value !== $(editableVocabularyFields[index]).value)) {
+     await closeVocabularyEditor(true);
+     $('workspace-status').textContent = 'Saved ' + word + '. Matching recordings prepare automatically.';
+    }
     if ($('vocab-form').hidden) $('vocab-close').focus();
    }
   } catch (error) { editorStatusText(error.message); }
@@ -5642,6 +5771,9 @@ let pendingGeneration = null;
 let workspaceEdit = null;
 let workspaceSaveTimer;
 const workspaceHomes = new Map();
+let workspaceVocabularySnapshot = '';
+let workspaceVocabularyOwner = null;
+let workspaceVocabularyList = null;
 let audioStatusTimer;
 let privateAudioTimer;
 let restoringTeacherSets = false;
@@ -5816,7 +5948,7 @@ function renderSetWorkspace() {
   (settings.exampleSentences===1?' example':' examples');
  $('teacher-draft-form').hidden=!ai.config.generationEnabled;
  $('workspace-vocabulary-settings').hidden=false;
- $('ai-context-wrap').hidden=allApproved;
+ $('ai-context-wrap').hidden=allApproved || rows.length > 0 && vocabulary.length===rows.length;
  $('workspace-edit-vocabulary').textContent=allApproved?'Edit vocabulary':vocabulary.length?'Review vocabulary':'Add vocabulary by hand';
  $('workspace-edit-vocabulary').disabled=workspaceSavePending() || !sharing.records;
  $('ai-generate').hidden=rows.length===list.words.length && vocabulary.length===rows.length;
@@ -5843,6 +5975,63 @@ function renderSetWorkspace() {
  $('ai-only-missing').checked=true;
  $('ai-only-missing').disabled=true;
  $('ai-share-audio').hidden=!ai.audioStatus || ai.audioStatus.ready===ai.audioStatus.total;
+ renderWorkspaceVocabulary();
+}
+
+function renderWorkspaceVocabulary() {
+ if (editorInline) return; // Keep unsaved fields and focus intact while audio or generation updates arrive.
+ const list = sharing.list, rows = sharing.records || [], host = $('workspace-generated-list');
+ const snapshot = JSON.stringify([list?.id, list?.updatedAt, rows, list?.audioStatus]);
+ const sameWorkspace = workspaceVocabularyOwner === state && workspaceVocabularyList === list;
+ if (sameWorkspace && snapshot === workspaceVocabularySnapshot) return;
+ workspaceVocabularySnapshot = snapshot;
+ workspaceVocabularyOwner = state; workspaceVocabularyList = list;
+ const expanded = new Map(sameWorkspace ? Array.from(host.children, item => [item.dataset.word, item.open]) : []);
+ // The shared editor is kept outside cards whenever the list is rebuilt.
+ $('workspace-vocabulary').querySelector('.workspace-vocabulary-body').append($('workspace-review'));
+ host.replaceChildren();
+ rows.forEach((row, index) => {
+  const card = document.createElement('details'), summary = document.createElement('summary');
+  card.className = 'generated-word'; card.dataset.word = row.word;
+  card.open = expanded.has(row.word) ? expanded.get(row.word) : true;
+  summary.append(document.createTextNode(row.word));
+  const status = document.createElement('span');
+  status.textContent = row.vocabulary?.status === 'approved' ? 'Approved' : row.vocabulary ? 'Needs review' : 'Preparing vocabulary';
+  summary.append(status); card.append(summary);
+  const body = document.createElement('div'); body.className = 'generated-word-body stack';
+  const definition = document.createElement('p'); definition.textContent = row.vocabulary?.definition || 'Generated sentences will appear here.';
+  body.append(definition);
+  for (const prompt of Learning.practiceAudioPrompts(row, index)) {
+   const clipRow = document.createElement('div'), text = document.createElement('p'), listen = document.createElement('button');
+   clipRow.className = 'generated-clip';
+   const kind = prompt.skill === 'spelling' ? 'Word' : prompt.skill === 'study' ? 'Example' : 'Practice';
+   text.textContent = kind + ': ' + prompt.text;
+   const clip = list?.audioStatus?.recordings?.find(item => item.key === prompt.key && item.text === prompt.text);
+   listen.type = 'button'; listen.className = 'ghost small';
+   listen.textContent = clip?.status === 'ready' ? 'Listen' : clip?.status === 'failed' ? 'Audio failed' : 'Preparing audio';
+   listen.disabled = clip?.status !== 'ready';
+   listen.setAttribute('aria-label', 'Listen to ' + row.word + ' - ' + kind.toLowerCase());
+   listen.onclick = teacherAction(async () => {
+    const {root,token} = ai, owner = state;
+    stopRecording(); const request = dictationRequest;
+    const bytes = await service('/teacher/sets/' + encodeURIComponent(list.packId || list.id) + '/audio/' + encodeURIComponent(prompt.key), {root,token,audio:true});
+    if (state !== owner || ai.token !== token || selectedList() !== list || request !== dictationRequest) return;
+    await playRecording(new Blob([bytes], {type:'audio/wav'}), 1, request);
+   });
+   clipRow.append(text,listen); body.append(clipRow);
+  }
+  const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'secondary';
+  edit.textContent = row.vocabulary ? 'Edit and approve' : 'Add wording';
+  edit.setAttribute('aria-label', 'Edit vocabulary for ' + row.word);
+  edit.onclick = teacherAction(async () => {
+   if (workspaceSavePending()) return;
+   if (!await openVocabularyEditor('', true, row.word)) return;
+   body.append($('workspace-review')); card.open = true;
+   displayVocabularyEditor(true);
+   $('vocab-definition').focus();
+  });
+  body.append(edit); card.append(body); host.append(card);
+ });
 }
 async function refreshSetWorkspace() {
  const list=sharing.list, owner=state, token=ai.token, stamp=list?.updatedAt;
@@ -6848,9 +7037,13 @@ function initTeacher() {
   const {root,token} = ai, owner = state;
   const list = selectedList();
   if(!list)return;
+  if (!canLeaveVocabularyEditor()) return;
   const request={list,stamp:list.updatedAt,version:list.packVersion,settings:aiSettings()};
   pendingGeneration=request;$('ai-generate').disabled=true;
   try {
+   await closeVocabularyEditor(true);
+   $('workspace-vocabulary').open = true;
+   renderWorkspaceVocabulary();
    const records = ai.role === 'teacher' ? await loadVocabulary(list) : selectedRecords();
    if(ai.token!==token || state!==owner || selectedList()!==list || list.updatedAt!==request.stamp || list.packVersion!==request.version || workspaceSavePending())return;
    const words=(ai.role==='teacher' || $('ai-only-missing').checked ? records.filter(row=>!row.vocabulary) : records).map(row=>row.word);
@@ -7730,5 +7923,15 @@ state.settings.roundSize=clamp(state.settings.roundSize,1,20,7);state.settings.r
 initCoach();
 renderSetup();warning();openSharedReview();
 })();
+
+// Keep practice controls above the on-screen keyboard and inside the visible viewport.
+function sizePracticeViewport() {
+ document.documentElement.style.setProperty('--practice-height', (window.visualViewport ? window.visualViewport.height : window.innerHeight) + 'px');
+}
+if (typeof window !== 'undefined' && Number.isFinite(window.innerHeight)) {
+ sizePracticeViewport();
+ window.addEventListener('resize', sizePracticeViewport);
+ if (window.visualViewport) window.visualViewport.addEventListener('resize', sizePracticeViewport);
+}
 
 </script></body></html>

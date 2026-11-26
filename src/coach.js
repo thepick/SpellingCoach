@@ -158,7 +158,7 @@ async function beginCoach() {
 }
 
 function beginLearning(list, records, options, dueLists) {
- if (options.type === 'practice') options = {...options, phasedVocabulary:true};
+ if (options.type === 'practice') options = {...options, phasedVocabulary:true, sequentialPractice:true};
  const session = Learning.createSession(records, options, dueLists ? dueLists.progress : learningProgress(list));
  if (!session.questions.length) { status('There are no questions for this selection.'); return; }
  state.learningSession = {listId: list.id, listName: list.name, session, dueLists: dueLists?.owners || null};
@@ -310,6 +310,10 @@ function renderLearning(play, corrected = false) {
  show('learning-screen');
  $('learning-label').textContent = entry.listName + ' · ' + (test ? 'Test' : 'Practice');
  $('learning-title').textContent = titleForType[question.type];
+ const stage = Learning.practiceStage(session);
+ $('learning-stage').hidden = stage === null;
+ if (stage !== null) $('learning-stage').textContent = (session.mode === 'mixed' ? 'Stage '+(stage+1)+' of 3: ' : '') +
+  ['Spelling', 'Vocabulary with choices', 'Vocabulary without choices'][stage];
  $('learning-count').hidden = !test;
  const progress = 'Question ' + (session.index + 1) + ' of ' + session.questions.length;
  if ($('learning-count').textContent !== progress) $('learning-count').textContent = progress;
@@ -851,6 +855,7 @@ let editorRecords = [];
 let editorList = null;
 let editorPage = 0;
 let editorInline = false;
+let editorCard = false;
 let editorWorkspace = null;
 let editorToken = '';
 let vocabularyEditorRequest = 0;
@@ -960,7 +965,7 @@ function renderEditFields(filtered = filteredEditorRecords()) {
  editorSelection.values = vocabularyFieldValues();
  displayVocabularyEditor(!v);
  $('vocab-approve').textContent = v?.status === 'approved' ? 'Save changes' :
-  nextVocabularyDraft(filtered, index) ? 'Approve & next' : 'Save and approve';
+  !editorCard && nextVocabularyDraft(filtered, index) ? 'Approve & next' : 'Save and approve';
  $('vocab-regenerate').disabled = !v || ai.role !== 'teacher';
  renderRecordingControls();
 }
@@ -1039,7 +1044,7 @@ async function closeVocabularyEditor(discardConfirmed = false) {
  return true;
 }
 
-async function openVocabularyEditor(filter = '', inline = false) {
+async function openVocabularyEditor(filter = '', inline = false, preferred = '') {
  const list = selectedList();
  if (!list || !canLeaveVocabularyEditor()) return;
  const selection = editorSelection, values = vocabularyFieldValues();
@@ -1054,7 +1059,9 @@ async function openVocabularyEditor(filter = '', inline = false) {
   editorRevision = revision;
   editorList = list; editorPage = 0; undoVocabulary = null;
   editorInline = inline; editorWorkspace = owner; editorToken = token;
+  editorCard = inline && !!preferred;
   const dialog = $('vocab-dialog'), panel = $('vocab-editor-panel');
+  panel.dataset.card = String(editorCard);
   if (inline) {
    if (dialog.open) dialog.close();
    $('workspace-review').append(panel);
@@ -1069,7 +1076,7 @@ async function openVocabularyEditor(filter = '', inline = false) {
   $('vocab-advanced').open = false;
   $('vocab-audio').open = false;
   editorStatusText('');
-  renderVocabularyEditor();
+  renderVocabularyEditor(preferred);
   if (!inline) dialog.showModal();
   return true;
  } catch (error) { if (current()) status(error.message); }
@@ -1196,12 +1203,16 @@ function initCoach() {
     }))
    });
    let preferred = word;
-   if (record.status === 'approved' && before?.status !== 'approved') {
+   if (!editorCard && record.status === 'approved' && before?.status !== 'approved') {
     const queue = filteredEditorRecords(), index = queue.findIndex(row => row.word === word);
     preferred = nextVocabularyDraft(queue, index)?.word || word;
    }
    if (await changeVocabulary(editorRecords.map(row => row.word === word ? {word, vocabulary: record} : row), preferred, vocabularyFieldValues())) {
     editorStatusText((record.status === 'approved' ? 'Approved ' : 'Saved ') + word + '.');
+    if (editorCard && editorInline && !editorSelection.values.some((value,index) => value !== $(editableVocabularyFields[index]).value)) {
+     await closeVocabularyEditor(true);
+     $('workspace-status').textContent = 'Saved ' + word + '. Matching recordings prepare automatically.';
+    }
     if ($('vocab-form').hidden) $('vocab-close').focus();
    }
   } catch (error) { editorStatusText(error.message); }

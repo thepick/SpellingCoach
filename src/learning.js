@@ -252,6 +252,7 @@ const Learning = (() => {
   }
 
   function taskMastered(session, task) {
+    if (session.settings.sequentialPractice) return task.streak >= 1 && (task.skill === 'spelling' || task.bankPassed);
     if (session.settings.phasedVocabulary) return task.streak >= 2 && (task.skill === 'spelling' || task.bankPassed);
     const skill = wordProgress(session.progress, session.records[task.recordIndex])[task.skill];
     return skill.mastered && skill.streak >= 2;
@@ -267,16 +268,29 @@ const Learning = (() => {
   }
 
   function upgradePractice(session) {
-    if (session.type !== 'practice' || session.status !== 'active' || session.settings.phasedVocabulary) return;
-    Object.assign(session.settings, {phasedVocabulary:true, masteryPractice:true});
+    if (session.type !== 'practice' || session.status !== 'active' || session.settings.sequentialPractice) return;
+    Object.assign(session.settings, {phasedVocabulary:true, masteryPractice:true, sequentialPractice:true});
     for (const task of session.tasks) Object.assign(task, {bankPassed:false, streak:0, lastRecall:''});
     for (const result of session.results) recordPhase(session.tasks[result.question.taskId], result);
-    session.queue = session.queue.filter(id => !taskMastered(session, session.tasks[id]));
+    session.queue = session.tasks.filter(task => !taskMastered(session, task)).map(task => task.id);
     const question = current(session);
-    if (!session.feedback && question && question.type !== 'dictation' && !session.hintStage) {
-      const replacement = choosePhased(session, session.tasks[question.taskId]);
-      session.questions[session.index] = {...replacement, id:question.id, taskId:question.taskId, promptId:replacement.id};
+    if (session.feedback) session.queue = session.queue.filter(id => id !== question.taskId || !taskMastered(session, session.tasks[id]));
+    else if (question && !session.hintStage) {
+      session.questions.pop();
+      schedule(session);
+      if (session.status === 'finished') session.finishedAt = Date.now();
+    } else if (question) session.queue = session.queue.filter(id => id !== question.taskId);
+    for (const task of session.tasks) if (taskMastered(session, task)) {
+      const stats = progressFor(session.progress, session.records[task.recordIndex])[task.skill];
+      spacing(stats, true, stats.lastAt, session.settings.reviewIntervals, 1);
     }
+  }
+
+  function practiceStage(session, task) {
+    if (!session.settings.sequentialPractice || session.type !== 'practice') return null;
+    const question = task ? null : current(session);
+    task = task || (question && session.tasks[question.taskId]);
+    return task ? task.skill === 'spelling' ? 0 : task.bankPassed && question?.type !== 'word-bank' ? 2 : 1 : null;
   }
 
   function practiceWordProgress(session) {
@@ -287,9 +301,10 @@ const Learning = (() => {
     for (const task of session.tasks) {
       const word = words.get(task.recordIndex) || {mastered:true, credit:0, skills:0};
       const mastered = !pending.has(task.id) && taskMastered(session, task);
-      const streak = Math.min(2, Math.max(0, task.streak || 0));
+      const required = session.settings.sequentialPractice ? 1 : 2;
+      const streak = Math.min(required, Math.max(0, task.streak || 0));
       const credit = session.settings.phasedVocabulary
-        ? task.skill === 'spelling' ? streak/2 : task.bankPassed ? (1+streak)/3 : 0
+        ? task.skill === 'spelling' ? streak/required : task.bankPassed ? (1+streak)/(1+required) : 0
         : Number(mastered);
       word.mastered = word.mastered && mastered;
       word.credit += credit;
@@ -316,7 +331,12 @@ const Learning = (() => {
       session.status = 'finished';
       return;
     }
-    const nextIndex = session.queue.findIndex(id => session.tasks[id].recordIndex !== previous?.recordIndex);
+    // Finish the whole set's current stage before starting the next one.
+    const stage = task => task.skill === 'spelling' ? 0 : task.bankPassed ? 2 : 1;
+    const firstStage = session.settings.sequentialPractice ? Math.min(...session.queue.map(id => stage(session.tasks[id]))) : null;
+    const eligible = id => firstStage === null || stage(session.tasks[id]) === firstStage;
+    let nextIndex = session.queue.findIndex(id => eligible(id) && session.tasks[id].recordIndex !== previous?.recordIndex);
+    if (nextIndex < 0) nextIndex = session.queue.findIndex(eligible);
     const [taskId] = session.queue.splice(Math.max(0, nextIndex), 1);
     const task = session.tasks[taskId];
     pushQuestion(session, task, choose(session, task));
@@ -329,7 +349,8 @@ const Learning = (() => {
       choiceOffset: Number.isInteger(options.choiceOffset) && options.choiceOffset >= 0 ? options.choiceOffset : 0,
       reviewIntervals: options.reviewIntervals?.length && options.reviewIntervals.every(days => Number.isFinite(days) && days > 0)
         ? [...options.reviewIntervals] : [1, 3, 7, 14, 30]};
-    if (settings.type === 'test') settings.phasedVocabulary = false;
+    if (settings.type === 'test') { settings.phasedVocabulary = false; settings.sequentialPractice = false; }
+    if (settings.sequentialPractice) settings.phasedVocabulary = true;
     if (settings.phasedVocabulary) settings.masteryPractice = true;
     const now = typeof options.now === 'number' ? options.now : Date.now();
     const session = {v: 1, type: settings.type, mode: settings.mode, settings, status: 'active', records: copy(describe(records)),
@@ -415,13 +436,13 @@ const Learning = (() => {
     return lastHint(session);
   }
 
-  function spacing(stats, correct, now, intervals) {
+  function spacing(stats, correct, now, intervals, required = 2) {
     if (stats.mastered && (stats.nextReview <= now || !correct)) {
       const previous = Math.max(0, intervals.indexOf(stats.interval));
       const index = correct ? Math.min(previous + 1, intervals.length - 1) : Math.max(0, previous - 1);
       stats.interval = intervals[index];
       stats.nextReview = now + stats.interval * DAY;
-    } else if (!stats.mastered && stats.streak >= 2) {
+    } else if (!stats.mastered && stats.streak >= required) {
       stats.mastered = true;
       stats.interval = intervals[0];
       stats.nextReview = now + stats.interval * DAY;
@@ -443,7 +464,7 @@ const Learning = (() => {
         if (!correct) skill.misses++;
         skill.lastAt = at;
         skill.streak = correct ? skill.streak + 1 : 0;
-        spacing(skill, correct, at, session.settings.reviewIntervals);
+        spacing(skill, correct, at, session.settings.reviewIntervals, session.settings.sequentialPractice ? 1 : 2);
       }
       return;
     }
@@ -467,7 +488,7 @@ const Learning = (() => {
       } else {
         vocabulary.streak = 0;
       }
-      spacing(vocabulary, correct, at, session.settings.reviewIntervals);
+      spacing(vocabulary, correct, at, session.settings.reviewIntervals, session.settings.sequentialPractice ? 1 : 2);
     }
     if (!correct && !assisted) vocabulary.misses++;
   }
@@ -680,7 +701,7 @@ const Learning = (() => {
     }), order);
   }
 
-  return {createSession, current, evaluate, audio, hint, lastHint, submit, skip, correct, advance, finish, resume, upgradePractice, sessionOK, report, mastery, practiceMastered, practiceWordProgress, practiceAudioPrompts, flashcards};
+  return {createSession, current, evaluate, audio, hint, lastHint, submit, skip, correct, advance, finish, resume, upgradePractice, sessionOK, report, mastery, practiceMastered, practiceWordProgress, practiceStage, practiceAudioPrompts, flashcards};
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = Learning;

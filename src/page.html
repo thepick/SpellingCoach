@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><title>WordLab</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content"><meta name="color-scheme" content="light dark"><title>WordLab</title>
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48 64x64">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
@@ -94,6 +94,7 @@ const themePreference = (() => {
  <details id="workspace-vocabulary" class="workspace-section"><summary>Vocabulary <span id="workspace-vocabulary-summary" class="hint">Optional</span></summary><div class="workspace-vocabulary-body stack">
   <p id="workspace-settings-summary" class="hint"></p><div id="workspace-generation-slot"></div>
   <div class="actions"><button id="workspace-edit-vocabulary" type="button" class="secondary">Edit vocabulary</button></div>
+  <div id="workspace-generated-list" class="stack" aria-label="Generated vocabulary and recordings"></div>
   <div id="workspace-review" hidden aria-label="Vocabulary review"></div>
  </div></details>
  <div id="workspace-share-slot" class="workspace-section"></div>
@@ -129,19 +130,22 @@ const themePreference = (() => {
 <section id="summary-screen" class="screen panel" hidden><div class="row between"><div><div id="summary-list" class="hint"></div><h1 id="summary-title">Practice summary</h1></div><button id="summary-setup" class="ghost">Return to setup</button></div><div id="summary-stats" class="summary-stat"></div><div class="grid section"><div><h2>Words for more practice</h2><div id="missed-empty" class="hint">No words need additional review from this session.</div><ol id="missed-list" class="missed"></ol><div class="actions"><button id="practice-missed" disabled>Practice these words</button><button id="copy-missed" class="secondary" disabled>Copy review words</button></div></div><div><details><summary>Recent practice sessions</summary><ol id="history-list" class="history"></ol></details></div></div></section>
 <section id="learning-screen" class="screen practice panel" hidden>
  <div class="practice-head"><div><div id="learning-label" class="hint"></div><h1 id="learning-title" tabindex="-1"></h1></div><div class="actions"><button id="learning-pause" type="button" class="ghost small">Pause</button><button id="learning-end" type="button" class="ghost small">End session</button></div></div>
+ <p id="learning-stage" class="lesson-stage" role="status" hidden></p>
  <p id="learning-count" class="hint" aria-live="polite"></p>
  <div id="learning-mastery" class="mastery-meter" hidden><div class="mastery-meta"><span class="mastery-label">Progress toward mastery</span><span class="mastery-percent"></span></div><div class="progressline" role="progressbar" aria-label="Progress toward mastery" aria-valuemax="100" aria-valuemin="0" aria-valuenow="0"><div class="progressfill"></div></div><p class="mastery-foot mastery-count" aria-live="polite"></p></div>
  <p id="learning-prompt" class="lesson-prompt"></p>
+ <div class="lesson-controls">
  <div id="learning-audio-actions" class="actions"><button id="learning-audio" type="button" class="secondary small">Listen</button><button id="learning-slow" type="button" class="ghost small">Listen slowly</button><button id="learning-autoplay" type="button" class="ghost small" aria-label="Automatic sentence audio" aria-pressed="true">Auto audio: on</button></div>
  <p id="learning-audio-error" class="notice" role="alert" hidden></p>
  <form id="learning-answer" class="stack">
   <div id="learning-choices" class="stack"></div>
   <div id="learning-correction" class="correction" hidden><span>Correct answer</span><strong></strong><span>Type it to continue.</span><p class="correction-detail" hidden></p></div>
   <div id="learning-typed"><label for="learning-input">Your answer</label><input id="learning-input" type="text" maxlength="120" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"></div>
-  <div class="actions"><button id="learning-submit" type="submit">Check answer</button><button id="learning-skip" type="button" class="ghost">I’m not sure</button><button id="learning-hint" type="button" class="ghost">Hint</button></div>
+  <div class="actions lesson-submit-actions"><button id="learning-submit" type="submit">Check answer</button><button id="learning-skip" type="button" class="ghost">I’m not sure</button><button id="learning-hint" type="button" class="ghost">Hint</button></div>
  </form>
  <p id="learning-hint-text" class="notice" role="status" hidden></p>
  <div id="learning-feedback" class="feedback" role="status" hidden></div><button id="learning-next" type="button" hidden>Next question</button>
+ </div>
 </section>
 <section id="study-screen" class="screen practice panel" hidden>
  <div class="row between"><h1 tabindex="-1" id="study-title">Flashcards</h1><button type="button" class="ghost" id="study-exit">Return to setup</button></div>

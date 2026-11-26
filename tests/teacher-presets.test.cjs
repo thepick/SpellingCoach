@@ -9,6 +9,7 @@ function harness(){
   document:{body:{dataset:{entry:'teacher'}}},location:{hostname:'127.0.0.1',origin:'http://127.0.0.1'},
   $:id=>{if(!elements.has(id))elements.set(id,{value:'',checked:false,textContent:'',dataset:{},hidden:false,setAttribute(){}});return elements.get(id);}});
  vm.runInContext(fs.readFileSync('src/teacher.js','utf8'),context);
+ vm.runInContext('renderWorkspaceVocabulary=()=>{}',context);
  vm.runInContext("state={lists:[]};ai={root:'http://127.0.0.1',token:'teacher-token',teacher:{id:'teacher-a'},role:'teacher',config:{}};save=()=>true;selectedList=()=>state.lists[0]||null;",context);
  return {elements,context,run:code=>vm.runInContext(code,context)};
 }

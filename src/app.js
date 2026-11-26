@@ -390,3 +390,13 @@ state.settings.roundSize=clamp(state.settings.roundSize,1,20,7);state.settings.r
 // BUILD:STARTUP
 renderSetup();warning();openSharedReview();
 })();
+
+// Keep practice controls above the on-screen keyboard and inside the visible viewport.
+function sizePracticeViewport() {
+ document.documentElement.style.setProperty('--practice-height', (window.visualViewport ? window.visualViewport.height : window.innerHeight) + 'px');
+}
+if (typeof window !== 'undefined' && Number.isFinite(window.innerHeight)) {
+ sizePracticeViewport();
+ window.addEventListener('resize', sizePracticeViewport);
+ if (window.visualViewport) window.visualViewport.addEventListener('resize', sizePracticeViewport);
+}

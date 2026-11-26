@@ -9,6 +9,9 @@ let pendingGeneration = null;
 let workspaceEdit = null;
 let workspaceSaveTimer;
 const workspaceHomes = new Map();
+let workspaceVocabularySnapshot = '';
+let workspaceVocabularyOwner = null;
+let workspaceVocabularyList = null;
 let audioStatusTimer;
 let privateAudioTimer;
 let restoringTeacherSets = false;
@@ -183,7 +186,7 @@ function renderSetWorkspace() {
   (settings.exampleSentences===1?' example':' examples');
  $('teacher-draft-form').hidden=!ai.config.generationEnabled;
  $('workspace-vocabulary-settings').hidden=false;
- $('ai-context-wrap').hidden=allApproved;
+ $('ai-context-wrap').hidden=allApproved || rows.length > 0 && vocabulary.length===rows.length;
  $('workspace-edit-vocabulary').textContent=allApproved?'Edit vocabulary':vocabulary.length?'Review vocabulary':'Add vocabulary by hand';
  $('workspace-edit-vocabulary').disabled=workspaceSavePending() || !sharing.records;
  $('ai-generate').hidden=rows.length===list.words.length && vocabulary.length===rows.length;
@@ -210,6 +213,63 @@ function renderSetWorkspace() {
  $('ai-only-missing').checked=true;
  $('ai-only-missing').disabled=true;
  $('ai-share-audio').hidden=!ai.audioStatus || ai.audioStatus.ready===ai.audioStatus.total;
+ renderWorkspaceVocabulary();
+}
+
+function renderWorkspaceVocabulary() {
+ if (editorInline) return; // Keep unsaved fields and focus intact while audio or generation updates arrive.
+ const list = sharing.list, rows = sharing.records || [], host = $('workspace-generated-list');
+ const snapshot = JSON.stringify([list?.id, list?.updatedAt, rows, list?.audioStatus]);
+ const sameWorkspace = workspaceVocabularyOwner === state && workspaceVocabularyList === list;
+ if (sameWorkspace && snapshot === workspaceVocabularySnapshot) return;
+ workspaceVocabularySnapshot = snapshot;
+ workspaceVocabularyOwner = state; workspaceVocabularyList = list;
+ const expanded = new Map(sameWorkspace ? Array.from(host.children, item => [item.dataset.word, item.open]) : []);
+ // The shared editor is kept outside cards whenever the list is rebuilt.
+ $('workspace-vocabulary').querySelector('.workspace-vocabulary-body').append($('workspace-review'));
+ host.replaceChildren();
+ rows.forEach((row, index) => {
+  const card = document.createElement('details'), summary = document.createElement('summary');
+  card.className = 'generated-word'; card.dataset.word = row.word;
+  card.open = expanded.has(row.word) ? expanded.get(row.word) : true;
+  summary.append(document.createTextNode(row.word));
+  const status = document.createElement('span');
+  status.textContent = row.vocabulary?.status === 'approved' ? 'Approved' : row.vocabulary ? 'Needs review' : 'Preparing vocabulary';
+  summary.append(status); card.append(summary);
+  const body = document.createElement('div'); body.className = 'generated-word-body stack';
+  const definition = document.createElement('p'); definition.textContent = row.vocabulary?.definition || 'Generated sentences will appear here.';
+  body.append(definition);
+  for (const prompt of Learning.practiceAudioPrompts(row, index)) {
+   const clipRow = document.createElement('div'), text = document.createElement('p'), listen = document.createElement('button');
+   clipRow.className = 'generated-clip';
+   const kind = prompt.skill === 'spelling' ? 'Word' : prompt.skill === 'study' ? 'Example' : 'Practice';
+   text.textContent = kind + ': ' + prompt.text;
+   const clip = list?.audioStatus?.recordings?.find(item => item.key === prompt.key && item.text === prompt.text);
+   listen.type = 'button'; listen.className = 'ghost small';
+   listen.textContent = clip?.status === 'ready' ? 'Listen' : clip?.status === 'failed' ? 'Audio failed' : 'Preparing audio';
+   listen.disabled = clip?.status !== 'ready';
+   listen.setAttribute('aria-label', 'Listen to ' + row.word + ' - ' + kind.toLowerCase());
+   listen.onclick = teacherAction(async () => {
+    const {root,token} = ai, owner = state;
+    stopRecording(); const request = dictationRequest;
+    const bytes = await service('/teacher/sets/' + encodeURIComponent(list.packId || list.id) + '/audio/' + encodeURIComponent(prompt.key), {root,token,audio:true});
+    if (state !== owner || ai.token !== token || selectedList() !== list || request !== dictationRequest) return;
+    await playRecording(new Blob([bytes], {type:'audio/wav'}), 1, request);
+   });
+   clipRow.append(text,listen); body.append(clipRow);
+  }
+  const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'secondary';
+  edit.textContent = row.vocabulary ? 'Edit and approve' : 'Add wording';
+  edit.setAttribute('aria-label', 'Edit vocabulary for ' + row.word);
+  edit.onclick = teacherAction(async () => {
+   if (workspaceSavePending()) return;
+   if (!await openVocabularyEditor('', true, row.word)) return;
+   body.append($('workspace-review')); card.open = true;
+   displayVocabularyEditor(true);
+   $('vocab-definition').focus();
+  });
+  body.append(edit); card.append(body); host.append(card);
+ });
 }
 async function refreshSetWorkspace() {
  const list=sharing.list, owner=state, token=ai.token, stamp=list?.updatedAt;
@@ -1215,9 +1275,13 @@ function initTeacher() {
   const {root,token} = ai, owner = state;
   const list = selectedList();
   if(!list)return;
+  if (!canLeaveVocabularyEditor()) return;
   const request={list,stamp:list.updatedAt,version:list.packVersion,settings:aiSettings()};
   pendingGeneration=request;$('ai-generate').disabled=true;
   try {
+   await closeVocabularyEditor(true);
+   $('workspace-vocabulary').open = true;
+   renderWorkspaceVocabulary();
    const records = ai.role === 'teacher' ? await loadVocabulary(list) : selectedRecords();
    if(ai.token!==token || state!==owner || selectedList()!==list || list.updatedAt!==request.stamp || list.packVersion!==request.version || workspaceSavePending())return;
    const words=(ai.role==='teacher' || $('ai-only-missing').checked ? records.filter(row=>!row.vocabulary) : records).map(row=>row.word);

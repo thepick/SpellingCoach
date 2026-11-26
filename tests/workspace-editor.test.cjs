@@ -343,3 +343,16 @@ test('learning invalidations commit with a winning definition save and roll back
  h.context.save=()=>true;await h.run(edit);
  assert.equal(h.run('state.learning.set.solid.vocabulary'),undefined);assert.equal(h.run('state.learning.set.solid.spelling.streak'),1);assert.equal(h.run('state.familiar.set.length'),0);
 });
+
+test('saving a card editor returns to its updated row without advancing to another word',async()=>{
+ const h=harness();h.context.rows.push({word:'liquid',vocabulary:{...row().vocabulary,examples:[],clozeQuestions:[]}});
+ await h.run('openVocabularyEditor("",true,"solid")');
+ assert.equal(h.get('vocab-editor-panel').dataset.card,'true');
+ assert.equal(h.get('vocab-approve').textContent,'Save and approve');
+ h.get('vocab-definition').value='A material with a fixed shape.';
+ await h.get('vocab-form').onsubmit({preventDefault(){},submitter:{id:'vocab-approve'}});
+ assert.equal(h.run('editorRecords[0].vocabulary.status'),'approved');
+ assert.equal(h.run('editorRecords[1].vocabulary.status'),'draft');
+ assert.equal(h.get('workspace-review').hidden,true);
+ assert.match(h.get('workspace-status').textContent,/Saved solid/);
+});

@@ -21,6 +21,7 @@ function harness(){
   let records=[{word:'atom',vocabulary:null}];selectedList=()=>list;loadVocabulary=async()=>records;outputPack=(list,words)=>({id:'pack',version:list.packVersion,name:list.name,words});
   refreshTeacher=()=>{};watchPracticeAudio=()=>{};autosaveTeacherSet=async()=>{};save=()=>true;newListId=()=> 'ticket';
   ai={root:'https://service.test',token:'token',role:'teacher',teacher:{id:'teacher'},config:{dictationEnabled:true}};
+  canLeaveVocabularyEditor=()=>true;closeVocabularyEditor=async()=>{};renderWorkspaceVocabulary=()=>{};
   initTeacherAccounts=()=>{};initTeacherViewNavigation=()=>{};initTeacher();
   $('shared-mode').value='spelling';$('shared-hints').checked=true;$('prepare-share-screen').hidden=true;`,context);
  return {nodes,stored,context,run:code=>vm.runInContext(code,context)};

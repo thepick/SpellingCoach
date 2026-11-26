@@ -229,3 +229,96 @@ details > summary { cursor: pointer; }
 }
 
 #set-more-actions > .actions { margin-top: .6rem; }
+
+.lesson-stage { margin: .35rem 0; color: var(--accent); font-size: .95rem; font-weight: 650; }
+.lesson-controls { display: grid; gap: .65rem; }
+.lesson-controls #learning-answer { margin-top: 0; }
+.lesson-controls #learning-next { margin-top: 0; }
+.generated-word { border: 1px solid var(--line); border-radius: 12px; padding: .75rem 1rem; background: var(--bg); }
+.generated-word > summary { font-weight: 700; overflow-wrap: anywhere; }
+.generated-word > summary span { color: var(--muted); font-weight: 400; font-size: .9rem; margin-left: .6rem; }
+.generated-word-body { padding-top: .6rem; }
+.generated-word-body > p { margin: .25rem 0; line-height: 1.5; }
+.generated-clip { display: flex; align-items: center; gap: .75rem; padding: .6rem 0; border-top: 1px solid var(--line); }
+.generated-clip p { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; line-height: 1.5; }
+.generated-clip button { flex: none; min-height: 44px; }
+.generated-word-body > .actions { margin-top: .5rem; }
+#workspace-generated-list:empty { display: none; }
+#workspace-review .tools-panel { background: var(--panel); padding: 1rem; border-radius: 12px; }
+/* Phones and tablets use the visible viewport as the practice surface. */
+@media (max-width: 1024px), (max-height: 600px) and (pointer: coarse) {
+ body:has(.practice:not([hidden])) { overflow: hidden; }
+ .app:has(.practice:not([hidden])) { padding: 8px max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); }
+ .app:has(.practice:not([hidden])) > .topbar { display: none; }
+ .practice:not([hidden]) { display: flex; flex-direction: column; width: 100%; max-width: 900px; height: calc(var(--practice-height, 100dvh) - 16px - env(safe-area-inset-bottom)); margin: 0 auto; padding: 12px; overflow: auto; overscroll-behavior: contain; }
+ .practice .practice-head { flex-direction: row; align-items: center; flex-wrap: nowrap; gap: .5rem; }
+ .practice .practice-head > div:first-child { min-width: 0; }
+ .practice .practice-head h1 { font-size: clamp(1.15rem, 3vw, 1.6rem); margin: .15rem 0; }
+ .practice .practice-head .hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55vw; }
+ .practice .practice-head .actions { gap: .3rem; }
+ .practice .practice-head button { min-height: 44px; padding: .5rem .65rem; }
+ .practice .kbd { display: none; }
+ .practice .mastery-meter { margin: .5rem 0; flex: none; }
+ .practice .mastery-meta { font-size: .9rem; }
+ .practice .mastery-meter .progressline { margin: .35rem 0; height: 6px; }
+ .practice .mastery-foot { font-size: .85rem; }
+ #learning-count, .lesson-stage { margin: .3rem 0; flex: none; }
+ #learning-prompt { flex: 1; min-height: 2.7rem; overflow: auto; margin: .5rem 0; font-size: clamp(1.15rem, 3vw, 1.6rem); }
+ .lesson-controls { position: sticky; bottom: 0; flex: none; background: var(--panel); padding-top: .4rem; gap: .4rem; }
+ #learning-answer { gap: .5rem; }
+ #learning-input { font-size: 1.1rem; min-height: 44px; padding: .6rem .7rem; }
+ #learning-typed label { margin-bottom: .25rem; }
+ #learning-audio-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .4rem; }
+ #learning-audio-actions button { padding: .5rem .35rem; min-height: 44px; font-size: .9rem; }
+ .lesson-submit-actions { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto; gap: .4rem; }
+ .lesson-submit-actions button { min-height: 48px; padding: .6rem .5rem; }
+ #learning-choices { max-height: calc(var(--practice-height, 100dvh) * .25); overflow: auto; }
+ #learning-choices .word-bank { margin: 0; padding: .65rem; line-height: 1.5; }
+ #learning-choices .choice { padding: .55rem; }
+ #learning-hint-text, #learning-audio-error { margin: 0; max-height: 18vh; overflow: auto; }
+ #learning-feedback { margin: 0; padding: .65rem; max-height: 24vh; overflow: auto; min-height: 0; }
+ #learning-correction { padding: .6rem .75rem; max-height: 20vh; overflow: auto; }
+ #learning-next { min-height: 48px; width: 100%; }
+ #spelling-mastery > p { display: none; }
+ #tiles { max-height: 44px; overflow: auto; margin: .25rem 0; gap: 5px; flex: none; }
+ #tiles .tile { width: 14px; height: 14px; border-radius: 4px; }
+ #practice-screen .prompt { margin-top: auto; padding: .5rem 0 0; }
+ #practice-screen .word-input { margin: .6rem auto; }
+ #practice-screen #answer-form > .hint { display: none; }
+ #practice-screen #feedback { margin: .5rem 0 0; padding: .65rem; min-height: 0; }
+ #study-screen .study-card { flex: 1; min-height: 0; overflow: auto; margin: .5rem 0; }
+ #study-screen > .actions:last-child { position: sticky; bottom: 0; background: var(--panel); }
+ #study-screen > .actions:last-child button { flex: 1; min-height: 48px; }
+}
+@media (min-width: 601px) and (max-width: 1024px) {
+ .lesson-controls { padding: .75rem 1rem; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; }
+ #learning-audio-actions { max-width: 32rem; }
+ #learning-typed { display: grid; grid-template-columns: 7rem 1fr; align-items: center; gap: .75rem; }
+ #learning-choices { max-height: calc(var(--practice-height, 100dvh) * .3); }
+}
+@media (max-height: 500px) and (max-width: 1024px) {
+ .practice .mastery-meta, .practice .mastery-foot, #learning-label { display: none; }
+ .practice .mastery-meter { margin: .2rem 0; }
+ .practice .practice-head h1 { font-size: 1.05rem; }
+ .lesson-stage { font-size: .85rem; }
+ #learning-typed label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+ #learning-typed { display: block; }
+ .lesson-controls { padding: 0; border: 0; }
+}
+
+#vocab-editor-panel[data-card=true] :is(:has(> #vocab-word), :has(> #vocab-word-prev), #vocab-filters, #vocab-pagination) { display: none; }
+@media (max-height: 500px) and (max-width: 1024px) {
+ #learning-screen { overflow: hidden; padding: 8px; }
+ #learning-mastery { display: none; }
+ #learning-screen .practice-head h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45vw; font-size: 1rem; }
+ #learning-screen .practice-head .actions { flex-wrap: nowrap; }
+ #learning-screen .practice-head button { font-size: .85rem; padding: .4rem; }
+ #learning-stage { font-size: .8rem; margin: .1rem 0; }
+ #learning-prompt { min-height: 3rem; font-size: 1rem; margin: .25rem 0; }
+ #learning-audio-actions button { font-size: .85rem; min-height: 44px; padding: .3rem; }
+ .lesson-submit-actions button { font-size: .9rem; min-height: 48px; padding: .4rem; }
+ #learning-audio-error, #learning-hint-text { max-height: 2.5rem; padding: .35rem .5rem; font-size: .85rem; }
+ #learning-choices { max-height: 2.75rem; }
+ #learning-choices .word-bank { padding: .4rem .5rem; }
+ .lesson-controls, #learning-answer { gap: .35rem; }
+}

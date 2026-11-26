@@ -12,6 +12,7 @@ function harness(options={}) {
   document:{body:{dataset:{entry:options.entryPage || 'teacher'}}},
  });
  vm.runInContext(fs.readFileSync('src/teacher.js','utf8'), context);
+ vm.runInContext('renderWorkspaceVocabulary=()=>{}', context);
  return {context,run:code => vm.runInContext(code,context),elements};
 }
 

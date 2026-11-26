@@ -48,7 +48,7 @@ test('reopened and parked spelling, vocabulary, and mixed sets resume serialized
    assert.equal(h.run('state.session.perWord.color.streak'),1);
   } else {
    h.context.resumeRecord=JSON.parse(fs.readFileSync('examples/weekly-vocabulary-sample.json','utf8')).words[0];
-   h.run("let s=Learning.createSession([resumeRecord],{mode:'"+mode+"',phasedVocabulary:true,masteryPractice:true});Learning.submit(s,Learning.current(s).answer);Learning.advance(s);state.learningSession={listId:'local',session:s}");
+   h.run("let s=Learning.createSession([resumeRecord],{mode:'"+mode+"',phasedVocabulary:true,sequentialPractice:true,masteryPractice:true});Learning.submit(s,Learning.current(s).answer);Learning.advance(s);state.learningSession={listId:'local',session:s}");
   }
   h.run('state=JSON.parse(JSON.stringify(state));let storedActivity={session:state.session,learningSession:state.learningSession}');
   const progress=mode==='spelling'?h.run('state.session.perWord.color.streak'):h.run('Learning.practiceWordProgress(state.learningSession.session).progress');
