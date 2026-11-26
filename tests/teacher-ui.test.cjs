@@ -162,9 +162,11 @@ test('creating or selecting the first teacher set enables its direct vocabulary 
  assert.equal(h.elements.get('teacher-open-drafting').disabled,true);
 });
 
-function startBuiltPage(entry='teacher') {
+function startBuiltPage(entry='teacher',initialState=null) {
  const file=entry==='student'?'practice/index.html':entry==='offline'?'WordLab v0.2.0.html':'index.html';
  const html=fs.readFileSync(file,'utf8'), elements=new Map();
+ const storage=new Map();
+ if(initialState)storage.set('spell.state',JSON.stringify(initialState));
  const node=()=>({value:'',hidden:true,checked:false,dataset:{},style:{},children:[],
   addEventListener(){},removeEventListener(){},setAttribute(){},removeAttribute(){},setCustomValidity(){},
   append(...children){this.children.push(...children);},replaceChildren(...children){this.children=children;},add(child){this.children.push(child);},
@@ -178,13 +180,13 @@ function startBuiltPage(entry='teacher') {
   querySelectorAll:()=>[],querySelector:()=>null,addEventListener(){},createElement:()=>node()};
  const context=vm.createContext({document,URL,URLSearchParams,console,structuredClone,AbortSignal,
   location:{hostname:'127.0.0.1',origin:'http://127.0.0.1:8765',href:'http://127.0.0.1:8765/',search:'',hash:'',pathname:'/'},
-  localStorage:{getItem:()=>null,setItem(){},removeItem(){}},
+  localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)},
   window:{matchMedia:()=>({matches:false,addEventListener(){}}),addEventListener(){}},
   Option:function(text,value){return {text,value};},setTimeout:()=>0,clearTimeout(){},
   fetch:()=>{throw Error('Startup must not request an external service.');},
  });
  for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) vm.runInContext(match[1],context);
- return {context,elements};
+ return {context,elements,storage};
 }
 
 test('actual built teacher script starts with real module ordering and a local sign-in form',async()=>{
@@ -374,4 +376,16 @@ test('automatic generation fills only missing rows and preserves newer teacher-w
  await h.run('applyTeacherDrafts()');
  assert.equal(h.run('list.rows[0].vocabulary.definition'),'Teacher wrote this.');
  assert.equal(h.run('list.rows[1].vocabulary.definition'),'New generated word.');
+});
+
+test('the actual built app remembers the vocabulary audio toggle across reload and backup validation',()=>{
+ const page=startBuiltPage('offline',{v:2,lists:[],settings:{vocabularyAutoplay:false}});
+ page.elements.get('study-autoplay').click();
+ assert.equal(page.elements.get('study-autoplay').textContent,'Auto audio: on');
+ assert.equal(page.elements.get('learning-autoplay').textContent,'Auto audio: on');
+ page.elements.get('learning-autoplay').click();
+ const saved=JSON.parse(page.storage.get('spell.state'));
+ assert.equal(saved.settings.vocabularyAutoplay,false);
+ const reopened=startBuiltPage('offline',saved);reopened.elements.get('study-autoplay').click();
+ assert.equal(reopened.elements.get('study-autoplay').textContent,'Auto audio: on');
 });

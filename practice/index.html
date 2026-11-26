@@ -261,7 +261,7 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
  <p class="subhead">Sign in to create, preview, and share practice sets.</p>
  <div id="teacher-signin-slot"></div><p id="teacher-signin-status" class="status" role="status"></p>
 </section>
-<section id="shared-ready" class="screen panel" hidden aria-labelledby="shared-title"><h1 id="shared-title" tabindex="-1"></h1><p id="shared-instruction" class="subhead"></p><button type="button" id="shared-start">Start practice</button><button id="shared-study" type="button" class="secondary" hidden>Study flashcards</button><p id="shared-ready-status" class="status" role="status"></p></section>
+<section id="shared-ready" class="screen panel" hidden aria-labelledby="shared-title"><h1 id="shared-title" tabindex="-1"></h1><p id="shared-instruction" class="subhead"></p><p id="shared-progress-note" class="hint"></p><button type="button" id="shared-start">Start practice</button><button id="shared-study" type="button" class="secondary" hidden>Study flashcards</button><p id="shared-ready-status" class="status" role="status"></p></section>
 <section id="practice-complete-screen" class="screen panel" hidden aria-labelledby="practice-complete-title">
  <p id="practice-complete-list" class="hint"></p><h1 id="practice-complete-title" tabindex="-1">Practice complete</h1>
  <p id="practice-complete-message" class="subhead"></p><button type="button" id="practice-complete-done">Done</button>
@@ -342,7 +342,7 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
  <p id="learning-count" class="hint" aria-live="polite"></p>
  <div id="learning-mastery" class="mastery-meter" hidden><div class="mastery-meta"><span class="mastery-label">Progress toward mastery</span><span class="mastery-percent"></span></div><div class="progressline" role="progressbar" aria-label="Progress toward mastery" aria-valuemax="100" aria-valuemin="0" aria-valuenow="0"><div class="progressfill"></div></div><p class="mastery-foot mastery-count" aria-live="polite"></p></div>
  <p id="learning-prompt" class="lesson-prompt"></p>
- <div id="learning-audio-actions" class="actions"><button id="learning-audio" type="button" class="secondary small">Listen</button><button id="learning-slow" type="button" class="ghost small">Listen slowly</button></div>
+ <div id="learning-audio-actions" class="actions"><button id="learning-audio" type="button" class="secondary small">Listen</button><button id="learning-slow" type="button" class="ghost small">Listen slowly</button><button id="learning-autoplay" type="button" class="ghost small" aria-label="Automatic sentence audio" aria-pressed="true">Auto audio: on</button></div>
  <p id="learning-audio-error" class="notice" role="alert" hidden></p>
  <form id="learning-answer" class="stack">
   <div id="learning-choices" class="stack"></div>
@@ -356,7 +356,7 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 <section id="study-screen" class="screen practice panel" hidden>
  <div class="row between"><h1 tabindex="-1" id="study-title">Flashcards</h1><button type="button" class="ghost" id="study-exit">Return to setup</button></div>
  <div class="actions"><label class="checkline"><input id="study-reverse" type="checkbox"> Definition first</label><label class="checkline"><input id="study-unfamiliar" type="checkbox"> Unfamiliar only</label><button type="button" id="study-shuffle" class="ghost small">Shuffle cards</button><button id="study-shuffle-undo" type="button" class="ghost small" hidden>Undo shuffle</button></div><p id="study-shuffle-status" class="hint" role="status"></p>
- <p id="study-count" class="hint"></p><div class="study-card stack"><p id="study-front" class="lesson-prompt"></p><div id="study-back" hidden></div><div class="actions"><button id="study-reveal" type="button" class="secondary">Reveal card</button><button id="study-listen" type="button" class="ghost">Listen</button><button id="study-familiar" type="button" class="ghost">Mark as familiar</button></div></div>
+ <div class="actions"><button id="study-autoplay" type="button" class="ghost small" aria-label="Automatic sentence audio" aria-pressed="true">Auto audio: on</button><span class="hint">Examples play after you reveal a card.</span></div><p id="study-count" class="hint"></p><div class="study-card stack"><p id="study-front" class="lesson-prompt"></p><div id="study-back" hidden></div><div class="actions"><button id="study-reveal" type="button" class="secondary">Reveal card</button><button id="study-listen" type="button" class="ghost">Listen</button><button id="study-familiar" type="button" class="ghost">Mark as familiar</button></div></div>
  <div class="actions"><button id="study-prev" type="button" class="ghost">Previous</button><button id="study-next" type="button">Next card</button></div>
 </section>
 <section id="report-screen" class="screen panel" hidden>
@@ -4290,6 +4290,20 @@ let lastHint = null;
 let learningAdvanceTimer;
 const learningEntry = () => state.learningSession;
 
+function renderVocabularyAutoplay() {
+ const enabled=state.settings.vocabularyAutoplay!==false;
+ for(const id of ['learning-autoplay','study-autoplay']) {
+  $(id).textContent='Auto audio: '+(enabled?'on':'off');
+  $(id).setAttribute('aria-pressed',String(enabled));
+ }
+}
+function toggleVocabularyAutoplay() {
+ const enabled=state.settings.vocabularyAutoplay===false;
+ state.settings.vocabularyAutoplay=enabled;
+ if(!enabled) {stopRecording();if(speech)speechSynthesis.cancel();}
+ save();renderVocabularyAutoplay();
+}
+
 function playQuestion(initial, slow) {
  const entry = learningEntry();
  const session = entry?.session;
@@ -4345,6 +4359,8 @@ function renderLearning(play, corrected = false) {
  }
  $('learning-prompt').textContent = question.type === 'dictation' ? 'Listen to the word, then type it.' : question.prompt;
  $('learning-audio-actions').hidden = !session.settings.audioReplay || !!result;
+ $('learning-autoplay').hidden=test || question.type==='dictation';
+ renderVocabularyAutoplay();
  const recordedPrompt = sharedAudioPath(entry.listId, question.word, question.type, Learning.audio(question));
  const audioAvailable = speech || question.type === 'dictation' || !!recordedPrompt;
  $('learning-audio').disabled = !audioAvailable;
@@ -4414,6 +4430,7 @@ function renderLearning(play, corrected = false) {
  else if (!next.hidden) next.focus();
  else if (play && !result) $('learning-choices').querySelector('input')?.focus();
  if (play && !result && question.type === 'dictation') playQuestion(true, false);
+ else if(play && !result && !test && session.settings.audioReplay && state.settings.vocabularyAutoplay!==false) playQuestion(true,false);
  if (advance) advanceAfterFeedback(entry, result.correct && !result.assisted || corrected ? state.settings.autoAdvanceMs : state.settings.feedbackMs);
 }
 
@@ -4670,6 +4687,14 @@ function renderStudy() {
  $('study-next').disabled = study.index + 1 >= cards.length;
  $('study-shuffle').disabled = study.rows.length < 2;
  $('study-shuffle-undo').hidden = !canUndoShuffle('study');
+ renderVocabularyAutoplay();
+ const example=study.revealed && card?.examples[0];
+ const exampleKey=example && JSON.stringify([study.index,reverse,card.word,example]);
+ if(!example)study.autoExample=null;
+ else if(state.settings.vocabularyAutoplay!==false && study.autoExample!==exampleKey) {
+  study.autoExample=exampleKey;
+  playStudyRecordings(card,example);
+ }
 }
 
 function outputPack(list, records) {
@@ -5015,6 +5040,7 @@ async function openVocabularyEditor(filter = '', inline = false) {
 }
 
 function initCoach() {
+ for(const id of ['learning-autoplay','study-autoplay'])$(id).onclick=toggleVocabularyAutoplay;
  for (const id of ['learning-mode', 'learning-difficulty', 'learning-type', 'test-per-word', 'test-choices', 'test-audio-replay']) {
   $(id).addEventListener('change', updateCoachSetup);
  }
@@ -6988,6 +7014,9 @@ function clearParkedActivity(id) {
 async function renderSharedReady() {
  const review = sharedReview;
  if (!review) return;
+ $('shared-progress-note').textContent=studentPreview ? 'Student preview: progress and audio preferences are not saved.' : storageOK
+  ? 'Progress saves locally. Reopen this set in the same browser and browser profile to continue. Clearing site data or closing private browsing can remove it.'
+  : 'Progress could not be saved in this browser. Keep this page open to retain your current session.';
  const workspace = state, session = state.session, learning = state.learningSession;
  const phase = session?.phase, status = learning?.session.status;
  let playback = dictationRequest;
@@ -7169,7 +7198,7 @@ const SELFTEST = new URLSearchParams(location.search).has('selftest');
 const entryPage = document.body.dataset.entry || 'offline';
 const studentPreview = entryPage === 'student' && new URLSearchParams(location.search).get('preview') === '1';
 let KEY = entryPage === 'teacher' ? 'spell.teacher.signed-out' : 'spell.state';
-const VERSION='0.2.0',D={roundSize:7,retypeOnMiss:true,autoAdvanceMs:600,feedbackMs:1800,voiceURI:'',rate:.85,pin:'',allowVariants:false};
+const VERSION='0.2.0',D={roundSize:7,retypeOnMiss:true,autoAdvanceMs:600,feedbackMs:1800,voiceURI:'',rate:.85,pin:'',allowVariants:false,vocabularyAutoplay:true};
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),now=()=>new Date().toISOString();
 const norm=s=>String(s??'').trim().replace(/\s+/g,' ').replace(/[’‘]/g,"'");
 function equal(a,b){a=norm(a);b=norm(b);return /[A-Z]/.test(b)?a===b:a.toLowerCase()===b.toLowerCase();}
@@ -7200,7 +7229,7 @@ function clean(raw){
  const s=blank();if(!raw||typeof raw!=='object')return s;
  s.lists=Array.isArray(raw.lists)?raw.lists.filter(listOK).map(l=>({id:l.id,name:l.name,words:wordsUnique(l.words),defs:dictionary(l.defs),updatedAt:l.updatedAt||now(),...listMetadata(l)})):[];
  if(![0,1,2].includes(raw.v))return s;
- const x=raw.settings||{};s.settings={roundSize:clamp(x.roundSize,1,20,7),retypeOnMiss:x.retypeOnMiss!==false,autoAdvanceMs:clamp(x.autoAdvanceMs,0,5000,600),feedbackMs:clamp(x.feedbackMs,300,10000,1800),voiceURI:typeof x.voiceURI==='string'?x.voiceURI:'',rate:Math.max(.5,Math.min(1.2,Number(x.rate)||.85)),pin:/^\d{4}$/.test(x.pin||'')?x.pin:'',allowVariants:x.allowVariants===true,selected:dictionary(x.selected)};
+ const x=raw.settings||{};s.settings={roundSize:clamp(x.roundSize,1,20,7),retypeOnMiss:x.retypeOnMiss!==false,autoAdvanceMs:clamp(x.autoAdvanceMs,0,5000,600),feedbackMs:clamp(x.feedbackMs,300,10000,1800),voiceURI:typeof x.voiceURI==='string'?x.voiceURI:'',rate:Math.max(.5,Math.min(1.2,Number(x.rate)||.85)),pin:/^\d{4}$/.test(x.pin||'')?x.pin:'',allowVariants:x.allowVariants===true,vocabularyAutoplay:x.vocabularyAutoplay!==false,selected:dictionary(x.selected)};
  if(raw.progress&&typeof raw.progress==='object')for(const[k,v]of Object.entries(raw.progress))if(v&&v.words&&typeof v.words==='object')s.progress[k]={words:dictionary(v.words)};
  if(raw.history&&typeof raw.history==='object')for(const[k,v]of Object.entries(raw.history))if(v&&Array.isArray(v.sessions))s.history[k]={sessions:v.sessions.slice(-10)};
  if(sessionOK(raw.session)){s.session=raw.session;s.session.defs=dictionary(raw.session.defs);s.session.perWord=dictionary(raw.session.perWord);}
@@ -7210,7 +7239,7 @@ let storageOK=true,state=SELFTEST||studentPreview?blank():loadState(),listId=(st
 function save(){return SELFTEST || storageOK && saveState();}
 function warning(){$('storage-warning').hidden=storageOK;if(storageIssue)$('storage-warning').textContent=storageIssue;}
 function status(t){$('setup-status').textContent=t;}
-function show(id){stopMasteryCelebration();stopRecording();document.querySelectorAll('.screen').forEach(x=>x.hidden=true);$(id).hidden=false;}
+function show(id){stopMasteryCelebration();stopRecording();if(speech)speechSynthesis.cancel();document.querySelectorAll('.screen').forEach(x=>x.hidden=true);$(id).hidden=false;}
 function selectedList(){return state.lists.find(x=>x.id===listId)||null;}
 function selectedGroup(words,selection){
  const chosen=new Set(selection);

@@ -48,7 +48,7 @@ const themePreference = (() => {
  <p class="subhead">Sign in to create, preview, and share practice sets.</p>
  <div id="teacher-signin-slot"></div><p id="teacher-signin-status" class="status" role="status"></p>
 </section>
-<section id="shared-ready" class="screen panel" hidden aria-labelledby="shared-title"><h1 id="shared-title" tabindex="-1"></h1><p id="shared-instruction" class="subhead"></p><button type="button" id="shared-start">Start practice</button><button id="shared-study" type="button" class="secondary" hidden>Study flashcards</button><p id="shared-ready-status" class="status" role="status"></p></section>
+<section id="shared-ready" class="screen panel" hidden aria-labelledby="shared-title"><h1 id="shared-title" tabindex="-1"></h1><p id="shared-instruction" class="subhead"></p><p id="shared-progress-note" class="hint"></p><button type="button" id="shared-start">Start practice</button><button id="shared-study" type="button" class="secondary" hidden>Study flashcards</button><p id="shared-ready-status" class="status" role="status"></p></section>
 <section id="practice-complete-screen" class="screen panel" hidden aria-labelledby="practice-complete-title">
  <p id="practice-complete-list" class="hint"></p><h1 id="practice-complete-title" tabindex="-1">Practice complete</h1>
  <p id="practice-complete-message" class="subhead"></p><button type="button" id="practice-complete-done">Done</button>
@@ -129,7 +129,7 @@ const themePreference = (() => {
  <p id="learning-count" class="hint" aria-live="polite"></p>
  <div id="learning-mastery" class="mastery-meter" hidden><div class="mastery-meta"><span class="mastery-label">Progress toward mastery</span><span class="mastery-percent"></span></div><div class="progressline" role="progressbar" aria-label="Progress toward mastery" aria-valuemax="100" aria-valuemin="0" aria-valuenow="0"><div class="progressfill"></div></div><p class="mastery-foot mastery-count" aria-live="polite"></p></div>
  <p id="learning-prompt" class="lesson-prompt"></p>
- <div id="learning-audio-actions" class="actions"><button id="learning-audio" type="button" class="secondary small">Listen</button><button id="learning-slow" type="button" class="ghost small">Listen slowly</button></div>
+ <div id="learning-audio-actions" class="actions"><button id="learning-audio" type="button" class="secondary small">Listen</button><button id="learning-slow" type="button" class="ghost small">Listen slowly</button><button id="learning-autoplay" type="button" class="ghost small" aria-label="Automatic sentence audio" aria-pressed="true">Auto audio: on</button></div>
  <p id="learning-audio-error" class="notice" role="alert" hidden></p>
  <form id="learning-answer" class="stack">
   <div id="learning-choices" class="stack"></div>
@@ -143,7 +143,7 @@ const themePreference = (() => {
 <section id="study-screen" class="screen practice panel" hidden>
  <div class="row between"><h1 tabindex="-1" id="study-title">Flashcards</h1><button type="button" class="ghost" id="study-exit">Return to setup</button></div>
  <div class="actions"><label class="checkline"><input id="study-reverse" type="checkbox"> Definition first</label><label class="checkline"><input id="study-unfamiliar" type="checkbox"> Unfamiliar only</label><button type="button" id="study-shuffle" class="ghost small">Shuffle cards</button><button id="study-shuffle-undo" type="button" class="ghost small" hidden>Undo shuffle</button></div><p id="study-shuffle-status" class="hint" role="status"></p>
- <p id="study-count" class="hint"></p><div class="study-card stack"><p id="study-front" class="lesson-prompt"></p><div id="study-back" hidden></div><div class="actions"><button id="study-reveal" type="button" class="secondary">Reveal card</button><button id="study-listen" type="button" class="ghost">Listen</button><button id="study-familiar" type="button" class="ghost">Mark as familiar</button></div></div>
+ <div class="actions"><button id="study-autoplay" type="button" class="ghost small" aria-label="Automatic sentence audio" aria-pressed="true">Auto audio: on</button><span class="hint">Examples play after you reveal a card.</span></div><p id="study-count" class="hint"></p><div class="study-card stack"><p id="study-front" class="lesson-prompt"></p><div id="study-back" hidden></div><div class="actions"><button id="study-reveal" type="button" class="secondary">Reveal card</button><button id="study-listen" type="button" class="ghost">Listen</button><button id="study-familiar" type="button" class="ghost">Mark as familiar</button></div></div>
  <div class="actions"><button id="study-prev" type="button" class="ghost">Previous</button><button id="study-next" type="button">Next card</button></div>
 </section>
 <section id="report-screen" class="screen panel" hidden>

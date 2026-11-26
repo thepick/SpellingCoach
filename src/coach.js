@@ -251,6 +251,20 @@ let lastHint = null;
 let learningAdvanceTimer;
 const learningEntry = () => state.learningSession;
 
+function renderVocabularyAutoplay() {
+ const enabled=state.settings.vocabularyAutoplay!==false;
+ for(const id of ['learning-autoplay','study-autoplay']) {
+  $(id).textContent='Auto audio: '+(enabled?'on':'off');
+  $(id).setAttribute('aria-pressed',String(enabled));
+ }
+}
+function toggleVocabularyAutoplay() {
+ const enabled=state.settings.vocabularyAutoplay===false;
+ state.settings.vocabularyAutoplay=enabled;
+ if(!enabled) {stopRecording();if(speech)speechSynthesis.cancel();}
+ save();renderVocabularyAutoplay();
+}
+
 function playQuestion(initial, slow) {
  const entry = learningEntry();
  const session = entry?.session;
@@ -306,6 +320,8 @@ function renderLearning(play, corrected = false) {
  }
  $('learning-prompt').textContent = question.type === 'dictation' ? 'Listen to the word, then type it.' : question.prompt;
  $('learning-audio-actions').hidden = !session.settings.audioReplay || !!result;
+ $('learning-autoplay').hidden=test || question.type==='dictation';
+ renderVocabularyAutoplay();
  const recordedPrompt = sharedAudioPath(entry.listId, question.word, question.type, Learning.audio(question));
  const audioAvailable = speech || question.type === 'dictation' || !!recordedPrompt;
  $('learning-audio').disabled = !audioAvailable;
@@ -375,6 +391,7 @@ function renderLearning(play, corrected = false) {
  else if (!next.hidden) next.focus();
  else if (play && !result) $('learning-choices').querySelector('input')?.focus();
  if (play && !result && question.type === 'dictation') playQuestion(true, false);
+ else if(play && !result && !test && session.settings.audioReplay && state.settings.vocabularyAutoplay!==false) playQuestion(true,false);
  if (advance) advanceAfterFeedback(entry, result.correct && !result.assisted || corrected ? state.settings.autoAdvanceMs : state.settings.feedbackMs);
 }
 
@@ -631,6 +648,14 @@ function renderStudy() {
  $('study-next').disabled = study.index + 1 >= cards.length;
  $('study-shuffle').disabled = study.rows.length < 2;
  $('study-shuffle-undo').hidden = !canUndoShuffle('study');
+ renderVocabularyAutoplay();
+ const example=study.revealed && card?.examples[0];
+ const exampleKey=example && JSON.stringify([study.index,reverse,card.word,example]);
+ if(!example)study.autoExample=null;
+ else if(state.settings.vocabularyAutoplay!==false && study.autoExample!==exampleKey) {
+  study.autoExample=exampleKey;
+  playStudyRecordings(card,example);
+ }
 }
 
 function outputPack(list, records) {
@@ -976,6 +1001,7 @@ async function openVocabularyEditor(filter = '', inline = false) {
 }
 
 function initCoach() {
+ for(const id of ['learning-autoplay','study-autoplay'])$(id).onclick=toggleVocabularyAutoplay;
  for (const id of ['learning-mode', 'learning-difficulty', 'learning-type', 'test-per-word', 'test-choices', 'test-audio-replay']) {
   $(id).addEventListener('change', updateCoachSetup);
  }

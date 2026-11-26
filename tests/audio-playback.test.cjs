@@ -16,7 +16,7 @@ function harness(fetcher = async () => new Response(new Blob(['complete recordin
   fetch:fetcher,speech:false,speak:(...args)=>spoken.push(args),
   $:id=>{if(!elements.has(id))elements.set(id,{hidden:false,textContent:'',disabled:false});return elements.get(id);},
   getStore:async()=>({get:async()=>null}),Dictation:{recordingKey:()=> 'recording'},
-  location:{origin:'https://fixture.test'},state:{lists:[],session:null,learningSession:null},
+  location:{origin:'https://fixture.test'},storageOK:true,studentPreview:false,state:{lists:[],session:null,learningSession:null},
   Learning:{practiceMastered:()=>false},setTimeout:()=>0,clearTimeout:()=>{},visibleScreen:'shared-ready',
  });
  vm.runInContext(fs.readFileSync('src/dictation-ui.js','utf8'),context);
@@ -110,6 +110,11 @@ test('normal ready and resume rendering still selects the right button label',as
  h.run("state.session={listId:'local',phase:'paused'}");await h.run('renderSharedReady()');
  assert.equal(h.elements.get('shared-start').textContent,'Continue practice');
  assert.equal(h.run('shown.length'),2);
+ assert.match(h.elements.get('shared-progress-note').textContent,/same browser and browser profile/);
+ h.context.storageOK=false;await h.run('renderSharedReady()');
+ assert.match(h.elements.get('shared-progress-note').textContent,/could not be saved/);
+ h.context.studentPreview=true;await h.run('renderSharedReady()');
+ assert.match(h.elements.get('shared-progress-note').textContent,/preview.*not saved/i);
 });
 
 test('a delayed audio-readiness poll cannot show the ready screen over active practice',async()=>{

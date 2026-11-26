@@ -39,12 +39,34 @@ test('Continue practice only matches an unfinished practice for the same list', 
  assert.equal(matchingPractice({learningSession:{...entry,session:{...entry.session,mode:'mixed'}}}, 'x', 'vocabulary'), null);
 });
 
+test('reopened and parked spelling, vocabulary, and mixed sets resume serialized partial mastery',async()=>{
+ for(const mode of ['spelling','vocabulary','mixed'])for(const parked of [false,true]) {
+  const h=policyHarness({retypeOnMiss:true,allowVariants:false},mode);
+  h.run('dictationRequest=0');
+  if(mode==='spelling') {
+   await h.run('startSharedReview()');h.run("submit(state.session,'color')");
+   assert.equal(h.run('state.session.perWord.color.streak'),1);
+  } else {
+   h.context.resumeRecord=JSON.parse(fs.readFileSync('examples/weekly-vocabulary-sample.json','utf8')).words[0];
+   h.run("let s=Learning.createSession([resumeRecord],{mode:'"+mode+"',phasedVocabulary:true,masteryPractice:true});Learning.submit(s,Learning.current(s).answer);Learning.advance(s);state.learningSession={listId:'local',session:s}");
+  }
+  h.run('state=JSON.parse(JSON.stringify(state));let storedActivity={session:state.session,learningSession:state.learningSession}');
+  const progress=mode==='spelling'?h.run('state.session.perWord.color.streak'):h.run('Learning.practiceWordProgress(state.learningSession.session).progress');
+  if(parked)h.run('state.session=null;state.learningSession=null;parkedActivity=async()=>storedActivity');
+  const app=fs.readFileSync('src/app.js','utf8');vm.runInContext(app.match(/^function resumeActivity\(.*$/m)[0],h.context);
+  await h.run('renderSharedReady()');assert.equal(h.elements.get('shared-start').textContent,'Continue practice',mode+' parked='+parked);
+  await h.run('startSharedReview()');
+  assert.equal(mode==='spelling'?h.run('state.session.perWord.color.streak'):h.run('Learning.practiceWordProgress(state.learningSession.session).progress'),progress);
+  if(mode!=='spelling')assert.equal(h.run('Learning.sessionOK(state.learningSession.session)'),true);
+ }
+});
+
 function policyHarness(practice,mode='mixed') {
  const elements=new Map(),list={id:'local',name:'Words',words:['color'],defs:{}},rows=[{word:'color',vocabulary:{definition:'A shade.',acceptedSpellings:['colour']}}];
  const context=vm.createContext({Learning:require('../src/learning.js'),Dictation:{demoPackId:'demo'},
   state:{lists:[list],settings:{retypeOnMiss:true,allowVariants:true},progress:{},history:{},learningHistory:[],session:null,learningSession:null},
   $:id=>{if(!elements.has(id))elements.set(id,{disabled:false,textContent:'',children:[],replaceChildren(){this.children=[];},append(...nodes){this.children.push(...nodes);}});return elements.get(id);},
-  save:()=>true,checkpointChain:Promise.resolve(),storageOK:false,
+  save:()=>true,checkpointChain:Promise.resolve(),storageOK:false,studentPreview:false,
   coachOptions:()=>({retypeOnMiss:true,allowVariants:true}),loadVocabulary:async()=>rows,selectedList:()=>list,
   importPack:async()=>{},renderPractice:()=>{},now:()=> 'now',dictionary:()=>Object.create(null),
   buildRound:s=>{s.queue=s.words.slice();},next:s=>{s.current=s.queue.shift();s.currentType='initial';s.phase='prompt';},
