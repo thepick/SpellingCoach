@@ -42,7 +42,7 @@ const themePreference = (() => {
 <style>
 :root{font-family:system-ui,"Segoe UI",sans-serif;color-scheme:light dark;--bg:#f4f6fb;--panel:#fff;--ink:#182033;--muted:#65708a;--line:#dce2ed;--accent:#465bd5;--button-ink:#fff;--accentbg:#e9ecff;--good:#16734b;--goodbg:#dff5e9;--bad:#a82b38;--badbg:#fde7e8;--warn:#8a5b00;--warnbg:#fff0cf;--tile:#e6e9ef;--shadow:0 12px 34px #1d2d5514}
 :root[data-theme="dark"]{--bg:#111522;--panel:#1b2131;--ink:#edf1fb;--muted:#a9b2c8;--line:#343d52;--accent:#9aa8ff;--button-ink:#111522;--accentbg:#2a3150;--good:#75d4a5;--goodbg:#203a31;--bad:#ff9ea5;--badbg:#482a32;--warn:#ffd277;--warnbg:#453821;--tile:#30384a;--shadow:0 12px 34px #0004}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);min-height:100vh}button,input,textarea,select{font:inherit}button{border:0;border-radius:10px;padding:.72rem 1rem;background:var(--accent);color:var(--button-ink);font-weight:650;cursor:pointer}button:hover{filter:brightness(1.06)}button:disabled{opacity:.45;cursor:not-allowed}button.secondary{background:var(--accentbg);color:var(--ink)}button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}button.danger{background:var(--badbg);color:var(--bad)}button.small{padding:.45rem .7rem;font-size:.9rem}input,textarea,select{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:.7rem .8rem;width:100%}input[type=checkbox],input[type=range]{width:auto}input:focus,textarea:focus,select:focus,button:focus-visible{outline:3px solid #7888ff66;outline-offset:2px}textarea{min-height:170px;resize:vertical;line-height:1.5}label{font-weight:600;display:block;margin-bottom:.35rem}.hint,.muted{color:var(--muted);font-size:.92rem}.app{max-width:1050px;margin:auto;padding:24px 18px 50px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}.brand{font-weight:800;letter-spacing:-.03em;font-size:1.25rem}.version{font-size:.78rem;color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--shadow)}h1,h2,h3{line-height:1.2;letter-spacing:-.02em}h1{font-size:clamp(1.65rem,4vw,2.2rem);margin:.1rem 0 .45rem}h2{margin:.1rem 0 1rem;font-size:1.2rem}.subhead{color:var(--muted);margin:0 0 1.4rem}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.stack{display:grid;gap:14px}.row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.between{justify-content:space-between}.section{border-top:1px solid var(--line);padding-top:18px;margin-top:18px}.actions{display:flex;gap:8px;flex-wrap:wrap}.notice{padding:10px 13px;border-radius:10px;background:var(--warnbg);color:var(--warn);font-size:.9rem}.status{min-height:1.3em;color:var(--muted);font-size:.92rem}.chips{display:flex;flex-wrap:wrap;gap:7px;max-height:230px;overflow:auto;padding:4px}.chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);padding:6px 10px;border-radius:999px;background:var(--bg);font-size:.9rem}.chip input{accent-color:var(--accent)}.settings{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.checkline{display:flex;gap:8px;align-items:center}.checkline label{margin:0}.practice{max-width:760px;margin:26px auto}.practice-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.progressline{height:10px;background:var(--tile);border-radius:999px;overflow:hidden;margin:15px 0}.progressfill{height:100%;background:var(--accent);transition:width .2s}.tiles{display:flex;flex-wrap:wrap;gap:8px;margin:15px 0 22px}.tile{width:20px;height:20px;border-radius:6px;background:var(--tile);border:1px solid var(--line)}.tile.familiar{background:var(--warnbg);border-color:var(--warn)}.tile.mastered{background:var(--good);border-color:var(--good)}.prompt{text-align:center;padding:18px 0 8px}.definition{font-size:1.05rem;color:var(--muted);margin:12px auto;max-width:580px}.word-input{font-size:1.4rem;text-align:center;max-width:460px;margin:18px auto 10px;display:block}.feedback{margin:18px 0 4px;padding:15px;border-radius:12px;background:var(--bg);min-height:54px;text-align:center}.feedback.good{background:var(--goodbg);color:var(--good)}.feedback.bad{background:var(--badbg);color:var(--bad)}.diff{font:1.15rem/1.8 ui-monospace,Consolas,monospace;letter-spacing:.06em;overflow-wrap:anywhere}.wrong{color:var(--bad);text-decoration:underline;text-decoration-thickness:2px}.right{color:var(--good);font-weight:800}.summary-stat{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:var(--bg);padding:15px;border-radius:12px}.stat strong{font-size:1.5rem;display:block}.overlay{position:fixed;inset:0;background:#090d18e8;display:grid;place-items:center;padding:20px;z-index:5}.overlay[hidden],.screen[hidden]{display:none!important}.dialog{width:min(470px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px}.resume{max-width:500px;margin:10vh auto}.history,.missed{padding-left:1.25rem}.history li,.missed li{margin:.4rem 0}.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.kbd{font:.82rem ui-monospace,monospace;border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--muted)}.visual-prompt{font-size:1.5rem;font-weight:750;margin:14px 0}@media(max-width:720px){.grid{grid-template-columns:1fr}.settings{grid-template-columns:1fr 1fr}.panel{padding:17px}.summary-stat{grid-template-columns:1fr 1fr}}@media(max-width:430px){.settings{grid-template-columns:1fr}.practice-head{align-items:flex-start;flex-direction:column}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);min-height:100vh}button,input,textarea,select{font:inherit}button{border:0;border-radius:10px;padding:.72rem 1rem;background:var(--accent);color:var(--button-ink);font-weight:650;cursor:pointer}button:hover{filter:brightness(1.06)}button:disabled{opacity:.45;cursor:not-allowed}button.secondary{background:var(--accentbg);color:var(--ink)}button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}button.danger{background:var(--badbg);color:var(--bad)}button.small{padding:.45rem .7rem;font-size:.9rem}input,textarea,select{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:.7rem .8rem;width:100%}input[type=checkbox],input[type=range]{width:auto}input:focus,textarea:focus,select:focus,button:focus-visible{outline:3px solid #7888ff66;outline-offset:2px}textarea{min-height:170px;resize:vertical;line-height:1.5}label{font-weight:600;display:block;margin-bottom:.35rem}.hint,.muted{color:var(--muted);font-size:.92rem}.app{max-width:1050px;margin:auto;padding:24px 18px 50px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}.brand{font-weight:800;letter-spacing:-.03em;font-size:1.25rem}.version{font-size:.78rem;color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--shadow)}h1,h2,h3{line-height:1.2;letter-spacing:-.02em}h1{font-size:clamp(1.65rem,4vw,2.2rem);margin:.1rem 0 .45rem}h2{margin:.1rem 0 1rem;font-size:1.2rem}.subhead{color:var(--muted);margin:0 0 1.4rem}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.stack{display:grid;gap:14px}.row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.between{justify-content:space-between}.section{border-top:1px solid var(--line);padding-top:18px;margin-top:18px}.actions{display:flex;gap:8px;flex-wrap:wrap}.notice{padding:10px 13px;border-radius:10px;background:var(--warnbg);color:var(--warn);font-size:.9rem}.status{min-height:1.3em;color:var(--muted);font-size:.92rem}.chips{display:flex;flex-wrap:wrap;gap:7px;max-height:230px;overflow:auto;padding:4px}.chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);padding:6px 10px;border-radius:999px;background:var(--bg);font-size:.9rem}.chip input{accent-color:var(--accent)}.settings{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.checkline{display:flex;gap:8px;align-items:center}.checkline label{margin:0}.practice{max-width:760px;margin:26px auto}.practice-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.progressline{height:10px;background:var(--tile);border-radius:999px;overflow:hidden;margin:15px 0}.progressfill{height:100%;background:var(--accent);transition:width .2s}.tiles{display:flex;flex-wrap:wrap;gap:8px;margin:15px 0 22px}.tile{width:20px;height:20px;border-radius:6px;background:var(--tile);border:1px solid var(--line)}.tile.familiar{background:var(--warnbg);border-color:var(--warn)}.tile.mastered{background:var(--good);border-color:var(--good)}.prompt{text-align:center;padding:18px 0 8px}.definition{font-size:1.05rem;color:var(--muted);margin:12px auto;max-width:580px}.word-input{font-size:1.4rem;text-align:center;max-width:460px;margin:18px auto 10px;display:block}.feedback{margin:18px 0 4px;padding:15px;border-radius:12px;background:var(--bg);min-height:54px;text-align:center}.feedback.good{background:var(--goodbg);color:var(--good)}.feedback.bad{background:var(--badbg);color:var(--bad)}.diff{font:1.15rem/1.8 ui-monospace,Consolas,monospace;letter-spacing:.06em;overflow-wrap:anywhere}.wrong{color:var(--bad);text-decoration:underline;text-decoration-thickness:2px}.right{color:var(--good);font-weight:800}.summary-stat{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:var(--bg);padding:15px;border-radius:12px}.stat strong{font-size:1.5rem;display:block}.overlay{position:fixed;inset:0;background:#090d18e8;display:grid;place-items:center;padding:20px;z-index:5}.overlay[hidden],.screen[hidden]{display:none!important}.dialog{width:min(470px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px}.resume{max-width:500px;margin:10vh auto}.history,.missed{padding-left:1.25rem}.history li,.missed li{margin:.4rem 0}.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.kbd{font:.82rem ui-monospace,monospace;border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--muted)}@media(max-width:720px){.grid{grid-template-columns:1fr}.settings{grid-template-columns:1fr 1fr}.panel{padding:17px}.summary-stat{grid-template-columns:1fr 1fr}}@media(max-width:430px){.settings{grid-template-columns:1fr}.practice-head{align-items:flex-start;flex-direction:column}}
 dialog.tools-dialog{width:min(760px,calc(100vw - 28px));max-height:90vh;overflow:auto;overscroll-behavior:contain;padding:0;border:1px solid var(--line);border-radius:18px;background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}dialog.create-list-dialog{width:min(560px,calc(100vw - 28px))}.create-list-form{display:grid;gap:16px}.create-list-form textarea{min-height:190px}.create-list-form .tools-heading{margin-bottom:0}dialog.tools-dialog::backdrop{background:#111827aa;backdrop-filter:blur(3px)}.tools-panel{padding:24px}.tools-heading{align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:12px}.tools-heading .subhead{margin:.4rem 0}.tool-section{padding:18px 0;border-bottom:1px solid var(--line)}.tool-section h2{margin-bottom:.5rem}.tool-section>p{margin:.4rem 0 1rem}.setup-heading{align-items:flex-start}.setup-heading .subhead{margin-top:.35rem}.tool-section .settings{margin-top:12px}.tool-section input[type=number]{max-width:180px}.tool-section input[type=range]{max-width:220px}.chip{font-weight:500}.chip:has(input:checked){border-color:var(--accent);background:var(--accentbg)}button{min-height:42px}button.small{min-height:36px}@media(max-width:560px){.tools-panel{padding:17px}.tool-section .settings{grid-template-columns:1fr}.setup-heading{align-items:flex-start}.setup-heading button{flex-shrink:0}}
 #setup-screen .grid{align-items:start}.create-list-form>p.hint{margin:0}
 
@@ -189,11 +189,7 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 .tools-details > summary:focus-visible { outline-offset: 4px; }
 .tools-details > p { margin-top: .75rem; }
 .teaching-options { gap: 1rem; }
-.teaching-options .checkline { align-items: start; line-height: 1.5; }
-#tools-dialog .local-pin-setting { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
-#tools-dialog .local-pin-setting input { max-width: 12rem; }
-#tools-dialog .local-pin-setting .hint { margin: .5rem 0 0; }
-#audio-settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.teaching-options .checkline { align-items: start; line-height: 1.5; }#audio-settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .tools-footer p { margin: 0 0 .25rem; }
 #tools-dialog #backup-status:empty { display: none; }
 @media (max-width: 640px) { #audio-settings-grid { grid-template-columns: 1fr; } }
@@ -253,6 +249,29 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
  #workspace-vocabulary-summary { display: block; margin: .35rem 0 0 1.15rem; font-size: .9rem; }
 }
 
+/* Keep everyday tasks visible and advanced controls readable when expanded. */
+#workspace-title { font-size: clamp(1.5rem, 3vw, 2rem); }
+#workspace-set-name { margin: .4rem 0 0; overflow-wrap: anywhere; }
+#workspace-words-editor > .stack { margin-top: 1rem; }
+#workspace-words-summary, #shared-practice-summary { font-weight: 400; margin-left: .4rem; }
+#shared-practice-options > .stack, #preset-advanced > .stack, #teacher-key-options > .stack,
+#vocab-more-actions > .actions, #study-options > .actions { margin-top: .8rem; }
+#workspace-review .review-content { padding: .2rem 0 1rem; border-bottom: 1px solid var(--line); }
+.review-content p { max-width: 70ch; line-height: 1.6; margin: .5rem 0; }
+.review-content h2, .review-content h3 { font-size: 1rem; margin: .8rem 0 .35rem; }
+#vocab-edit-toggle { justify-self: start; }
+#vocab-word-prev, #vocab-word-next { min-height: 44px; }
+#release-build { display: block; }
+#teacher-settings-back { white-space: nowrap; }
+details > summary { cursor: pointer; }
+@media (max-width: 640px) {
+ #shared-practice-summary { display: block; margin: .35rem 0 0 1rem; }
+ .teacher-dialog-heading { flex-wrap: wrap; }
+ .teacher-dialog-heading .actions { gap: .5rem; }
+}
+
+#set-more-actions > .actions { margin-top: .6rem; }
+
 </style></head><body data-entry="student">
 <div class="app"><header class="topbar"><div class="brand"><img class="brand-icon" src="data:image/x-icon;base64,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" width="32" height="32" alt=""><span>WordLab</span></div><label class="theme-control" for="theme-select"><span>Theme</span><select id="theme-select"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label><div id="storage-warning" class="notice" hidden role="status">Your progress will not be saved in this browser.</div></header><main><p id="local-preview-notice" class="notice" role="status" hidden>Draft preview uses this device’s voice. Use recording previews in the teacher workspace to check Paul. This preview makes no AI requests.</p>
 <section id="teacher-signin-screen" class="screen panel" hidden aria-labelledby="teacher-signin-title">
@@ -260,14 +279,14 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
  <p class="subhead">Sign in to create, preview, and share practice sets.</p>
  <div id="teacher-signin-slot"></div><p id="teacher-signin-status" class="status" role="status"></p>
 </section>
-<section id="shared-ready" class="screen panel" hidden aria-labelledby="shared-title"><h1 id="shared-title" tabindex="-1"></h1><p id="shared-instruction" class="subhead"></p><p id="shared-progress-note" class="hint"></p><button type="button" id="shared-start">Start practice</button><button id="shared-study" type="button" class="secondary" hidden>Study flashcards</button><p id="shared-ready-status" class="status" role="status"></p></section>
+<section id="shared-ready" class="screen panel" hidden aria-labelledby="shared-title"><h1 id="shared-title" tabindex="-1"></h1><p id="shared-instruction" class="subhead"></p><p id="shared-save-summary" class="hint">Progress saves in this browser.</p><details id="shared-progress-details"><summary>About saving progress</summary><p id="shared-progress-note" class="hint"></p></details><button type="button" id="shared-start">Start practice</button><button id="shared-study" type="button" class="secondary" hidden>Study flashcards</button><p id="shared-ready-status" class="status" role="status"></p></section>
 <section id="practice-complete-screen" class="screen panel" hidden aria-labelledby="practice-complete-title">
  <p id="practice-complete-list" class="hint"></p><h1 id="practice-complete-title" tabindex="-1">Practice complete</h1>
  <p id="practice-complete-message" class="subhead"></p><button type="button" id="practice-complete-done">Done</button>
 </section>
 <section id="resume-screen" class="screen resume panel" hidden><h1>Continue your session?</h1><p class="subhead">An unfinished session is saved in this browser.</p><div class="actions"><button id="resume-button">Resume session</button><button id="end-saved-button" class="secondary">End session</button></div></section>
 <section id="setup-screen" class="screen panel" hidden><div class="row between setup-heading"><div><h1 id="setup-title" tabindex="-1">Spelling &amp; vocabulary</h1><p id="setup-intro" class="subhead">Create a list to get started. Give it a name and add one word or phrase per line.</p></div><div class="actions"><button id="open-tools" class="secondary">Tools</button><button id="teacher-workspace-logout" type="button" class="ghost" hidden>Sign out</button></div></div><div id="setup-status" class="status" role="status" aria-live="polite"></div>
-<div class="grid"><div class="stack"><div><label id="setup-list-label" for="list-select">Word list</label><select id="list-select"></select></div><div class="actions"><button id="new-list">Create a word list</button><button id="edit-list" class="secondary small">Edit list</button><button id="delete-list" class="danger small">Delete</button><button id="reset-progress" class="ghost small">Reset progress</button></div><div class="actions"><button id="sample-pack" type="button" class="ghost small">Try the sample list</button><button id="open-vocabulary" type="button" class="secondary small" disabled>Vocabulary content</button><button id="open-report" type="button" class="ghost small" disabled>Learning progress</button></div><p id="list-actions-help" class="hint">Create or import a list first. List actions become available afterward.</p>
+<div class="grid"><div class="stack"><div><label id="setup-list-label" for="list-select">Word list</label><select id="list-select"></select></div><div class="actions"><button id="new-list">Create a word list</button><button id="edit-list" class="secondary small">Edit list</button><details id="set-more-actions"><summary>More set actions</summary><div class="actions"><button id="delete-list" class="danger small">Delete</button></div></details><button id="reset-progress" class="ghost small">Reset progress</button></div><div class="actions"><button id="sample-pack" type="button" class="ghost small">Try the sample list</button><button id="open-vocabulary" type="button" class="secondary small" disabled>Vocabulary content</button><button id="open-report" type="button" class="ghost small" disabled>Learning progress</button></div><p id="list-actions-help" class="hint">Create or import a list first. List actions become available afterward.</p>
 
 </div>
 <div class="stack"><div><div class="row between"><h2 id="setup-word-selection-title">Select practice words</h2><span id="selection-count" class="hint"></span></div><p id="setup-word-selection-help" class="hint">Choose the words for this session. You can select a smaller group for focused review.</p><div class="actions" style="margin-bottom:9px"><button id="select-all" class="ghost small">All words</button><button id="select-none" class="ghost small">Clear selection</button><button id="select-next-group" class="ghost small" aria-describedby="group-status">Select first 20</button><button id="shuffle-words" class="secondary small" title="Save a random order for this list and future practice sessions">Shuffle word order</button><button id="shuffle-undo" type="button" class="ghost small" hidden>Undo shuffle</button></div><p id="group-status" class="hint" role="status" aria-live="polite"></p><div id="word-chips" class="chips" aria-label="Select practice words"></div></div>
@@ -292,13 +311,14 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
  <details id="teacher-settings-disclosure"><summary>Teacher settings</summary><div class="actions"><button id="teacher-open-connections" type="button" class="ghost">API keys</button><button id="teacher-open-presets" type="button" class="ghost">Grade defaults</button><button id="teacher-open-invitations" type="button" class="ghost" hidden>Administration</button></div></details>
 </div></section>
 <section id="prepare-share-screen" class="screen panel" hidden aria-labelledby="workspace-title">
- <header class="row between workspace-heading"><h1 id="workspace-title" tabindex="-1">Prepare &amp; share</h1><div class="actions"><button id="workspace-back" type="button" class="ghost">Back to sets</button><button id="workspace-teacher-settings" type="button" class="ghost">Teacher settings</button></div></header>
+ <header class="row between workspace-heading"><div><h1 id="workspace-title" tabindex="-1">Prepare &amp; share</h1><p id="workspace-set-name" class="subhead"></p></div><div class="actions"><button id="workspace-back" type="button" class="ghost">Back to sets</button><button id="workspace-teacher-settings" type="button" class="ghost">Teacher settings</button></div></header>
  <section class="workspace-section workspace-words" aria-labelledby="workspace-words-title">
-  <h2 id="workspace-words-title">Words</h2>
+  <h2 id="workspace-words-title">Words</h2><details id="workspace-words-editor"><summary>Edit words <span id="workspace-words-summary" class="hint"></span></summary>
   <div class="stack"><div><label for="workspace-name">Set name</label><input id="workspace-name" type="text" maxlength="80" autocomplete="off" required></div>
-   <div><label for="workspace-words">Words to practice</label><textarea id="workspace-words" rows="7" spellcheck="false" aria-describedby="workspace-words-help" required></textarea><p id="workspace-words-help" class="hint">Up to 200 words or phrases, one per line. Changes save automatically and prepare Paul recordings.</p></div></div>
+   <div><label for="workspace-words">Words to practice</label><textarea id="workspace-words" rows="7" spellcheck="false" aria-describedby="workspace-words-help" required></textarea><p id="workspace-words-help" class="hint">Up to 200 words or phrases, one per line. Word changes save automatically and prepare paid Paul recordings. Unchanged recordings are reused.</p></div></div>
   <div class="workspace-save-status"><p id="workspace-word-status" class="status" role="status"></p><button id="workspace-save-retry" type="button" class="secondary" hidden>Retry saving</button></div>
-  <p id="audio-word-summary" class="hint" role="status"></p>
+  </details>
+  <p id="audio-word-summary" class="hint" role="status"></p><button id="workspace-fix-keys" type="button" class="secondary" hidden>Connect OpenRouter for recordings</button>
   <details id="workspace-audio-details"><summary>Recording details</summary><div id="workspace-audio-slot"></div></details>
  </section>
  <div id="workspace-mode-slot" class="workspace-section"></div>
@@ -318,25 +338,26 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
   <label class="checkline"><input id="retype-toggle" type="checkbox"><span>Require a correct second attempt after a spelling error</span></label>
   <label class="checkline"><input id="allow-variants" type="checkbox"><span>Allow teacher-approved spelling variants in vocabulary and tests</span></label>
  </div></section>
+ <section id="tools-grade-defaults" class="tool-section" hidden><h2>Vocabulary defaults</h2><p class="hint">Choose the starting settings for new sets. Existing sets keep their own settings.</p><button id="tools-open-presets" type="button" class="secondary">Grade defaults</button></section>
+ <details id="tools-recovery" class="tool-section" hidden><summary>Recover saved sets</summary><p class="hint">Replace this browser’s copies with your saved server copies. Export a backup first if you have local changes.</p><button id="teacher-reload-sets" type="button" class="ghost">Reload saved sets from server</button><p id="tools-recovery-status" class="status" role="status"></p></details>
  <details id="tools-advanced" class="tool-section tools-details"><summary>Advanced practice settings</summary>
   <p class="hint">Optional adjustments to review rounds and feedback timing.</p><div id="practice-settings-grid" class="settings">
    <div><label for="round-size">Words per review round (spelling only)</label><input id="round-size" type="number" min="1" max="20"><div class="hint">Different words in one spelling round. Vocabulary and mixed practice choose words automatically.</div></div>
    <div><label for="auto-advance">Correct-answer delay (milliseconds)</label><input id="auto-advance" type="number" min="0" max="5000" step="100"><div class="hint">Time to read feedback before the next word.</div></div>
    <div><label for="feedback-delay">Incorrect-answer display time (milliseconds)</label><input id="feedback-delay" type="number" min="300" max="10000" step="100"><div class="hint">How long the correction stays visible.</div></div>
   </div>
-  <div class="local-pin-setting"><label for="pin-entry">Parent access PIN (optional)</label><input id="pin-entry" aria-describedby="parent-pin-help" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4 digits"><p id="parent-pin-help" class="hint">A check before returning from practice to setup on this browser only. It is not sent in student links. Leave blank for no PIN. Forgot PIN clears it and keeps your lists and progress. This is not an account password.</p></div>
  </details>
  <details id="tools-audio" class="tool-section tools-details"><summary>Offline and older-set audio</summary>
-  <p class="hint">WordLab prepares new recordings with Paul. These voice options are for local practice and older sets that use device speech.</p><div id="audio-settings-grid" class="settings">
+  <p class="hint">Download a local copy for offline practice.</p><div id="local-audio-settings"><p class="hint">These device speech settings apply to offline practice and older sets.</p><div id="audio-settings-grid" class="settings">
    <div><label for="voice-select">Device fallback voice</label><select id="voice-select" aria-describedby="device-voice-help"><option value="">Automatic device voice</option></select><div id="device-voice-help" class="hint">Used when this device speaks the words. Prepared online sets use their saved recordings.</div></div>
    <div><label for="speech-rate">Local playback speed <span id="rate-label">0.85</span></label><input id="speech-rate" aria-describedby="device-rate-help" type="range" min="0.5" max="1.2" step="0.05"><div id="device-rate-help" class="hint">Changes device speech and recordings saved on this device, including local Paul clips. Use Listen slowly for shared recordings.</div></div>
-  </div><div class="actions"><button id="preview-voice" class="ghost small">Preview device voice</button><a id="offline-download" href="WordLab%20v0.2.0.html" download>Download offline app</a></div>
+  </div><div class="actions"><button id="preview-voice" class="ghost small">Preview device voice</button></div></div><div class="actions"><a id="offline-download" href="WordLab%20v0.2.0.html" download>Download offline app</a></div>
  </details>
- <div class="row between tools-footer"><div><p class="hint">Settings save automatically.</p><span id="tools-version" class="hint">WordLab v0.2.0</span></div><button id="done-tools">Close</button></div>
-</div></dialog><dialog id="create-list-dialog" class="tools-dialog create-list-dialog" aria-labelledby="create-list-title"><form id="create-list-form" class="tools-panel create-list-form"><div class="tools-heading"><h1 id="create-list-title">Create a word list</h1><p id="create-list-intro" class="subhead">Give your list a name, then add or import the words to practice.</p></div><div class="stack"><div><label for="create-list-name">List name</label><input id="create-list-name" type="text" maxlength="80" autocomplete="off" placeholder="For example, Week 3 spelling" required autofocus></div><div id="create-list-grade-field"><label for="create-list-grade">Grade preset for this new set</label><select id="create-list-grade"><option value="3">Grade 3</option><option value="4">Grade 4</option><option value="5" selected>Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option></select><p class="hint">Copies your grade defaults into this set. You can adjust them in Prepare &amp; share.</p></div><div><label for="create-list-words">Spelling words</label><textarea id="create-list-words" spellcheck="false" placeholder="because&#10;different&#10;important" aria-describedby="create-list-help" required></textarea><div id="create-list-help" class="hint">Enter up to 200 words or phrases, one per line. Repeated words are removed.</div></div></div><div class="actions"><button id="import-csv" type="button" class="secondary">Import CSV</button><button id="split-list" type="button" class="secondary" hidden>Split into lists</button><button id="copy-list" type="button" class="ghost">Copy as CSV</button></div><p class="hint">CSV: words on separate lines or separated by commas. No headings needed.</p><input id="csv-file" type="file" accept=".csv,text/csv" hidden><div id="list-editor-status" class="status" role="status" aria-live="polite"></div><div class="row between"><button id="cancel-create-list" type="button" class="ghost">Cancel</button><button id="save-list-draft" type="submit">Create this list</button></div></form></dialog>
+ <div class="row between tools-footer"><div><p id="tools-save-help" class="hint">Local practice settings save automatically. API keys have their own Save button.</p><span id="tools-version" class="hint">WordLab v0.2.0</span><span id="release-build" class="hint">Build 4e5e2bdf4ac2</span></div><button id="done-tools">Close</button></div>
+</div></dialog><dialog id="create-list-dialog" class="tools-dialog create-list-dialog" aria-labelledby="create-list-title"><form id="create-list-form" class="tools-panel create-list-form"><div class="tools-heading"><h1 id="create-list-title">Create a word list</h1><p id="create-list-intro" class="subhead">Give your list a name, then add or import the words to practice.</p></div><div class="stack"><div><label for="create-list-name">Name</label><input id="create-list-name" type="text" maxlength="80" autocomplete="off" placeholder="For example, Week 3 spelling" required autofocus></div><div id="create-list-grade-field"><label for="create-list-grade">Grade preset for this new set</label><select id="create-list-grade"><option value="3">Grade 3</option><option value="4">Grade 4</option><option value="5" selected>Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option></select><p class="hint">Copies your grade defaults into this set. You can adjust them in Prepare &amp; share.</p></div><div><label for="create-list-words">Words or phrases</label><textarea id="create-list-words" spellcheck="false" placeholder="because&#10;different&#10;important" aria-describedby="create-list-help" required></textarea><div id="create-list-help" class="hint">Enter up to 200 words or phrases, one per line. Repeated words are removed.</div></div></div><div class="actions"><button id="import-csv" type="button" class="secondary">Import CSV</button><button id="split-list" type="button" class="secondary" hidden>Split into lists</button><details><summary>Export words</summary><button id="copy-list" type="button" class="ghost">Copy as CSV</button></details></div><p class="hint">CSV: words on separate lines or separated by commas. No headings needed.</p><input id="csv-file" type="file" accept=".csv,text/csv" hidden><div id="list-editor-status" class="status" role="status" aria-live="polite"></div><div class="row between"><button id="cancel-create-list" type="button" class="ghost">Cancel</button><button id="save-list-draft" type="submit">Create this list</button></div></form></dialog>
 <section id="practice-screen" class="screen practice panel" hidden><div class="practice-head"><div><div id="list-name-practice" class="hint"></div><h1>Listen, then spell</h1></div><button id="pause-button" class="ghost">Pause practice <span class="kbd">Esc</span></button></div><div id="spelling-mastery" class="mastery-meter"><div class="mastery-meta"><span class="mastery-label">Progress toward mastery</span><span class="mastery-percent"></span></div><div id="mastery-progress" class="progressline" role="progressbar" aria-label="Progress toward mastery" aria-valuemax="100" aria-valuemin="0" aria-valuenow="0"><div id="progress-fill" class="progressfill"></div></div><div class="mastery-foot"><span id="progress-text" class="mastery-count" aria-live="polite"></span><span id="round-text"></span></div><p class="hint">Two correct spellings in a row to master each word.</p></div><div id="tiles" class="tiles" aria-label="Word progress"></div>
-<div class="prompt"><div class="actions" style="justify-content:center"><button id="replay-button" class="secondary">Replay word <span class="kbd">R</span></button><button id="slow-replay" class="ghost">Replay slowly <span class="kbd">S</span></button></div><div id="definition" class="definition"></div><div id="visual-word" class="sr" aria-live="polite"></div><form id="answer-form"><div id="spelling-correction" class="correction" hidden><span>Correct answer</span><strong></strong><span>Type it to continue.</span><p class="correction-detail" hidden></p></div><label class="sr" for="answer-input">Type the word you hear</label><input id="answer-input" class="word-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"><div class="hint">Type the word and press Enter to submit your answer.</div><div class="actions" style="justify-content:center;margin-top:10px"><button id="dont-know" type="button" class="ghost">I’m not sure</button><button id="submit-answer" type="submit">Submit answer</button></div></form></div><div id="feedback" class="feedback" aria-live="polite"></div></section>
-<section id="summary-screen" class="screen panel" hidden><div class="row between"><div><div id="summary-list" class="hint"></div><h1 id="summary-title">Practice summary</h1></div><button id="summary-setup" class="ghost">Return to setup</button></div><div id="summary-stats" class="summary-stat"></div><div class="grid section"><div><h2>Words for more practice</h2><div id="missed-empty" class="hint">No words need additional review from this session.</div><ol id="missed-list" class="missed"></ol><div class="actions"><button id="practice-missed" disabled>Practice these words</button><button id="copy-missed" class="secondary" disabled>Copy review words</button></div></div><div><h2>Recent practice sessions</h2><ol id="history-list" class="history"></ol></div></div></section>
+<div class="prompt"><div class="actions" style="justify-content:center"><button id="replay-button" class="secondary">Replay word <span class="kbd">R</span></button><button id="slow-replay" class="ghost">Replay slowly <span class="kbd">S</span></button></div><div id="definition" class="definition"></div><form id="answer-form"><div id="spelling-correction" class="correction" hidden><span>Correct answer</span><strong></strong><span>Type it to continue.</span><p class="correction-detail" hidden></p></div><label class="sr" for="answer-input">Type the word you hear</label><input id="answer-input" class="word-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"><div class="hint">Type the word and press Enter to submit your answer.</div><div class="actions" style="justify-content:center;margin-top:10px"><button id="dont-know" type="button" class="ghost">I’m not sure</button><button id="submit-answer" type="submit">Submit answer</button></div></form></div><div id="feedback" class="feedback" aria-live="polite"></div></section>
+<section id="summary-screen" class="screen panel" hidden><div class="row between"><div><div id="summary-list" class="hint"></div><h1 id="summary-title">Practice summary</h1></div><button id="summary-setup" class="ghost">Return to setup</button></div><div id="summary-stats" class="summary-stat"></div><div class="grid section"><div><h2>Words for more practice</h2><div id="missed-empty" class="hint">No words need additional review from this session.</div><ol id="missed-list" class="missed"></ol><div class="actions"><button id="practice-missed" disabled>Practice these words</button><button id="copy-missed" class="secondary" disabled>Copy review words</button></div></div><div><details><summary>Recent practice sessions</summary><ol id="history-list" class="history"></ol></details></div></div></section>
 <section id="learning-screen" class="screen practice panel" hidden>
  <div class="practice-head"><div><div id="learning-label" class="hint"></div><h1 id="learning-title" tabindex="-1"></h1></div><div class="actions"><button id="learning-pause" type="button" class="ghost small">Pause</button><button id="learning-end" type="button" class="ghost small">End session</button></div></div>
  <p id="learning-count" class="hint" aria-live="polite"></p>
@@ -355,27 +376,28 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 </section>
 <section id="study-screen" class="screen practice panel" hidden>
  <div class="row between"><h1 tabindex="-1" id="study-title">Flashcards</h1><button type="button" class="ghost" id="study-exit">Return to setup</button></div>
- <div class="actions"><label class="checkline"><input id="study-reverse" type="checkbox"> Definition first</label><label class="checkline"><input id="study-unfamiliar" type="checkbox"> Unfamiliar only</label><button type="button" id="study-shuffle" class="ghost small">Shuffle cards</button><button id="study-shuffle-undo" type="button" class="ghost small" hidden>Undo shuffle</button></div><p id="study-shuffle-status" class="hint" role="status"></p>
- <div class="actions"><button id="study-autoplay" type="button" class="ghost small" aria-label="Automatic sentence audio" aria-pressed="true">Auto audio: on</button><span class="hint">Examples play after you reveal a card.</span></div><p id="study-count" class="hint"></p><div class="study-card stack"><p id="study-front" class="lesson-prompt"></p><div id="study-back" hidden></div><div class="actions"><button id="study-reveal" type="button" class="secondary">Reveal card</button><button id="study-listen" type="button" class="ghost">Listen</button><button id="study-familiar" type="button" class="ghost">Mark as familiar</button></div></div>
+ <details id="study-options"><summary>Study options</summary><div class="actions"><label class="checkline"><input id="study-reverse" type="checkbox"> Definition first</label><label class="checkline"><input id="study-unfamiliar" type="checkbox"> Unfamiliar only</label></div></details><div class="actions"><button type="button" id="study-shuffle" class="ghost small">Shuffle cards</button><button id="study-shuffle-undo" type="button" class="ghost small" hidden>Undo shuffle</button></div><p id="study-shuffle-status" class="hint" role="status"></p>
+ <div class="actions"><button id="study-autoplay" type="button" class="ghost small" aria-label="Automatic sentence audio" aria-pressed="true">Auto audio: on</button><span class="hint">Examples play after you reveal a card.</span></div><p id="study-count" class="hint"></p><button id="study-show-all" type="button" class="secondary" hidden>Show all cards</button><div class="study-card stack"><p id="study-front" class="lesson-prompt"></p><div id="study-back" hidden></div><div class="actions"><button id="study-reveal" type="button" class="secondary">Reveal card</button><button id="study-listen" type="button" class="ghost">Listen</button><button id="study-familiar" type="button" class="ghost">Mark as familiar</button></div></div>
  <div class="actions"><button id="study-prev" type="button" class="ghost">Previous</button><button id="study-next" type="button">Next card</button></div>
 </section>
 <section id="report-screen" class="screen panel" hidden>
  <div class="row between"><div><div id="report-list" class="hint"></div><h1 id="report-title" tabindex="-1">Learning progress</h1></div><div class="actions"><button id="report-resume" type="button" hidden>Resume test</button><button id="report-exit" type="button" class="ghost">Return to setup</button></div></div>
- <div id="report-stats" class="summary-stat"></div><details id="report-trend" class="section" hidden><summary>Mastery over time</summary><table class="trend-table"><thead><tr><th scope="col">Session date</th><th scope="col">Spelling</th><th scope="col">Vocabulary</th></tr></thead><tbody id="report-trend-body"></tbody></table></details>
- <div class="grid section"><div><h2>Recommended practice</h2><p id="report-review" class="hint"></p><div class="actions"><button id="review-due" type="button">Review due words</button><button id="review-missed" type="button" class="secondary">Practice missed words</button></div></div><div><h2>Recent sessions</h2><ol class="history" id="report-history"></ol></div></div>
+ <p class="hint">Results and practice history are saved on this device.</p><div id="report-stats" class="summary-stat"></div><details id="report-trend" class="section" hidden><summary>Mastery over time</summary><table class="trend-table"><thead><tr><th scope="col">Session date</th><th scope="col">Spelling</th><th scope="col">Vocabulary</th></tr></thead><tbody id="report-trend-body"></tbody></table></details>
+ <div class="grid section"><div><h2>Recommended practice</h2><p id="report-review" class="hint"></p><div class="actions"><button id="review-due" type="button">Review due words</button><button id="review-missed" type="button" class="secondary">Practice missed words</button></div></div><div><details><summary>Recent sessions</summary><ol class="history" id="report-history"></ol></details></div></div>
 </section>
 
 <dialog id="vocab-dialog" class="tools-dialog" aria-labelledby="vocab-title"><div id="vocab-editor-panel" class="tools-panel stack">
  <div id="vocab-editor-heading" class="row between"><div><h1 id="vocab-title">Vocabulary content</h1><p id="vocab-count" class="hint"></p></div><button type="button" class="ghost" id="vocab-close">Close</button></div>
- <div><label for="vocab-word">Word to edit</label><select id="vocab-word"></select></div>
+ <div><label for="vocab-word">Word to review</label><select id="vocab-word"></select></div><div class="actions"><button id="vocab-word-prev" type="button" class="ghost small">Previous word</button><button id="vocab-word-next" type="button" class="ghost small">Next word</button></div>
  <details id="vocab-filters"><summary>Find or filter words</summary><div class="settings"><div><label for="vocab-search">Search</label><input id="vocab-search" type="search"></div><div><label for="vocab-filter">Show words</label><select id="vocab-filter"><option value="">All</option><option value="approved">Approved</option><option value="draft">Needs review</option><option value="missing">Missing vocabulary</option></select></div></div></details>
- <div id="vocab-pagination" class="row between"><span id="vocab-page" class="hint"></span><div class="actions"><button id="vocab-prev" class="ghost small">Previous page</button><button id="vocab-next" class="ghost small">Next page</button></div></div><form id="vocab-form" class="stack">
+ <div id="vocab-review-content" class="review-content" hidden><h2>Student content</h2><p id="vocab-review-definition"></p><div id="vocab-review-examples"></div><div id="vocab-review-cloze"></div></div><button id="vocab-edit-toggle" type="button" class="ghost">Edit wording</button>
+ <div id="vocab-pagination" class="row between"><span id="vocab-page" class="hint"></span><div class="actions"><button id="vocab-prev" class="ghost small">Previous page</button><button id="vocab-next" class="ghost small">Next page</button></div></div><form id="vocab-form" class="stack"><div id="vocab-edit-fields" class="stack">
   <div><label for="vocab-definition">Definition</label><textarea id="vocab-definition" rows="2" maxlength="300" required></textarea></div>
+   <div><label for="vocab-examples">Example sentences with the word included</label><textarea id="vocab-examples" rows="2" placeholder="One per line"></textarea></div>
   <div><label for="vocab-cloze">Practice sentences</label><textarea id="vocab-cloze" rows="4" aria-describedby="vocab-cloze-help"></textarea><p id="vocab-cloze-help" class="hint">Write one sentence per line. Replace the answer with _____ once in each sentence. Add two different sentences for recall practice.</p></div>
   <div><label for="vocab-pos">Word type</label><select id="vocab-pos"><option value="">Choose a word type…</option><option>noun</option><option>verb</option><option>adjective</option><option>adverb</option><option>pronoun</option><option>preposition</option><option>conjunction</option><option>interjection</option><option>article</option><option>determiner</option><option>phrase</option><option>numeral</option><option>unknown</option></select></div>
   <details id="vocab-advanced"><summary>Optional examples and settings</summary><div class="stack">
    <div class="settings"><div><label for="vocab-grade">Reading grade</label><input type="number" id="vocab-grade" min="1" max="12" value="5" required></div><div><label for="vocab-variants">Other accepted spellings</label><textarea id="vocab-variants" rows="2" placeholder="One per line"></textarea></div></div>
-   <div><label for="vocab-examples">Example sentences with the word included</label><textarea id="vocab-examples" rows="2" placeholder="One per line"></textarea></div>
    <div><label for="vocab-explanations">Feedback explanations</label><textarea id="vocab-explanations" rows="3" placeholder="One per practice sentence, in the same order"></textarea></div>
    <div><label for="vocab-distractors">Incorrect definitions for multiple-choice tests</label><textarea id="vocab-distractors" rows="3" placeholder="One per line"></textarea></div>
   </div></details>
@@ -383,13 +405,14 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
   <div class="stack"><div><label for="troy-sentence">Pronunciation example</label><input id="troy-sentence" type="text" maxlength="200" aria-describedby="troy-help"><p id="troy-help" class="hint">Use the exact spelling word in a sentence that shows its meaning.</p></div><div class="actions"><button id="generate-troy" type="button" class="secondary" disabled>Generate and attach audio</button><button id="troy-sign-in" type="button" class="ghost small">Teacher sign-in</button></div></div>
   <div><label for="recording-file">Dictation recording (WAV)</label><input id="recording-file" type="file" accept=".wav,audio/wav,audio/x-wav" aria-describedby="recording-help"><p id="recording-help" class="hint">Add a checked pronunciation for this word and meaning. Save any definition changes before attaching the file.</p><div class="actions"><button id="recording-preview" type="button" class="ghost small" disabled>Listen to recording</button><button id="recording-remove" type="button" class="ghost small" disabled>Remove recording</button></div></div>
   </div></details>
-  <div class="actions"><button type="submit">Save draft</button><button id="vocab-approve" type="submit" class="secondary">Save and approve</button><button id="vocab-regenerate" type="button" class="ghost">Regenerate an item</button><button id="vocab-undo" type="button" class="ghost" disabled>Undo last change</button></div>
+  </div><div class="actions"><button id="vocab-save-draft" type="submit">Save draft</button><button id="vocab-approve" type="submit">Approve &amp; next</button><button id="vocab-regenerate" type="button" class="ghost">Regenerate an item</button></div>
  </form>
- <div class="actions section"><button type="button" id="vocab-bulk" class="ghost">Approve all reviewed drafts</button><button type="button" id="vocab-export" class="secondary">Download vocabulary pack</button></div>
+ <div class="actions"><button id="vocab-undo" type="button" class="ghost" disabled>Undo last change</button></div>
+ <details id="vocab-more-actions" class="section"><summary>More review actions</summary><div class="actions"><button type="button" id="vocab-bulk" class="ghost">Approve all drafts…</button><button type="button" id="vocab-export" class="secondary">Download vocabulary pack</button></div></details>
  <p id="vocab-status" class="status" role="status"></p>
 </div></dialog>
 <dialog id="teacher-dialog" class="tools-dialog" aria-labelledby="teacher-title"><div class="tools-panel stack">
- <div class="row between teacher-dialog-heading"><h1 id="teacher-title">Online vocabulary tools</h1><div class="actions"><button type="button" id="teacher-logout" class="ghost" hidden>Sign out</button><button type="button" id="teacher-close" class="ghost" autofocus>Close</button></div></div>
+ <div class="row between teacher-dialog-heading"><h1 id="teacher-title">Online vocabulary tools</h1><div class="actions"><button type="button" id="teacher-settings-back" class="ghost" hidden>Back to settings</button><button type="button" id="teacher-logout" class="ghost" hidden>Sign out</button><button type="button" id="teacher-close" class="ghost" autofocus>Close</button></div></div>
  <nav id="teacher-view-nav" class="actions" aria-label="Teacher task navigation" hidden><button id="teacher-nav-setup" type="button" class="ghost" aria-pressed="false">API keys</button><button id="teacher-nav-presets" type="button" class="ghost" aria-pressed="false">Grade defaults</button><button id="teacher-nav-prepare" type="button" class="ghost" aria-pressed="false">Prepare vocabulary</button><button id="teacher-nav-share" type="button" class="ghost" aria-pressed="false">Student link</button><button id="teacher-nav-administration" type="button" class="ghost" aria-pressed="false">Administration</button></nav>
  <form id="teacher-connect" class="stack"><div id="teacher-url-field"><label for="teacher-url">WordLab service URL</label><input type="url" id="teacher-url" placeholder="https://api.wordlab.mtomlinson.ca" required></div>
   <div><label for="teacher-login-kind">Sign-in method</label><select id="teacher-login-kind"><option value="owner" selected>Site owner</option><option value="teacher">Teacher account</option></select></div>
@@ -403,14 +426,14 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
   <h2 id="teacher-account-title">Your API keys</h2><p id="teacher-account-name" class="hint"></p>
   <p class="hint">Your keys pay for your AI requests. WordLab stores them encrypted on its server and uses them only for your work. Students replay saved recordings without AI requests.</p>
   <form id="teacher-keys-form" class="stack" autocomplete="off">
-   <div><label for="teacher-groq-key">Groq API key · vocabulary text <span id="teacher-groq-status"></span></label><input id="teacher-groq-key" type="password" autocomplete="off" placeholder="Leave blank to keep your saved key"><label class="checkline"><input id="teacher-delete-groq" type="checkbox"> Remove saved Groq key</label></div>
-   <div><label for="teacher-openrouter-key">OpenRouter API key · required for Paul audio; optional backup text <span id="teacher-openrouter-status"></span></label><input id="teacher-openrouter-key" type="password" autocomplete="off" placeholder="Leave blank to keep your saved key"><label class="checkline"><input id="teacher-delete-openrouter" type="checkbox"> Remove saved OpenRouter key</label></div>
-   <label class="checkline"><input id="teacher-paid-text" type="checkbox"> Allow paid text models when free models are unavailable</label>
-   <p class="hint">Paul recordings use your paid OpenRouter balance. Groq drafts vocabulary text; OpenRouter can also back up text drafting. Paid text fallback starts off. Key saved does not mean verified; use Test connections. Saving keys makes no generation request.</p>
-   <div class="actions"><button id="teacher-keys-save" type="submit">Save API keys</button><button id="teacher-test-keys" type="button" class="secondary">Test connections</button><button id="teacher-reload-sets" type="button" class="ghost">Reload saved sets</button></div>
+   <div><label for="teacher-groq-key">Groq API key · vocabulary text <span id="teacher-groq-status"></span></label><input id="teacher-groq-key" type="password" autocomplete="off" placeholder="Leave blank to keep your saved key"></div>
+   <div><label for="teacher-openrouter-key">OpenRouter API key · required for Paul audio; optional backup text <span id="teacher-openrouter-status"></span></label><input id="teacher-openrouter-key" type="password" autocomplete="off" placeholder="Leave blank to keep your saved key"></div>
+   <details id="teacher-key-options"><summary>Key removal and paid text options</summary><div class="stack"><label class="checkline"><input id="teacher-delete-groq" type="checkbox"> Remove saved Groq key</label><label class="checkline"><input id="teacher-delete-openrouter" type="checkbox"> Remove saved OpenRouter key</label><label class="checkline"><input id="teacher-paid-text" type="checkbox"> Allow paid text models when free models are unavailable</label></div></details>
+   <p class="hint">Paul recordings use your paid OpenRouter balance. Groq drafts vocabulary text; OpenRouter can also back up text drafting. Paid text fallback starts off. Key saved does not mean verified; use Test saved keys. Saving keys makes no generation request.</p>
+   <div class="actions"><button id="teacher-keys-save" type="submit">Save API keys</button><button id="teacher-test-keys" type="button" class="secondary">Test saved keys</button></div>
   </form><p id="teacher-account-status" class="status" role="status"></p>
  </section>
- <section id="teacher-grade-defaults" class="stack" hidden aria-labelledby="teacher-title"><p class="hint">Reading complexity defaults for new sets, not curriculum requirements. Saving a grade never changes existing sets or generates AI content.</p><div><label for="preset-grade">Grade to edit</label><select id="preset-grade"><option value="3">Grade 3</option><option value="4">Grade 4</option><option value="5" selected>Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option></select></div><form id="preset-form" class="stack"><div class="settings teacher-fields"><div><label for="preset-readingLevel">Reading grade</label><input id="preset-readingLevel" type="number" min="1" max="12" required></div><div><label for="preset-practiceSentences">Practice sentences per word</label><input id="preset-practiceSentences" type="number" min="1" max="5" required></div><div><label for="preset-exampleSentences">Examples per word</label><input id="preset-exampleSentences" type="number" min="1" max="2" required></div></div><div><label for="preset-dialect">Spelling dialect</label><select id="preset-dialect"><option value="original">Keep original spelling</option><option value="american">American English</option><option value="british">British English</option><option value="canadian">Canadian English</option></select></div><div class="settings teacher-checkboxes"><label class="checkline"><input id="preset-esl" type="checkbox"> Use plain English in definitions</label><label class="checkline"><input id="preset-distractors" type="checkbox"> Write incorrect choices for tests</label><label class="checkline"><input id="preset-explanations" type="checkbox"> Explain the answers</label><label class="checkline"><input id="preset-reuseApproved" type="checkbox"> Reuse matching approved vocabulary</label></div><p class="hint">Textbook context and intended meaning are always blank in reusable defaults. Add them to an individual set.</p><button id="preset-save" type="submit">Save this grade’s defaults</button></form><p id="preset-status" class="status" role="status"></p></section>
+ <section id="teacher-grade-defaults" class="stack" hidden aria-labelledby="teacher-title"><p class="hint">Reading complexity defaults for new sets, not curriculum requirements. Saving a grade never changes existing sets or generates AI content.</p><div><label for="preset-grade">Grade to edit</label><select id="preset-grade"><option value="3">Grade 3</option><option value="4">Grade 4</option><option value="5" selected>Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option></select></div><form id="preset-form" class="stack"><div><label for="preset-readingLevel">Reading grade</label><input id="preset-readingLevel" type="number" min="1" max="12" required></div><details id="preset-advanced"><summary>More vocabulary defaults</summary><div class="stack"><div class="settings teacher-fields"><div><label for="preset-practiceSentences">Practice sentences per word</label><input id="preset-practiceSentences" type="number" min="1" max="5" required></div><div><label for="preset-exampleSentences">Examples per word</label><input id="preset-exampleSentences" type="number" min="1" max="2" required></div></div><div><label for="preset-dialect">Spelling dialect</label><select id="preset-dialect"><option value="original">Keep original spelling</option><option value="american">American English</option><option value="british">British English</option><option value="canadian">Canadian English</option></select></div><div class="settings teacher-checkboxes"><label class="checkline"><input id="preset-esl" type="checkbox"> Use plain English in definitions</label><label class="checkline"><input id="preset-distractors" type="checkbox"> Write incorrect choices for tests</label><label class="checkline"><input id="preset-explanations" type="checkbox"> Explain the answers</label><label class="checkline"><input id="preset-reuseApproved" type="checkbox"> Reuse matching approved vocabulary</label></div><p class="hint">Textbook context and intended meaning are always blank in reusable defaults. Add them to an individual set.</p></div></details><button id="preset-save" type="submit">Save this grade’s defaults</button></form><p id="preset-status" class="status" role="status"></p></section>
  <div id="teacher-drafting-info" class="stack" hidden>
   <p id="teacher-drafting-status" class="hint"></p>
   <div class="actions"><button id="teacher-write-vocabulary" type="button" class="secondary">Edit vocabulary</button></div>
@@ -419,13 +442,13 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
   <div id="teacher-draft-form" class="stack">
    <div id="teacher-draft-intro"><h2>Vocabulary preparation</h2><p class="hint">Generate drafts when you are ready. Review and approve vocabulary before sharing.</p></div>
    <p id="teacher-settings-status" class="status" role="status"></p><p id="teacher-selection" class="hint"></p>
+   <div id="ai-context-wrap"><label for="ai-context">Textbook context (optional)</label><textarea id="ai-context" rows="2" maxlength="800" aria-describedby="ai-context-help"></textarea><p id="ai-context-help" class="hint">Paste a short excerpt to help AI use the right meaning. Leave out student information.</p></div>
    <details id="workspace-vocabulary-settings"><summary>Adjust vocabulary settings</summary><div class="stack">
    <div class="settings teacher-fields">
     <div><label for="ai-grade">Reading grade</label><input id="ai-grade" type="number" min="1" max="12" value="5"></div>
     <div><label for="ai-sentences">Practice sentences per word</label><input id="ai-sentences" type="number" min="1" max="5" value="1"></div>
     <div><label for="ai-examples">Examples per word</label><select id="ai-examples"><option selected>1</option><option>2</option></select></div>
    </div>
-   <div id="ai-context-wrap"><label for="ai-context">Textbook context (optional)</label><textarea id="ai-context" rows="2" maxlength="800" aria-describedby="ai-context-help"></textarea><p id="ai-context-help" class="hint">Paste a short excerpt to help AI use the right meaning. Leave out student information.</p></div>
    <details><summary>More drafting options for this set</summary><div><label for="ai-dialect">Spelling dialect</label><select id="ai-dialect"><option value="original">Keep original spelling</option><option value="american">American English</option><option value="british">British English</option><option value="canadian">Canadian English</option></select></div><div><label for="ai-sense">Intended meaning (optional)</label><input id="ai-sense" maxlength="160"></div><div class="settings teacher-checkboxes">
     <label class="checkline"><input type="checkbox" id="ai-esl" checked> Use plain English in definitions</label>
     <label class="checkline"><input type="checkbox" id="ai-distractors" checked> Write incorrect choices for tests</label>
@@ -441,10 +464,11 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
  </div>
  <div id="teacher-admin" class="tool-section stack" hidden>
   <h2 id="teacher-publishing-title">Share</h2><div id="shared-mode-field"><label for="shared-mode">What will students practice?</label><select id="shared-mode"><option value="mixed">Spelling and vocabulary</option><option value="spelling">Spelling only</option><option value="vocabulary">Vocabulary only</option></select></div>
-  <label id="shared-hints-row" class="checkline"><input id="shared-hints" type="checkbox" checked> Allow hints during practice</label>
+  <details id="shared-practice-options"><summary>Practice options <span id="shared-practice-summary" class="hint"></span></summary><div class="stack">  <label id="shared-hints-row" class="checkline"><input id="shared-hints" type="checkbox" checked> Allow hints during practice</label>
   <label id="shared-retype-row" class="checkline"><input id="shared-retype" type="checkbox" checked> Require a correct second attempt after a spelling error</label>
   <label id="shared-variants-row" class="checkline"><input id="shared-variants" type="checkbox"> Allow teacher-approved spelling variants in vocabulary and tests</label>
   <p class="hint">These teaching rules are saved with this student link. Student device preferences cannot override them. Vocabulary tasks keep their own guided correction steps.</p>
+</div></details>
   <p id="ai-publish-readiness" class="notice" role="status"></p>
   <p id="workspace-unshared" class="hint" role="status" hidden></p><button id="workspace-refresh-link" type="button" class="ghost" hidden>Retry loading link</button>
   <details id="ai-vocabulary-details" hidden><summary>Vocabulary by word</summary><p id="ai-vocabulary-words" class="hint"></p></details>
@@ -462,9 +486,9 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
  <section id="teacher-private-audio" class="tool-section stack" hidden aria-labelledby="teacher-private-audio-title"><h2 id="teacher-private-audio-title">Prepared recordings</h2><p id="teacher-private-audio-status" class="hint" role="status"></p><ul id="teacher-recordings" class="recording-list"></ul><button id="teacher-retry-audio" type="button" class="secondary">Retry missing recordings</button></section>
   <details id="teacher-operations" class="section"><summary>Invitations, service settings, and class access</summary><div class="stack">
    <section class="stack" aria-labelledby="teacher-invitations-title"><h2 id="teacher-invitations-title">Teacher invitations</h2><div><label for="teacher-invite-label">Invitation label</label><input id="teacher-invite-label" maxlength="80" placeholder="For example, Grade 5 colleague"></div><div class="actions"><button id="teacher-create-invite" type="button">Create invitation</button><button id="teacher-refresh-accounts" type="button" class="ghost">Refresh invitations and teachers</button></div><div id="teacher-invite-result" hidden><label for="teacher-invite-link">Single-use invitation link</label><input id="teacher-invite-link" readonly><button id="teacher-copy-invite" type="button" class="secondary">Copy invitation link</button><p class="hint">Copy this link now. The secret is shown only once.</p></div><p id="teacher-invite-status" class="status" role="status"></p><ul id="teacher-invitations"></ul><h3>Teacher accounts</h3><ul id="teacher-accounts"></ul></section>
-   <div id="ai-drafting-controls" class="stack" hidden><p class="hint">Pause or resume AI vocabulary drafting for the whole site.</p><div class="actions"><button type="button" id="ai-stop" class="ghost">Pause AI drafting</button></div></div>
+   <details id="admin-service-controls"><summary>Service controls and AI usage</summary><div id="ai-drafting-controls" class="stack" hidden><p class="hint">Pause or resume AI vocabulary drafting for the whole site.</p><div class="actions"><button type="button" id="ai-stop" class="ghost">Pause AI drafting</button></div></div>
    <div class="actions"><button type="button" id="ai-usage" class="ghost">Check AI usage</button></div><p id="ai-usage-result" class="hint" role="status"></p><ol id="ai-job-history" aria-label="Recent AI drafting jobs"></ol>
-   <details><summary>Class access codes</summary><div class="stack"><p class="hint">Class codes are for restricted access. Students can open student links without a code.</p><div class="actions"><button type="button" id="ai-classes" class="ghost">Refresh class list</button></div><ul id="ai-class-status"></ul><div class="settings teacher-fields"><div><label for="ai-class-id">Class ID</label><input id="ai-class-id" maxlength="40"></div><div><label for="ai-class-name">Class name</label><input id="ai-class-name" maxlength="80"></div><div><label for="ai-class-limit">Daily word limit</label><input id="ai-class-limit" type="number" min="1" value="200"></div><div><label for="ai-class-expiry">Expires on</label><input id="ai-class-expiry" type="date"></div></div><div class="actions"><button type="button" id="ai-class-save" class="secondary">Save class</button><button type="button" id="ai-class-rotate" class="ghost">Replace code</button><button type="button" id="ai-class-revoke" class="ghost">Revoke access</button></div></div></details>
+   </details><details><summary>Class access codes</summary><div class="stack"><p class="hint">Class codes are for restricted access. Students can open student links without a code.</p><div class="actions"><button type="button" id="ai-classes" class="ghost">Refresh class list</button></div><ul id="ai-class-status"></ul><div class="settings teacher-fields"><div><label for="ai-class-id">Class ID</label><input id="ai-class-id" maxlength="40"></div><div><label for="ai-class-name">Class name</label><input id="ai-class-name" maxlength="80"></div><div><label for="ai-class-limit">Daily word limit</label><input id="ai-class-limit" type="number" min="1" value="200"></div><div><label for="ai-class-expiry">Expires on</label><input id="ai-class-expiry" type="date"></div></div><div class="actions"><button type="button" id="ai-class-save" class="secondary">Save class</button><button type="button" id="ai-class-rotate" class="ghost">Replace code</button><button type="button" id="ai-class-revoke" class="ghost">Revoke access</button></div></div></details>
   </div></details>
 </div></dialog>
 <dialog id="regenerate-dialog" class="tools-dialog" aria-labelledby="regenerate-title"><div class="tools-panel stack"><h1 id="regenerate-title">Regenerate one item</h1><div><label for="regenerate-item">Content to replace</label><select id="regenerate-item"><option value="cloze">Practice sentence</option><option value="definition">Definition</option><option value="examples">Examples</option><option value="distractors">Incorrect definitions</option></select></div><div><label for="regenerate-sentence">Practice sentence number</label><input id="regenerate-sentence" type="number" min="1" max="5" value="1"></div><p id="regenerate-status" class="status" role="status"></p><div class="actions"><button id="regenerate-submit" type="button">Generate replacement</button><button id="regenerate-close" class="ghost" type="button">Cancel</button></div></div></dialog>
@@ -472,7 +496,6 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 
 </main></div>
 <div id="pause-overlay" class="overlay" hidden><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="pause-title"><h2 id="pause-title">Practice paused</h2><p class="muted">Your word list is hidden while practice is paused.</p><div class="actions"><button id="resume-practice">Resume practice</button><button id="end-session" class="secondary">End session</button><button id="back-setup" class="ghost">Return to setup</button></div></section></div>
-<div id="pin-overlay" class="overlay" hidden><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="pin-title"><h2 id="pin-title">Parent access</h2><p class="muted">Enter the four-digit PIN to return to setup.</p><form id="pin-form" class="stack"><label for="pin-check">PIN</label><input id="pin-check" type="password" inputmode="numeric" maxlength="4" autocomplete="off"><div id="pin-error" class="status" role="alert"></div><div class="actions"><button type="submit">Continue</button><button id="cancel-pin" type="button" class="ghost">Cancel</button><button id="reset-pin" type="button" class="danger small">Forgot PIN</button></div></form></section></div>
 <div id="test-output" hidden></div><script>
 (function(){
 'use strict';
@@ -4663,8 +4686,11 @@ function renderStudy() {
  const cards = studyCards(), study = studyState;
  study.index = Math.max(0, Math.min(study.index, cards.length - 1));
  const card = cards[study.index], reverse = $('study-reverse').checked;
+ const noUnfamiliar = !card && $('study-unfamiliar').checked;
  show('study-screen');
- $('study-count').textContent = card ? 'Card ' + (study.index + 1) + ' of ' + cards.length : 'No unfamiliar cards in this selection.';
+ $('study-count').textContent = card ? 'Card ' + (study.index + 1) + ' of ' + cards.length :
+  noUnfamiliar ? 'No unfamiliar cards in this selection.' : 'No flashcards in this selection.';
+ $('study-show-all').hidden = !noUnfamiliar;
  $('study-front').textContent = card?.front || '';
  $('study-back').hidden = !study.revealed || !card;
  $('study-back').replaceChildren();
@@ -4892,6 +4918,7 @@ let editorToken = '';
 let vocabularyEditorRequest = 0;
 let editorRevision = null;
 let editorSaving = false;
+let editorSelection = {word: '', search: '', filter: '', values: []};
 const editorPageSize = 30;
 const fields = {
  definition: 'vocab-definition', examples: 'vocab-examples', meaningDistractors: 'vocab-distractors',
@@ -4899,13 +4926,34 @@ const fields = {
 };
 const lines = value => value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
 const editorStatusText = message => { $('vocab-status').textContent = message; };
+const editableVocabularyFields = [...Object.values(fields), 'vocab-cloze', 'vocab-explanations'];
+const vocabularyFieldValues = () => editableVocabularyFields.map(id => $(id).value);
+const isVocabularyDraft = row => row.vocabulary && row.vocabulary.status !== 'approved';
+
+function nextVocabularyDraft(rows, index) {
+ return rows.slice(index + 1).find(isVocabularyDraft) || rows.slice(0, index).find(isVocabularyDraft);
+}
+
+function canLeaveVocabularyEditor() {
+ if (editorSaving) {
+  editorStatusText('Wait for the vocabulary save to finish.');
+  return false;
+ }
+ if (!editorInline && !$('vocab-dialog').open) return true;
+ return !editorSelection.values.some((value,index) => value !== $(editableVocabularyFields[index]).value) ||
+  confirm('Discard unsaved changes to “' + editorSelection.word + '”?');
+}
+
+function filteredEditorRecords() {
+ const search = wordKey($('vocab-search').value), filter = $('vocab-filter').value;
+ return editorRecords.filter(row => wordKey(row.word).includes(search) &&
+  (!filter || (filter === 'draft' ? isVocabularyDraft(row) :
+   (row.vocabulary?.status || 'missing') === filter)));
+}
 
 function renderVocabularyEditor(preferred) {
- const search = wordKey($('vocab-search').value), filter = $('vocab-filter').value;
  const chosen = preferred || $('vocab-word').value;
- const filtered = editorRecords.filter(row => wordKey(row.word).includes(search) &&
-  (!filter || (filter === 'draft' ? row.vocabulary && row.vocabulary.status !== 'approved' :
-   (row.vocabulary?.status || 'missing') === filter)));
+ const filtered = filteredEditorRecords();
  const lastPage = Math.max(0, Math.ceil(filtered.length / editorPageSize) - 1);
  editorPage = Math.min(editorPage, lastPage);
  const index = filtered.findIndex(row => row.word === preferred);
@@ -4925,17 +4973,45 @@ function renderVocabularyEditor(preferred) {
   const status = row.vocabulary?.status === 'approved' ? 'Approved' : row.vocabulary ? 'Review' : 'Missing';
   select.add(new Option(row.word + ' · ' + status, row.word));
  }
+ select.disabled = !page.length;
+ if (!page.length) select.add(new Option('No matching words', ''));
  select.value = page.some(row => row.word === chosen) ? chosen : page[0]?.word || '';
  $('vocab-undo').disabled = !undoVocabulary;
- $('vocab-bulk').disabled = !editorRecords.some(row => row.vocabulary && row.vocabulary.status !== 'approved');
- renderEditFields();
+ $('vocab-bulk').disabled = !editorRecords.some(isVocabularyDraft);
+ renderEditFields(filtered);
 }
 
-function renderEditFields() {
- const row = editorRecords.find(item => item.word === $('vocab-word').value);
+function displayVocabularyEditor(editing) {
+ const toggle = $('vocab-edit-toggle');
+ toggle.textContent = editing ? 'Preview wording' : 'Edit wording';
+ toggle.setAttribute('aria-expanded', String(editing));
+ $('vocab-edit-fields').hidden = !editing;
+ $('vocab-save-draft').hidden = !editing;
+ $('vocab-review-content').hidden = editing;
+ if (editing) return;
+ $('vocab-review-definition').textContent = $('vocab-definition').value;
+ for (const [target, source] of [['vocab-review-examples', 'vocab-examples'], ['vocab-review-cloze', 'vocab-cloze']]) {
+  const container = $(target), sentences = lines($(source).value);
+  container.hidden = !sentences.length;
+  container.replaceChildren();
+  for (const sentence of sentences) {
+   const paragraph = document.createElement('p');
+   paragraph.textContent = sentence;
+   container.append(paragraph);
+  }
+ }
+}
+
+function renderEditFields(filtered = filteredEditorRecords()) {
+ const word = $('vocab-word').value, index = filtered.findIndex(row => row.word === word);
+ const row = filtered[index];
+ editorSelection = {word, search: $('vocab-search').value, filter: $('vocab-filter').value, values: []};
+ $('vocab-word-prev').disabled = index < 1;
+ $('vocab-word-next').disabled = index < 0 || index + 1 >= filtered.length;
  $('vocab-form').hidden = !row;
- if (!row) return;
- const v = row.vocabulary;
+ const v = row?.vocabulary;
+ $('vocab-edit-toggle').hidden = !v;
+ if (!row) { $('vocab-review-content').hidden = true; return; }
  prefillTroySentence(row);
  for (const [key, id] of Object.entries(fields)) {
   const value = v?.[key];
@@ -4943,17 +5019,21 @@ function renderEditFields() {
  }
  $('vocab-cloze').value = (v?.clozeQuestions || []).map(question => question.sentence).join('\n');
  $('vocab-explanations').value = (v?.clozeQuestions || []).map(question => question.explanation).join('\n');
+ editorSelection.values = vocabularyFieldValues();
+ displayVocabularyEditor(!v);
+ $('vocab-approve').textContent = v?.status === 'approved' ? 'Save changes' :
+  nextVocabularyDraft(filtered, index) ? 'Approve & next' : 'Save and approve';
  $('vocab-regenerate').disabled = !v || ai.role !== 'teacher';
  renderRecordingControls();
 }
 
-async function changeVocabulary(next, preferred) {
+async function changeVocabulary(next, preferred, submittedValues) {
  if (editorSaving) throw Error('A vocabulary save is already in progress. Wait for it to finish before saving again.');
  const owner = state, token = ai.token, request = vocabularyEditorRequest;
  const list = editorList, before = editorRecords;
  const current = () => state === owner && ai.token === token && editorWorkspace === owner && editorToken === token && editorList === list && selectedList() === list && vocabularyEditorRequest === request;
  if (!list || !current()) throw Error('This workspace changed. Sign in again to continue.');
- const revision = editorRevision;
+ const revision = editorRevision, selection = editorSelection;
  if (!sameVocabularyRevision(list,revision)) throw Error(VOCABULARY_CHANGED);
  editorSaving = true;
  try {
@@ -4985,14 +5065,29 @@ async function changeVocabulary(next, preferred) {
   editorRevision = writtenRevision;
   editorRecords = next;
   undoVocabulary = before;
+  const {word, values} = editorSelection;
+  const baseline = (selection === editorSelection && submittedValues) || values;
+  const unsaved = vocabularyFieldValues().map((value,index) => baseline.length && value !== baseline[index] ? value : undefined);
+  const hasUnsaved = unsaved.some(value => value !== undefined), editing = !$('vocab-edit-fields').hidden;
+  if (hasUnsaved) {
+   // Keep the edited word in view if saving changed its filter status.
+   if (!filteredEditorRecords().some(row => row.word === word)) $('vocab-filter').value = '';
+   preferred = word;
+  } else if (selection !== editorSelection) preferred = word;
   renderVocabularyEditor(preferred);
+  if (hasUnsaved) {
+   unsaved.forEach((value,index) => { if (value !== undefined) $(editableVocabularyFields[index]).value = value; });
+   displayVocabularyEditor(editing);
+  }
   if (editorInline && typeof refreshSetWorkspace === 'function') await refreshSetWorkspace();
+  return current();
  } finally {
   editorSaving = false;
  }
 }
 
-async function closeVocabularyEditor() {
+async function closeVocabularyEditor(discardConfirmed = false) {
+ if ((editorSaving || editorInline && !discardConfirmed) && !canLeaveVocabularyEditor()) return false;
  // Cancel an open that is still loading before its panel mounts.
  vocabularyEditorRequest++;
  if (!editorInline) return false;
@@ -5008,12 +5103,15 @@ async function closeVocabularyEditor() {
 
 async function openVocabularyEditor(filter = '', inline = false) {
  const list = selectedList();
- if (!list) return;
+ if (!list || !canLeaveVocabularyEditor()) return;
+ const selection = editorSelection, values = vocabularyFieldValues();
  const owner = state, token = ai.token, revision = vocabularyRevision(list), request = ++vocabularyEditorRequest;
  const current = () => state === owner && ai.token === token && selectedList() === list && sameVocabularyRevision(list,revision) && vocabularyEditorRequest === request;
  try {
   const records = await loadVocabulary(list);
   if (!current()) return;
+  const changed = selection !== editorSelection || values.some((value,index) => value !== $(editableVocabularyFields[index]).value);
+  if ((editorSaving || changed) && !canLeaveVocabularyEditor()) return;
   editorRecords = records;
   editorRevision = revision;
   editorList = list; editorPage = 0; undoVocabulary = null;
@@ -5087,6 +5185,11 @@ function initCoach() {
  for (const id of ['study-reverse', 'study-unfamiliar']) $(id).onchange = () => {
   studyState.index = 0; studyState.revealed = false; renderStudy();
  };
+ $('study-show-all').onclick = () => {
+  $('study-unfamiliar').checked = false;
+  $('study-unfamiliar').onchange();
+  if (!$('study-reveal').disabled) $('study-reveal').focus();
+ };
  $('study-listen').onclick = () => {
   const card = studyCards()[studyState.index];
   if (card) playStudyRecordings(card);
@@ -5101,15 +5204,41 @@ function initCoach() {
   const key = wordKey(card.word), previous = state.familiar[list] || [];
   state.familiar[list] = previous.includes(key) ? previous.filter(word => word !== key) : previous.concat(key);
   studyState.revealed = false; save(); renderStudy();
+  if (!$('study-show-all').hidden) $('study-show-all').focus();
  };
  $('study-shuffle').onclick = () => openShuffle('study');
  $('shuffle-undo').onclick = () => undoWordShuffle('list');
  $('study-shuffle-undo').onclick = () => undoWordShuffle('study');
- $('vocab-close').onclick = () => editorInline ? closeVocabularyEditor() : $('vocab-dialog').close();
- for (const id of ['vocab-search', 'vocab-filter']) $(id).oninput = () => { editorPage = 0; renderVocabularyEditor(); };
- $('vocab-prev').onclick = () => { editorPage--; renderVocabularyEditor(); };
- $('vocab-next').onclick = () => { editorPage++; renderVocabularyEditor(); };
- $('vocab-word').onchange = () => { editorStatusText(''); renderEditFields(); };
+ $('vocab-close').onclick = () => {
+  if (editorInline) return closeVocabularyEditor();
+  if (canLeaveVocabularyEditor()) $('vocab-dialog').close();
+ };
+ $('vocab-dialog').addEventListener('cancel', event => { if (!canLeaveVocabularyEditor()) event.preventDefault(); });
+ for (const key of ['search', 'filter']) $('vocab-' + key).oninput = () => {
+  if (!canLeaveVocabularyEditor()) { $('vocab-' + key).value = editorSelection[key]; return; }
+  editorPage = 0; editorStatusText(''); renderVocabularyEditor();
+ };
+ for (const [direction, delta] of [['prev', -1], ['next', 1]]) {
+  $('vocab-' + direction).onclick = () => {
+   if (!canLeaveVocabularyEditor()) return;
+   editorPage += delta; editorStatusText(''); renderVocabularyEditor();
+  };
+  $('vocab-word-' + direction).onclick = () => {
+   const filtered = filteredEditorRecords(), index = filtered.findIndex(row => row.word === editorSelection.word);
+   const next = filtered[index + delta];
+   if (index < 0 || !next || !canLeaveVocabularyEditor()) return;
+   editorStatusText(''); renderVocabularyEditor(next.word);
+  };
+ }
+ $('vocab-word').onchange = () => {
+  if (!canLeaveVocabularyEditor()) { $('vocab-word').value = editorSelection.word; return; }
+  editorStatusText(''); renderEditFields();
+ };
+ $('vocab-edit-toggle').onclick = () => {
+  const editing = $('vocab-edit-fields').hidden;
+  displayVocabularyEditor(editing);
+  if (editing) $('vocab-definition').focus();
+ };
  $('vocab-form').onsubmit = async event => {
   event.preventDefault();
   const word = $('vocab-word').value, before = editorRecords.find(row => row.word === word)?.vocabulary;
@@ -5128,12 +5257,20 @@ function initCoach() {
      sentence, answer: word, explanation: explanations[index]?.trim() || 'The context gives clues to the word.'
     }))
    });
-   await changeVocabulary(editorRecords.map(row => row.word === word ? {word, vocabulary: record} : row), word);
-   editorStatusText('Saved ' + word + '.');
+   let preferred = word;
+   if (record.status === 'approved' && before?.status !== 'approved') {
+    const queue = filteredEditorRecords(), index = queue.findIndex(row => row.word === word);
+    preferred = nextVocabularyDraft(queue, index)?.word || word;
+   }
+   if (await changeVocabulary(editorRecords.map(row => row.word === word ? {word, vocabulary: record} : row), preferred, vocabularyFieldValues())) {
+    editorStatusText((record.status === 'approved' ? 'Approved ' : 'Saved ') + word + '.');
+    if ($('vocab-form').hidden) $('vocab-close').focus();
+   }
   } catch (error) { editorStatusText(error.message); }
   finally { if (submitter) submitter.disabled = false; }
  };
  $('vocab-form').addEventListener('invalid', event => {
+  if ($('vocab-edit-fields').hidden) displayVocabularyEditor(true);
   const section = event.target.closest('details');
   if (section) section.open = true;
  }, true);
@@ -5143,9 +5280,10 @@ function initCoach() {
   catch (error) { editorStatusText(error.message); }
  };
  $('vocab-bulk').onclick = async () => {
-  if (!confirm('Approve all drafts in this list that you have reviewed?')) return;
+  const count = editorRecords.filter(isVocabularyDraft).length;
+  if (!count || !confirm('Approve all drafts in this set (' + count + '), including drafts you haven’t opened or reviewed? This uses the saved wording.')) return;
   try {
-   const next = editorRecords.map(row => row.vocabulary && row.vocabulary.status !== 'approved' ?
+   const next = editorRecords.map(row => isVocabularyDraft(row) ?
     {word: row.word, vocabulary: Vocabulary.validateRecord(row.word, {...row.vocabulary, status: 'approved'})} : row);
    await changeVocabulary(next, $('vocab-word').value); editorStatusText('Drafts approved.');
   } catch (error) { editorStatusText(error.message); }
@@ -5448,6 +5586,7 @@ function initDictation() {
  $('vocab-dialog').addEventListener('close', stopRecording);
  $('troy-sentence').oninput = updateTroyControls;
  $('troy-sign-in').onclick = () => {
+  if(typeof canLeaveVocabularyEditor==='function' && !canLeaveVocabularyEditor())return;
   $('vocab-dialog').close();
   $('open-teacher').click();
  };
@@ -5642,6 +5781,7 @@ function renderTeacherView(view) {
  }
  $('teacher-dialog').dataset.view=view;
  $('teacher-settings-menu').hidden=view!=='settings';
+ $('teacher-settings-back').hidden=entryPage!=='teacher' || !ai.token || !['setup','presets','administration'].includes(view);
  $('settings-administration').hidden=!ai.teacher?.isAdmin;
  $('teacher-title').textContent=(titles[view] || titles.tools)+(['prepare','share'].includes(view)&&list?' · '+list.name:'');
  $('teacher-connect').hidden=!!ai.token;
@@ -5675,15 +5815,18 @@ function renderSetWorkspace() {
  const list=sharing.list, rows=sharing.records || [], vocabulary=rows.filter(row=>row.vocabulary);
  const approved=vocabulary.filter(row=>row.vocabulary.status==='approved').length;
  const allApproved=rows.length===list.words.length && approved===rows.length;
- $('workspace-title').textContent='Prepare & share · '+list.name;
+ $('workspace-title').textContent='Prepare & share';
+ $('workspace-set-name').textContent=list.name;
+ $('workspace-words-summary').textContent='· '+list.words.length+' words';
  $('workspace-vocabulary-summary').textContent=allApproved ? 'All '+approved+' words approved' :
   approved+' approved · '+(vocabulary.length-approved)+' to review · '+(list.words.length-vocabulary.length)+' missing';
  const settings=GenerationSettings.validate(list.generationSettings) || GenerationSettings.defaults();
  $('workspace-settings-summary').textContent='Grade '+settings.readingLevel+' · '+settings.practiceSentences+
   ' practice '+(settings.practiceSentences===1?'sentence':'sentences')+' · '+settings.exampleSentences+
   (settings.exampleSentences===1?' example':' examples');
- $('teacher-draft-form').hidden=!ai.config.generationEnabled || allApproved;
- $('workspace-vocabulary-settings').hidden=allApproved;
+ $('teacher-draft-form').hidden=!ai.config.generationEnabled;
+ $('workspace-vocabulary-settings').hidden=false;
+ $('ai-context-wrap').hidden=allApproved;
  $('workspace-edit-vocabulary').textContent=allApproved?'Edit vocabulary':vocabulary.length?'Review vocabulary':'Add vocabulary by hand';
  $('workspace-edit-vocabulary').disabled=workspaceSavePending() || !sharing.records;
  $('ai-generate').hidden=rows.length===list.words.length && vocabulary.length===rows.length;
@@ -5699,10 +5842,12 @@ function renderSetWorkspace() {
  $('ai-retry-words').disabled=!!pendingGeneration;
  const audio=list.audioStatus, clips=(audio?.recordings || []).filter(clip=>/-s$/.test(clip.key));
  const ready=clips.filter(clip=>clip.status==='ready').length;
+ $('workspace-fix-keys').hidden=ready===list.words.length || !!ai.keys?.openrouter;
  $('audio-word-summary').textContent=ready===list.words.length ? 'Word audio ready · Paul' :
   audio?.pending ? 'Preparing word audio · '+ready+' of '+list.words.length+' ready' :
    'Word audio needs attention · '+ready+' of '+list.words.length+' ready';
  $('workspace-save-retry').hidden=!workspaceEdit?.error;
+ if(workspaceEdit?.error)$('workspace-words-editor').open=true;
  $('workspace-refresh-link').hidden=sharing.linkLookup!=='error';
  $('ai-generate').textContent='Generate vocabulary and audio';
  $('ai-only-missing').checked=true;
@@ -6067,7 +6212,7 @@ async function refreshTeacherAccounts() {
 function initTeacherAccounts() {
  $('teacher-test-keys').onclick = teacherAction(async ()=>{
   const {root,token} = ai; $('teacher-test-keys').disabled = true;
-  $('teacher-account-status').textContent = 'Testing saved connections without generating speech or text…';
+  $('teacher-account-status').textContent = 'Testing saved keys without generating speech or text…';
   try {
    const result = await service('/teacher/testkeys',{root,token,method:'POST'});
    if (ai.token !== token) return;
@@ -6086,13 +6231,14 @@ function initTeacherAccounts() {
   } catch (error) { if (ai.token === token) $('teacher-account-status').textContent = error.message; }
   finally {
    if (ai.token === token) {
-    for (const provider of ['groq','openrouter']) $('teacher-' + provider + '-key').value = '';
     $('teacher-keys-save').disabled = !ai.token;
    }
   }
  };
- $('teacher-reload-sets').onclick = teacherAction(async ()=>{
+ $('teacher-reload-sets').onclick = async ()=>{
+  try {
   if (!confirm('Reload server copies? Export a backup first if this browser has unsaved edits.')) return;
+  $('tools-recovery-status').textContent='Loading saved server copies…';
   // Reload explicitly replaces local revisions, including a locally newer conflicting copy.
   const {token,root} = ai, response = await service('/teacher/sets',{root,token});
   if (ai.token !== token) return;
@@ -6113,8 +6259,9 @@ function initTeacherAccounts() {
    }
   } finally { restoringTeacherSets = false; }
   renderSetup(); renderPrivateAudio(); watchPrivateAudio();
-  $('teacher-account-status').textContent = 'Saved sets reloaded.';
- });
+  $('tools-recovery-status').textContent = 'Saved server copies reloaded.';
+  } catch(error) { $('tools-recovery-status').textContent=error.message; }
+ };
  $('teacher-retry-audio').onclick = teacherAction(async ()=>{
   const list = selectedList(), {root,token} = ai; if (!list) return;
   $('teacher-retry-audio').disabled = true;
@@ -6331,6 +6478,7 @@ function linkLookupProblem() {
 
 function renderSharing() {
  const mode = $('shared-mode').value;
+ $('shared-practice-summary').textContent='· '+($('shared-hints').checked?'Hints on':'Hints off')+' · '+($('shared-retype').checked?'Corrections on':'Corrections off');
  const info = sharing.records && SharedReview.sharingContent(sharing.records, mode);
  const {approved, drafts, missing} = info || {approved:[], drafts:[], missing:[]};
  const clips = sharing.list?.audioStatus?.recordings || [];
@@ -6343,7 +6491,7 @@ function renderSharing() {
  const existingLink=!!ai.published && ai.publishedListId===sharing.list?.id;
  const hasLink = !lookupProblem && currentStudentLink();
  const legacyRules=existingLink && (typeof ai.publishedRetype!=='boolean' || typeof ai.publishedVariants!=='boolean');
- $('ai-publish-readiness').textContent = sharing.list?.remoteConflict ? 'Resolve this set’s version conflict in API keys before sharing. Your published link is unchanged.' : workspaceSavePending() ? 'Finish saving valid words before preparing or sharing this set.' : lookupProblem || (!sharing.list ? 'Create or select a set first.' :
+ $('ai-publish-readiness').textContent = sharing.list?.remoteConflict ? 'This set has a version conflict. Export a backup, then use Tools → Recover saved sets. Your published link is unchanged.' : workspaceSavePending() ? 'Finish saving valid words before preparing or sharing this set.' : lookupProblem || (!sharing.list ? 'Create or select a set first.' :
   !info ? 'Checking which words are ready…' : info.ready && !audioReady ?
    (!ai.config.dictationEnabled ? ai.keys?.openrouter ? 'Paul audio is unavailable. Check API keys and retry before creating this student link.' : 'Connect OpenRouter in API keys to prepare paid Paul recordings before creating this student link.' : 'Waiting for recordings. Open Recording details under Words to check progress or retry failed recordings.') : mode === 'spelling' ?
    'Ready to share. Students will spell all ' + info.words.length + ' words.' : drafts.length ?
@@ -6373,6 +6521,7 @@ function renderSharing() {
  const incomplete = audioStatus && audioStatus.ready < audioStatus.total;
  const waitingForAudio = !!pending || !!incomplete && !!ai.config.dictationEnabled;
  if(hasLink)$('ai-publish').disabled=publishing || waitingForAudio;
+ $('ai-preview').textContent=hasLink?'Preview shared set':'Preview draft (device voice)';
  $('ai-preview').disabled = workspaceSavePending() || !!lookupProblem || (entryPage === 'teacher' ? !info?.ready || publishing : !hasLink || !!pending);
  $('ai-link-actions').hidden = !existingLink;
  $('ai-publish-options').hidden = !ai.teacher?.isAdmin || !ai.config.draftingAvailable;
@@ -6519,6 +6668,7 @@ function showTeacherEntry() {
   $('setup-list-label').textContent = 'Practice set';
   $('new-list').textContent = 'Create a set';
   $('edit-list').textContent = 'Edit words';
+  $('delete-list').textContent = 'Delete private set';
   $('open-vocabulary').textContent = 'Edit vocabulary';
   $('open-vocabulary').hidden = true;
   $(selectedList() ? 'list-select' : 'new-list').focus();
@@ -6541,6 +6691,9 @@ function showTeacherEntry() {
 function initTeacher() {
  initTeacherViewNavigation();
  $('workspace-teacher-settings').onclick=()=>showTeacherTools('settings');
+ $('tools-open-presets').onclick=()=>showTeacherTools('presets');
+ $('workspace-fix-keys').onclick=()=>showTeacherTools('setup');
+ $('teacher-settings-back').onclick=()=>showTeacherTools('settings');
  for(const [id,view] of [['settings-connections','setup'],['settings-presets','presets'],['settings-administration','administration']])
   $(id).onclick=teacherAction(async()=>{await showTeacherTools(view);if(view==='administration')await refreshTeacherAccounts();});
  $('teacher-dialog').addEventListener('close',()=>{
@@ -6562,7 +6715,8 @@ function initTeacher() {
  $('workspace-refresh-link').onclick=()=>showTeacherTools('workspace');
  $('workspace-back').onclick=async()=>{
   if(workspaceEdit?.pending && !await flushWorkspaceWords())return;
-  if(typeof closeVocabularyEditor==='function')await closeVocabularyEditor();
+  if(typeof canLeaveVocabularyEditor==='function' && !canLeaveVocabularyEditor())return;
+  if(typeof closeVocabularyEditor==='function')await closeVocabularyEditor(true);
   clearTimeout(workspaceSaveTimer);
   workspaceEdit=null;
   renderSetup();show('setup-screen');$('teacher-open-publishing').focus();
@@ -6570,7 +6724,8 @@ function initTeacher() {
  $('workspace-edit-vocabulary').onclick=teacherAction(async()=>{
   if(workspaceSavePending())return;
   $('workspace-vocabulary').open=true;
-  await openVocabularyEditor('',true);
+  const filter=sharing.records?.some(row=>row.vocabulary && row.vocabulary.status!=='approved')?'draft':'';
+  await openVocabularyEditor(filter,true);
  });
  $('teacher-open-drafting').onclick = ()=>showTeacherTools('workspace');
  $('teacher-open-connections').onclick = ()=>showTeacherTools('setup');
@@ -7014,6 +7169,8 @@ function clearParkedActivity(id) {
 async function renderSharedReady() {
  const review = sharedReview;
  if (!review) return;
+ $('shared-progress-details').open=!storageOK;
+ $('shared-save-summary').textContent=studentPreview?'Preview progress is temporary.':storageOK?'Progress saves in this browser.':'Progress cannot be saved in this browser.';
  $('shared-progress-note').textContent=studentPreview ? 'Student preview: progress and audio preferences are not saved.' : storageOK
   ? 'Progress saves locally. Reopen this set in the same browser and browser profile to continue. Clearing site data or closing private browsing can remove it.'
   : 'Progress could not be saved in this browser. Keep this page open to retain your current session.';
@@ -7198,7 +7355,7 @@ const SELFTEST = new URLSearchParams(location.search).has('selftest');
 const entryPage = document.body.dataset.entry || 'offline';
 const studentPreview = entryPage === 'student' && new URLSearchParams(location.search).get('preview') === '1';
 let KEY = entryPage === 'teacher' ? 'spell.teacher.signed-out' : 'spell.state';
-const VERSION='0.2.0',D={roundSize:7,retypeOnMiss:true,autoAdvanceMs:600,feedbackMs:1800,voiceURI:'',rate:.85,pin:'',allowVariants:false,vocabularyAutoplay:true};
+const VERSION='0.2.0',D={roundSize:7,retypeOnMiss:true,autoAdvanceMs:600,feedbackMs:1800,voiceURI:'',rate:.85,allowVariants:false,vocabularyAutoplay:true};
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),now=()=>new Date().toISOString();
 const norm=s=>String(s??'').trim().replace(/\s+/g,' ').replace(/[’‘]/g,"'");
 function equal(a,b){a=norm(a);b=norm(b);return /[A-Z]/.test(b)?a===b:a.toLowerCase()===b.toLowerCase();}
@@ -7229,7 +7386,7 @@ function clean(raw){
  const s=blank();if(!raw||typeof raw!=='object')return s;
  s.lists=Array.isArray(raw.lists)?raw.lists.filter(listOK).map(l=>({id:l.id,name:l.name,words:wordsUnique(l.words),defs:dictionary(l.defs),updatedAt:l.updatedAt||now(),...listMetadata(l)})):[];
  if(![0,1,2].includes(raw.v))return s;
- const x=raw.settings||{};s.settings={roundSize:clamp(x.roundSize,1,20,7),retypeOnMiss:x.retypeOnMiss!==false,autoAdvanceMs:clamp(x.autoAdvanceMs,0,5000,600),feedbackMs:clamp(x.feedbackMs,300,10000,1800),voiceURI:typeof x.voiceURI==='string'?x.voiceURI:'',rate:Math.max(.5,Math.min(1.2,Number(x.rate)||.85)),pin:/^\d{4}$/.test(x.pin||'')?x.pin:'',allowVariants:x.allowVariants===true,vocabularyAutoplay:x.vocabularyAutoplay!==false,selected:dictionary(x.selected)};
+ const x=raw.settings||{};s.settings={roundSize:clamp(x.roundSize,1,20,7),retypeOnMiss:x.retypeOnMiss!==false,autoAdvanceMs:clamp(x.autoAdvanceMs,0,5000,600),feedbackMs:clamp(x.feedbackMs,300,10000,1800),voiceURI:typeof x.voiceURI==='string'?x.voiceURI:'',rate:Math.max(.5,Math.min(1.2,Number(x.rate)||.85)),allowVariants:x.allowVariants===true,vocabularyAutoplay:x.vocabularyAutoplay!==false,selected:dictionary(x.selected)};
  if(raw.progress&&typeof raw.progress==='object')for(const[k,v]of Object.entries(raw.progress))if(v&&v.words&&typeof v.words==='object')s.progress[k]={words:dictionary(v.words)};
  if(raw.history&&typeof raw.history==='object')for(const[k,v]of Object.entries(raw.history))if(v&&Array.isArray(v.sessions))s.history[k]={sessions:v.sessions.slice(-10)};
  if(sessionOK(raw.session)){s.session=raw.session;s.session.defs=dictionary(raw.session.defs);s.session.perWord=dictionary(raw.session.perWord);}
@@ -7309,8 +7466,8 @@ function countSelected(){
  $('group-status').textContent=group<0?(total?'Select groups of up to 20 words for each practice session.':''):'Group '+(group+1)+' of '+total+' · Words '+(group*20+1)+'–'+Math.min((group+1)*20,l.words.length);
  updateCoachSetup();
 }
-function loadSettings(){const x=state.settings;$('round-size').value=x.roundSize;$('retype-toggle').checked=x.retypeOnMiss;$('auto-advance').value=x.autoAdvanceMs;$('feedback-delay').value=x.feedbackMs;$('speech-rate').value=x.rate;$('rate-label').textContent=Number(x.rate).toFixed(2);$('pin-entry').value=x.pin;$('allow-variants').checked=x.allowVariants;refreshVoices();$('voice-select').value=x.voiceURI;}
-function speak(value,rate,onError,onStart){if(!speech){if(onError)onError();return;}try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(String(value)),v=voices.find(x=>x.voiceURI===state.settings.voiceURI)||voices.find(x=>/^en-US/i.test(x.lang))||voices.find(x=>/^en/i.test(x.lang));if(v)u.voice=v;if(onStart)u.onstart=onStart;if(onError)u.onerror=e=>{if(!['canceled','interrupted'].includes(e.error))onError();};u.rate=rate||state.settings.rate;speechSynthesis.speak(u);}catch(e){if(onError){onError();return;}speech=false;$('replay-button').hidden=true;$('slow-replay').hidden=true;$('visual-word').className='visual-prompt';$('visual-word').textContent='Prompt: '+value;}}
+function loadSettings(){const x=state.settings;$('round-size').value=x.roundSize;$('retype-toggle').checked=x.retypeOnMiss;$('auto-advance').value=x.autoAdvanceMs;$('feedback-delay').value=x.feedbackMs;$('speech-rate').value=x.rate;$('rate-label').textContent=Number(x.rate).toFixed(2);$('allow-variants').checked=x.allowVariants;refreshVoices();$('voice-select').value=x.voiceURI;}
+function speak(value,rate,onError,onStart){if(!speech){if(onError)onError();return;}try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(String(value)),v=voices.find(x=>x.voiceURI===state.settings.voiceURI)||voices.find(x=>/^en-US/i.test(x.lang))||voices.find(x=>/^en/i.test(x.lang));if(v)u.voice=v;if(onStart)u.onstart=onStart;if(onError)u.onerror=e=>{if(!['canceled','interrupted'].includes(e.error))onError();};u.rate=rate||state.settings.rate;speechSynthesis.speak(u);}catch(e){if(onError)onError();}}
 function refreshVoices(){if(!speech)return;voices=speechSynthesis.getVoices().filter(v=>/^en(?:-|_)/i.test(v.lang));const sel=$('voice-select'),old=state.settings.voiceURI;sel.innerHTML='<option value="">Automatic device voice</option>';voices.forEach(v=>sel.add(new Option(v.name+' ('+v.lang+')',v.voiceURI)));sel.value=old;}
 function renderTiles(s){const host=$('tiles');host.innerHTML='';s.words.forEach(w=>{const p=s.perWord[w],el=document.createElement('span');el.className='tile'+(p.mastered?' mastered':p.streak===1?' familiar':'');el.setAttribute('aria-label',p.mastered?'Mastered':p.streak===1?'One correct':'Not mastered');el.title=p.mastered?'Mastered':p.streak===1?'One correct':'Not mastered';host.append(el);});}
 function feedback(msg,kind,d){const box=$('feedback');box.className='feedback'+(kind?' '+kind:'');box.innerHTML='';if(msg){const t=document.createElement('div');t.textContent=msg;box.append(t);}if(d){const x=document.createElement('div');x.className='diff';x.innerHTML=textDiff(d);box.append(x);}}
@@ -7324,39 +7481,48 @@ function renderCorrection(id, inputId, answer, explanation = '') {
  detail.hidden = !explanation;
  input.setAttribute('aria-describedby', id);
 }
+function setSpellingAnswerEnabled(enabled){
+ for(const id of ['answer-input','submit-answer','dont-know'])$(id).disabled=!enabled;
+}
 function playPracticeRecording(rate, slow = false){
- const s=state.session;if(!s)return;
- if(s.phase==='prompt')$('answer-input').focus();
- const clip=sharedAudioPath(s.listId,s.current,'dictation',s.current);
- const fallback=()=>sharedReview?.preparedAudio ? feedback('The prepared recording is unavailable. Ask your teacher to prepare it before practicing.','bad') : dictate(s.listId,s.current,s.meanings?.[s.current],rate);
- if(clip)playPublishedRecording(clip,slow,()=>feedback('The recording could not play. Press Listen to try again.','bad'),()=>feedback('',''));else fallback();
+ const s=state.session;if(!s||s.phase==='paused')return;
+ const word=s.current, clip=sharedAudioPath(s.listId,word,'dictation',word);
+ const currentPrompt=()=>state.session===s&&s.phase==='prompt'&&s.current===word&&!$('practice-screen').hidden;
+ const failed=(message='Audio is unavailable for this word. Try Replay word. If it still won’t play, pause or end the session.')=>{
+  if(currentPrompt())feedback(message,'bad');
+ };
+ const ready=()=>{
+  if(!currentPrompt())return;
+  setSpellingAnswerEnabled(true);
+  feedback('','');
+  $('answer-input').focus();
+ };
+ if(clip)playPublishedRecording(clip,slow,()=>failed('The recording could not play. Press Replay word to try again.'),ready);
+ else if(sharedReview?.preparedAudio)failed('The prepared recording is unavailable. Ask your teacher to prepare it before practicing.');
+ else dictate(s.listId,word,s.meanings?.[word],rate,failed,ready);
 }
 function renderPractice(play){
  const s=state.session;if(!s)return;finished=false;show('practice-screen');$('list-name-practice').textContent=s.listName;$('round-text').textContent='Round '+s.round;
  const done=s.words.filter(w=>s.perWord[w].mastered).length;
  const progress=s.words.reduce((sum,w)=>sum+(s.perWord[w].mastered?1:Math.min(2,Math.max(0,s.perWord[w].streak||0))/2),0)/s.words.length;
  renderMasteryProgress('spelling-mastery',done,s.words.length,progress);renderTiles(s);
- $('definition').textContent=s.defs[s.current]||'';$('visual-word').className='sr';$('visual-word').textContent='';$('replay-button').hidden=false;$('slow-replay').hidden=false;
- if(!speech&&!sharedAudioPath(s.listId,s.current,'dictation',s.current)){const word=s.current;readRecording(s.listId,word,s.meanings?.[word]).then(clip=>{
-  if(clip||state.session!==s||s.current!==word||$('practice-screen').hidden)return;
-  $('visual-word').className='visual-prompt';$('visual-word').textContent='Prompt: '+word;$('replay-button').hidden=true;$('slow-replay').hidden=true;
- });}$('answer-input').value='';$('answer-input').disabled=!['prompt','retype'].includes(s.phase);$('dont-know').hidden=s.phase==='retype';$('submit-answer').textContent=s.phase==='retype'?'Type it correctly':'Check spelling';$('submit-answer').disabled=!['prompt','retype'].includes(s.phase);
+ $('definition').textContent=s.defs[s.current]||'';$('answer-input').value='';
+ setSpellingAnswerEnabled(s.phase==='retype');$('dont-know').hidden=s.phase==='retype';$('submit-answer').textContent=s.phase==='retype'?'Type it correctly':'Check spelling';
  renderCorrection('spelling-correction', 'answer-input', s.phase==='retype' ? s.current : null);
  if(s.phase==='feedback'){const last=s.log[s.log.length-1];if(last&&last.ok)feedback(s.perWord[s.current]?.mastered?'Mastered: two correct answers in a row.':'Correct. One more correct answer will master this word.','good');else if(last)feedback('Compare your answer with the correct spelling.','bad',diff(last.typed,s.current));}else feedback('','');
- if(play&&s.phase==='prompt')playPracticeRecording(state.settings.rate);if(['prompt','retype'].includes(s.phase))setTimeout(()=>$('answer-input').focus(),35);
+ if(play&&s.phase==='prompt')playPracticeRecording(state.settings.rate);if(s.phase==='retype')setTimeout(()=>$('answer-input').focus(),35);
  if(s.phase==='feedback'){clearTimeout(timer);const last=s.log[s.log.length-1],delay=last&&last.ok?state.settings.autoAdvanceMs:state.settings.feedbackMs;timer=setTimeout(advance,delay);}
 }
 function advance(){const s=state.session;if(!s||s.phase!=='feedback')return;if(s.words.every(w=>s.perWord[w].mastered)){s.current='';s.phase='done';finish(true);celebrateMastery(s);return;}next(s);save();renderPractice(true);}
 function showSummary(r){const s=state.session;if(!s)return;clearTimeout(timer);show('summary-screen');$('summary-setup').textContent=sharedReview?'Back to set':'Return to setup';$('summary-list').textContent=s.listName;$('summary-title').textContent=r.mastered===r.total?'Practice complete':'Practice ended';$('summary-stats').innerHTML='<div class="stat"><span class="hint">Words mastered</span><strong>'+Number(r.mastered)+' / '+Number(r.total)+'</strong><small class="hint">Two correct answers in a row.</small></div><div class="stat"><span class="hint">First-attempt accuracy</span><strong>'+(r.attempts?Number(r.accuracy)+'%':'Not assessed')+'</strong><small class="hint">Correct first answers ÷ first answers submitted.</small></div><div class="stat"><span class="hint">Incorrect retype attempts</span><strong>'+Number(r.retypes)+'</strong><small class="hint">Incorrect answers during the correction step.</small></div>';
  const list=$('missed-list');list.innerHTML='';r.missed.forEach(w=>{const li=document.createElement('li');li.textContent=w+(s.defs[w]?' — '+s.defs[w]:'');list.append(li);});$('missed-empty').hidden=!!r.missed.length;$('practice-missed').disabled=!r.missed.length;$('copy-missed').disabled=!r.missed.length;
- const hist=(state.history[s.listId]?.sessions||[]).slice().reverse(),h=$('history-list');h.innerHTML='';hist.forEach(x=>{const li=document.createElement('li');li.textContent=new Date(x.at).toLocaleDateString()+' · '+x.accuracy+'% · '+x.mastered+'/'+x.total+' mastered'+(Array.isArray(x.missed)&&x.missed.length?' · '+x.missed[0]:'');h.append(li);});
+ const hist=(state.history[s.listId]?.sessions||[]).slice().reverse(),h=$('history-list');h.innerHTML='';hist.forEach(x=>{const li=document.createElement('li');li.textContent=new Date(x.at).toLocaleDateString()+' · '+(x.attempts===0?'Not assessed':x.accuracy+'%')+' · '+x.mastered+'/'+x.total+' mastered'+(Array.isArray(x.missed)&&x.missed.length?' · '+x.missed[0]:'');h.append(li);});
 }
 function copy(text){if(navigator.clipboard?.writeText)return navigator.clipboard.writeText(text).then(()=>true,()=>fallbackCopy(text));return Promise.resolve(fallbackCopy(text));}
 function fallbackCopy(text){const t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';(document.querySelector('dialog[open]')||document.body).append(t);t.select();let ok=false;try{ok=document.execCommand('copy');}catch(e){}t.remove();return ok;}
 function download(file,text,type){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=file;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function practiceMissed(){const s=state.session;if(!s)return;const r=s.summary||summary(s);if(!Array.isArray(r.missed)||!r.missed.length)return;const l={id:s.listId,name:s.listName,words:s.words,defs:s.defs};state.session=null;save();start(r.missed,l,{retypeOnMiss:s.retypeOnMiss});}
-function finishToSetup(){const checkpoint=state.learningCheckpoint;if(state.session&&!state.session.summary)finish(false);state.session=null;state.learningSession=null;save();if(checkpoint)getStore(checkpoint.backend).then(store=>store.remove(checkpoint.key)).catch(()=>{});renderSetup();if(sharedReview)renderSharedReady();else showLanding();}
-function backToSetup(){if(state.settings.pin){$('pin-check').value='';$('pin-error').textContent='';$('pin-overlay').hidden=false;$('pin-check').focus();}else finishToSetup();}
+function backToSetup(){const checkpoint=state.learningCheckpoint;if(state.session&&!state.session.summary)finish(false);state.session=null;state.learningSession=null;save();if(checkpoint)getStore(checkpoint.backend).then(store=>store.remove(checkpoint.key)).catch(()=>{});renderSetup();if(sharedReview)renderSharedReady();else showLanding();}
 function validBackup(x){if(!x||x.v!==1||!Array.isArray(x.lists)||!x.lists.every(listOK))throw Error('Choose a WordLab backup with a valid lists array.');return x.lists.map(l=>({id:l.id,name:l.name,words:wordsUnique(l.words),defs:dictionary(l.defs),updatedAt:now()}));}
 function runTests(){
  const out=[],assert=(v,m)=>{if(!v)throw Error(m||'assertion failed');},test=(n,f)=>{try{f();out.push([n,true,'']);}catch(e){out.push([n,false,e.message]);}};
@@ -7385,11 +7551,11 @@ function runTests(){
   assert(validBackup({v:1,lists:[{id:'legacy',name:'Legacy',words}]})[0].words.length===201);
  });
  test('migration carries settings, progress and an unfinished spelling session',()=>{
-  const raw={v:1,lists:[{id:'a',name:'Legacy',words:['dog'],defs:{dog:'A pet.'}}],settings:{pin:'1234',selected:{a:['dog']}},
+  const raw={v:1,lists:[{id:'a',name:'Legacy',words:['dog'],defs:{dog:'A pet.'}}],settings:{selected:{a:['dog']}},
    progress:{a:{words:{dog:{misses:4}}}},history:{a:{sessions:[{attempts:1}]}},
    session:{v:1,listId:'a',words:['dog'],defs:{dog:'A pet.'},queue:[],current:'dog',perWord:{dog:{}},log:[],round:1,phase:'prompt'}};
   const migrated=clean(raw), again=clean(JSON.parse(JSON.stringify(migrated)));
-  assert(again.v===2&&again.settings.pin==='1234'&&again.settings.selected.a[0]==='dog'&&again.progress.a.words.dog.misses===4&&
+  assert(again.v===2&&again.settings.selected.a[0]==='dog'&&again.progress.a.words.dog.misses===4&&
    again.history.a.sessions[0].attempts===1&&again.session.current==='dog'&&again.lists[0].defs.dog==='A pet.');
  });
  test('RANDOM.ORG receipts must map each position exactly once',()=>{
@@ -7409,7 +7575,7 @@ function renderTheme(){$('theme-select').value=themePreference.value;}
 $('theme-select').onchange=event=>themePreference.set(event.target.value);
 renderTheme();
 
-function settingsChanged(){state.settings.roundSize=clamp($('round-size').value,1,20,7);state.settings.retypeOnMiss=$('retype-toggle').checked;state.settings.autoAdvanceMs=clamp($('auto-advance').value,0,5000,600);state.settings.feedbackMs=clamp($('feedback-delay').value,300,10000,1800);state.settings.voiceURI=$('voice-select').value;state.settings.rate=Math.max(.5,Math.min(1.2,Number($('speech-rate').value)||.85));state.settings.pin=/^\d{4}$/.test($('pin-entry').value)?$('pin-entry').value:'';state.settings.allowVariants=$('allow-variants').checked;save();}
+function settingsChanged(){state.settings.roundSize=clamp($('round-size').value,1,20,7);state.settings.retypeOnMiss=$('retype-toggle').checked;state.settings.autoAdvanceMs=clamp($('auto-advance').value,0,5000,600);state.settings.feedbackMs=clamp($('feedback-delay').value,300,10000,1800);state.settings.voiceURI=$('voice-select').value;state.settings.rate=Math.max(.5,Math.min(1.2,Number($('speech-rate').value)||.85));state.settings.allowVariants=$('allow-variants').checked;save();}
 $('list-select').onchange=()=>{listId=$('list-select').value;renderSetup();status('');};
 let listDraft=null,importRequest=0;
 function draftWords(){return wordsUnique($('create-list-words').value.split(/\r?\n/));}
@@ -7520,8 +7686,16 @@ $('copy-list').onclick=()=>{
 };
 $('preview-voice').onclick=()=>speak('The quick brown fox jumps over the lazy dog.',state.settings.rate);
 $('open-tools').onclick=()=>{
- $('tools-api-keys').hidden=entryPage==='student';
- $('tools-teaching-options').hidden=entryPage==='student';
+ const student=entryPage==='student', teacherPage=entryPage==='teacher';
+ const signedInTeacher=!student&&ai.role==='teacher'&&!!ai.token;
+ $('tools-api-keys').hidden=student;
+ $('tools-grade-defaults').hidden=!signedInTeacher;
+ $('tools-recovery').hidden=!signedInTeacher;
+ $('tools-teaching-options').hidden=entryPage!=='offline';
+ $('tools-advanced').hidden=entryPage!=='offline';
+ $('local-audio-settings').hidden=teacherPage;
+ $('tools-audio').open=false;
+ $('tools-save-help').textContent=teacherPage?'Use Save on the API keys and grade defaults screens.':'Practice and audio preferences save automatically on this device.';
  $('local-teaching-defaults').hidden=!!sharedReview;
  for(const id of ['retype-toggle','allow-variants'])$(id).disabled=!!sharedReview;
  const savedRules=sharedReview?.practice;
@@ -7531,10 +7705,10 @@ $('open-tools').onclick=()=>{
 };
 $('close-tools').onclick=()=>$('tools-dialog').close();
 $('done-tools').onclick=()=>$('tools-dialog').close();
-['round-size','retype-toggle','auto-advance','feedback-delay','voice-select','pin-entry','allow-variants'].forEach(id=>$(id).addEventListener('change',()=>{state.settings.roundSize=clamp($('round-size').value,1,20,7);state.settings.retypeOnMiss=$('retype-toggle').checked;state.settings.autoAdvanceMs=clamp($('auto-advance').value,0,5000,600);state.settings.feedbackMs=clamp($('feedback-delay').value,300,10000,1800);state.settings.voiceURI=$('voice-select').value;state.settings.rate=Math.max(.5,Math.min(1.2,Number($('speech-rate').value)||.85));state.settings.pin=/^\d{4}$/.test($('pin-entry').value)?$('pin-entry').value:'';state.settings.allowVariants=$('allow-variants').checked;save();}));
+['round-size','retype-toggle','auto-advance','feedback-delay','voice-select','allow-variants'].forEach(id=>$(id).addEventListener('change',settingsChanged));
 $('speech-rate').oninput=()=>{$('rate-label').textContent=Number($('speech-rate').value).toFixed(2);state.settings.rate=Number($('speech-rate').value);save();};
 $('start-session').onclick=beginCoach;
-$('answer-form').onsubmit=e=>{e.preventDefault();const s=state.session;if(!s)return;const wasRetype=s.phase==='retype',r=wasRetype?retype(s,$('answer-input').value):submit(s,$('answer-input').value);if(!r)return;$('answer-input').value='';if(wasRetype&&!r.ok){renderPractice(false);$('answer-input').focus();}else renderPractice(s.phase==='prompt'&&r.ok);};
+$('answer-form').onsubmit=e=>{e.preventDefault();const s=state.session;if(!s||$('submit-answer').disabled)return;const wasRetype=s.phase==='retype',r=wasRetype?retype(s,$('answer-input').value):submit(s,$('answer-input').value);if(!r)return;$('answer-input').value='';if(wasRetype&&!r.ok){renderPractice(false);$('answer-input').focus();}else renderPractice(s.phase==='prompt'&&r.ok);};
 $('dont-know').onclick=()=>{$('answer-input').value='';$('answer-form').requestSubmit();};
 $('replay-button').onclick=()=>playPracticeRecording(state.settings.rate);
 $('slow-replay').onclick=()=>playPracticeRecording(state.settings.rate*.6,true);
@@ -7545,14 +7719,11 @@ $('back-setup').onclick=()=>{$('pause-overlay').hidden=true;backToSetup();};
 function resumeActivity(){const s=state.session;if(state.learningSession){Learning.resume(state.learningSession.session);Learning.upgradePractice(state.learningSession.session);state.learningSession.recorded=false;save();renderLearning(true);return;}if(!s)return;if(s.phase==='done'&&s.summary){showSummary(s.summary);return;}s.phase=s.phase==='paused'?(s.resumePhase||'prompt'):s.phase;delete s.resumePhase;save();renderPractice(s.phase==='prompt');}
 $('resume-button').onclick=resumeActivity;
 $('end-saved-button').onclick=()=>{if(!state.learningSession){end();return;}Learning.finish(state.learningSession.session);finishLearningReport();};
-$('pin-form').onsubmit=e=>{e.preventDefault();if($('pin-check').value!==state.settings.pin){$('pin-error').textContent='That PIN did not match.';return;}$('pin-overlay').hidden=true;finishToSetup();};
-$('cancel-pin').onclick=()=>{$('pin-overlay').hidden=true;if(state.learningSession)renderLearning(false);else if(state.session?.summary)showSummary(state.session.summary);else if(state.session)$('pause-overlay').hidden=false;};
-$('reset-pin').onclick=()=>{if(confirm('Clear the saved PIN? Lists and progress will stay.')){state.settings.pin='';save();$('pin-overlay').hidden=true;if(state.learningSession)renderLearning(false);else if(state.session&&!state.session.summary)$('pause-overlay').hidden=false;else finishToSetup();}};
 $('summary-setup').onclick=backToSetup;
 $('practice-missed').onclick=practiceMissed;
 $('copy-missed').onclick=()=>{const s=state.session;if(!s)return;const r=s.summary||summary(s);copy(r.missed.map(w=>csv(w)+','+csv(s.defs[w]||'')).join('\r\n')).then(ok=>{$('copy-missed').textContent=ok?'Copied':'Copy failed';setTimeout(()=>$('copy-missed').textContent='Copy missed words',1300);});};
 document.addEventListener('keydown',e=>{
- if(e.key==='Escape'){if(!$('pin-overlay').hidden){$('pin-overlay').hidden=true;if(state.session&&!state.session.summary)$('pause-overlay').hidden=false;return;}if(!$('pause-overlay').hidden)return;if(!$('practice-screen').hidden){e.preventDefault();$('pause-button').click();}else if(!$('learning-screen').hidden){e.preventDefault();pauseLearning();}return;}
+ if(e.key==='Escape'){if(!$('pause-overlay').hidden)return;if(!$('practice-screen').hidden){e.preventDefault();$('pause-button').click();}else if(!$('learning-screen').hidden){e.preventDefault();pauseLearning();}return;}
  if(e.altKey||e.ctrlKey||e.metaKey||e.shiftKey||/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName||''))return;
  const next=$('learning-next');
  if(e.key==='Enter'&&!e.isComposing&&!e.defaultPrevented&&!$('learning-screen').hidden&&!next.hidden&&!next.disabled&&

@@ -45,6 +45,18 @@ test('key settings omit empty credentials and send removal only explicitly', () 
  assert.equal(h.run('teacherKeyChanges().groq'),null);
 });
 
+test('a failed API key save keeps entered keys available to retry',async()=>{
+ const h=harness();
+ h.run("ai.token='fixture';ai.root='https://example.test';service=async()=>{throw Error('Connection interrupted. Retry saving.');};initTeacherAccounts()");
+ h.context.$('teacher-groq-key').value='fixture-groq-key';
+ h.context.$('teacher-openrouter-key').value='fixture-openrouter-key';
+ await h.context.$('teacher-keys-form').onsubmit({preventDefault(){}});
+ assert.equal(h.context.$('teacher-groq-key').value,'fixture-groq-key');
+ assert.equal(h.context.$('teacher-openrouter-key').value,'fixture-openrouter-key');
+ assert.match(h.context.$('teacher-account-status').textContent,/Retry saving/);
+ assert.equal(h.context.$('teacher-keys-save').disabled,false);
+});
+
 test('public study routing requires the full-example manifest entry', () => {
  const context = vm.createContext({URL, location:{origin:'https://student.test'},
   sharedReview:{pack:{id:'set',version:3,words:[{word:'solid'}]},origin:'https://service.test',audio:new Set(['e0'])},

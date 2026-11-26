@@ -169,6 +169,7 @@ function initDictation() {
  $('vocab-dialog').addEventListener('close', stopRecording);
  $('troy-sentence').oninput = updateTroyControls;
  $('troy-sign-in').onclick = () => {
+  if(typeof canLeaveVocabularyEditor==='function' && !canLeaveVocabularyEditor())return;
   $('vocab-dialog').close();
   $('open-teacher').click();
  };

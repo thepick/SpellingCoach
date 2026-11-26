@@ -5,7 +5,7 @@ const SELFTEST = new URLSearchParams(location.search).has('selftest');
 const entryPage = document.body.dataset.entry || 'offline';
 const studentPreview = entryPage === 'student' && new URLSearchParams(location.search).get('preview') === '1';
 let KEY = entryPage === 'teacher' ? 'spell.teacher.signed-out' : 'spell.state';
-const VERSION='0.2.0',D={roundSize:7,retypeOnMiss:true,autoAdvanceMs:600,feedbackMs:1800,voiceURI:'',rate:.85,pin:'',allowVariants:false,vocabularyAutoplay:true};
+const VERSION='0.2.0',D={roundSize:7,retypeOnMiss:true,autoAdvanceMs:600,feedbackMs:1800,voiceURI:'',rate:.85,allowVariants:false,vocabularyAutoplay:true};
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),now=()=>new Date().toISOString();
 const norm=s=>String(s??'').trim().replace(/\s+/g,' ').replace(/[’‘]/g,"'");
 function equal(a,b){a=norm(a);b=norm(b);return /[A-Z]/.test(b)?a===b:a.toLowerCase()===b.toLowerCase();}
@@ -36,7 +36,7 @@ function clean(raw){
  const s=blank();if(!raw||typeof raw!=='object')return s;
  s.lists=Array.isArray(raw.lists)?raw.lists.filter(listOK).map(l=>({id:l.id,name:l.name,words:wordsUnique(l.words),defs:dictionary(l.defs),updatedAt:l.updatedAt||now(),...listMetadata(l)})):[];
  if(![0,1,2].includes(raw.v))return s;
- const x=raw.settings||{};s.settings={roundSize:clamp(x.roundSize,1,20,7),retypeOnMiss:x.retypeOnMiss!==false,autoAdvanceMs:clamp(x.autoAdvanceMs,0,5000,600),feedbackMs:clamp(x.feedbackMs,300,10000,1800),voiceURI:typeof x.voiceURI==='string'?x.voiceURI:'',rate:Math.max(.5,Math.min(1.2,Number(x.rate)||.85)),pin:/^\d{4}$/.test(x.pin||'')?x.pin:'',allowVariants:x.allowVariants===true,vocabularyAutoplay:x.vocabularyAutoplay!==false,selected:dictionary(x.selected)};
+ const x=raw.settings||{};s.settings={roundSize:clamp(x.roundSize,1,20,7),retypeOnMiss:x.retypeOnMiss!==false,autoAdvanceMs:clamp(x.autoAdvanceMs,0,5000,600),feedbackMs:clamp(x.feedbackMs,300,10000,1800),voiceURI:typeof x.voiceURI==='string'?x.voiceURI:'',rate:Math.max(.5,Math.min(1.2,Number(x.rate)||.85)),allowVariants:x.allowVariants===true,vocabularyAutoplay:x.vocabularyAutoplay!==false,selected:dictionary(x.selected)};
  if(raw.progress&&typeof raw.progress==='object')for(const[k,v]of Object.entries(raw.progress))if(v&&v.words&&typeof v.words==='object')s.progress[k]={words:dictionary(v.words)};
  if(raw.history&&typeof raw.history==='object')for(const[k,v]of Object.entries(raw.history))if(v&&Array.isArray(v.sessions))s.history[k]={sessions:v.sessions.slice(-10)};
  if(sessionOK(raw.session)){s.session=raw.session;s.session.defs=dictionary(raw.session.defs);s.session.perWord=dictionary(raw.session.perWord);}
@@ -116,8 +116,8 @@ function countSelected(){
  $('group-status').textContent=group<0?(total?'Select groups of up to 20 words for each practice session.':''):'Group '+(group+1)+' of '+total+' · Words '+(group*20+1)+'–'+Math.min((group+1)*20,l.words.length);
  updateCoachSetup();
 }
-function loadSettings(){const x=state.settings;$('round-size').value=x.roundSize;$('retype-toggle').checked=x.retypeOnMiss;$('auto-advance').value=x.autoAdvanceMs;$('feedback-delay').value=x.feedbackMs;$('speech-rate').value=x.rate;$('rate-label').textContent=Number(x.rate).toFixed(2);$('pin-entry').value=x.pin;$('allow-variants').checked=x.allowVariants;refreshVoices();$('voice-select').value=x.voiceURI;}
-function speak(value,rate,onError,onStart){if(!speech){if(onError)onError();return;}try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(String(value)),v=voices.find(x=>x.voiceURI===state.settings.voiceURI)||voices.find(x=>/^en-US/i.test(x.lang))||voices.find(x=>/^en/i.test(x.lang));if(v)u.voice=v;if(onStart)u.onstart=onStart;if(onError)u.onerror=e=>{if(!['canceled','interrupted'].includes(e.error))onError();};u.rate=rate||state.settings.rate;speechSynthesis.speak(u);}catch(e){if(onError){onError();return;}speech=false;$('replay-button').hidden=true;$('slow-replay').hidden=true;$('visual-word').className='visual-prompt';$('visual-word').textContent='Prompt: '+value;}}
+function loadSettings(){const x=state.settings;$('round-size').value=x.roundSize;$('retype-toggle').checked=x.retypeOnMiss;$('auto-advance').value=x.autoAdvanceMs;$('feedback-delay').value=x.feedbackMs;$('speech-rate').value=x.rate;$('rate-label').textContent=Number(x.rate).toFixed(2);$('allow-variants').checked=x.allowVariants;refreshVoices();$('voice-select').value=x.voiceURI;}
+function speak(value,rate,onError,onStart){if(!speech){if(onError)onError();return;}try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(String(value)),v=voices.find(x=>x.voiceURI===state.settings.voiceURI)||voices.find(x=>/^en-US/i.test(x.lang))||voices.find(x=>/^en/i.test(x.lang));if(v)u.voice=v;if(onStart)u.onstart=onStart;if(onError)u.onerror=e=>{if(!['canceled','interrupted'].includes(e.error))onError();};u.rate=rate||state.settings.rate;speechSynthesis.speak(u);}catch(e){if(onError)onError();}}
 function refreshVoices(){if(!speech)return;voices=speechSynthesis.getVoices().filter(v=>/^en(?:-|_)/i.test(v.lang));const sel=$('voice-select'),old=state.settings.voiceURI;sel.innerHTML='<option value="">Automatic device voice</option>';voices.forEach(v=>sel.add(new Option(v.name+' ('+v.lang+')',v.voiceURI)));sel.value=old;}
 function renderTiles(s){const host=$('tiles');host.innerHTML='';s.words.forEach(w=>{const p=s.perWord[w],el=document.createElement('span');el.className='tile'+(p.mastered?' mastered':p.streak===1?' familiar':'');el.setAttribute('aria-label',p.mastered?'Mastered':p.streak===1?'One correct':'Not mastered');el.title=p.mastered?'Mastered':p.streak===1?'One correct':'Not mastered';host.append(el);});}
 function feedback(msg,kind,d){const box=$('feedback');box.className='feedback'+(kind?' '+kind:'');box.innerHTML='';if(msg){const t=document.createElement('div');t.textContent=msg;box.append(t);}if(d){const x=document.createElement('div');x.className='diff';x.innerHTML=textDiff(d);box.append(x);}}
@@ -131,39 +131,48 @@ function renderCorrection(id, inputId, answer, explanation = '') {
  detail.hidden = !explanation;
  input.setAttribute('aria-describedby', id);
 }
+function setSpellingAnswerEnabled(enabled){
+ for(const id of ['answer-input','submit-answer','dont-know'])$(id).disabled=!enabled;
+}
 function playPracticeRecording(rate, slow = false){
- const s=state.session;if(!s)return;
- if(s.phase==='prompt')$('answer-input').focus();
- const clip=sharedAudioPath(s.listId,s.current,'dictation',s.current);
- const fallback=()=>sharedReview?.preparedAudio ? feedback('The prepared recording is unavailable. Ask your teacher to prepare it before practicing.','bad') : dictate(s.listId,s.current,s.meanings?.[s.current],rate);
- if(clip)playPublishedRecording(clip,slow,()=>feedback('The recording could not play. Press Listen to try again.','bad'),()=>feedback('',''));else fallback();
+ const s=state.session;if(!s||s.phase==='paused')return;
+ const word=s.current, clip=sharedAudioPath(s.listId,word,'dictation',word);
+ const currentPrompt=()=>state.session===s&&s.phase==='prompt'&&s.current===word&&!$('practice-screen').hidden;
+ const failed=(message='Audio is unavailable for this word. Try Replay word. If it still won’t play, pause or end the session.')=>{
+  if(currentPrompt())feedback(message,'bad');
+ };
+ const ready=()=>{
+  if(!currentPrompt())return;
+  setSpellingAnswerEnabled(true);
+  feedback('','');
+  $('answer-input').focus();
+ };
+ if(clip)playPublishedRecording(clip,slow,()=>failed('The recording could not play. Press Replay word to try again.'),ready);
+ else if(sharedReview?.preparedAudio)failed('The prepared recording is unavailable. Ask your teacher to prepare it before practicing.');
+ else dictate(s.listId,word,s.meanings?.[word],rate,failed,ready);
 }
 function renderPractice(play){
  const s=state.session;if(!s)return;finished=false;show('practice-screen');$('list-name-practice').textContent=s.listName;$('round-text').textContent='Round '+s.round;
  const done=s.words.filter(w=>s.perWord[w].mastered).length;
  const progress=s.words.reduce((sum,w)=>sum+(s.perWord[w].mastered?1:Math.min(2,Math.max(0,s.perWord[w].streak||0))/2),0)/s.words.length;
  renderMasteryProgress('spelling-mastery',done,s.words.length,progress);renderTiles(s);
- $('definition').textContent=s.defs[s.current]||'';$('visual-word').className='sr';$('visual-word').textContent='';$('replay-button').hidden=false;$('slow-replay').hidden=false;
- if(!speech&&!sharedAudioPath(s.listId,s.current,'dictation',s.current)){const word=s.current;readRecording(s.listId,word,s.meanings?.[word]).then(clip=>{
-  if(clip||state.session!==s||s.current!==word||$('practice-screen').hidden)return;
-  $('visual-word').className='visual-prompt';$('visual-word').textContent='Prompt: '+word;$('replay-button').hidden=true;$('slow-replay').hidden=true;
- });}$('answer-input').value='';$('answer-input').disabled=!['prompt','retype'].includes(s.phase);$('dont-know').hidden=s.phase==='retype';$('submit-answer').textContent=s.phase==='retype'?'Type it correctly':'Check spelling';$('submit-answer').disabled=!['prompt','retype'].includes(s.phase);
+ $('definition').textContent=s.defs[s.current]||'';$('answer-input').value='';
+ setSpellingAnswerEnabled(s.phase==='retype');$('dont-know').hidden=s.phase==='retype';$('submit-answer').textContent=s.phase==='retype'?'Type it correctly':'Check spelling';
  renderCorrection('spelling-correction', 'answer-input', s.phase==='retype' ? s.current : null);
  if(s.phase==='feedback'){const last=s.log[s.log.length-1];if(last&&last.ok)feedback(s.perWord[s.current]?.mastered?'Mastered: two correct answers in a row.':'Correct. One more correct answer will master this word.','good');else if(last)feedback('Compare your answer with the correct spelling.','bad',diff(last.typed,s.current));}else feedback('','');
- if(play&&s.phase==='prompt')playPracticeRecording(state.settings.rate);if(['prompt','retype'].includes(s.phase))setTimeout(()=>$('answer-input').focus(),35);
+ if(play&&s.phase==='prompt')playPracticeRecording(state.settings.rate);if(s.phase==='retype')setTimeout(()=>$('answer-input').focus(),35);
  if(s.phase==='feedback'){clearTimeout(timer);const last=s.log[s.log.length-1],delay=last&&last.ok?state.settings.autoAdvanceMs:state.settings.feedbackMs;timer=setTimeout(advance,delay);}
 }
 function advance(){const s=state.session;if(!s||s.phase!=='feedback')return;if(s.words.every(w=>s.perWord[w].mastered)){s.current='';s.phase='done';finish(true);celebrateMastery(s);return;}next(s);save();renderPractice(true);}
 function showSummary(r){const s=state.session;if(!s)return;clearTimeout(timer);show('summary-screen');$('summary-setup').textContent=sharedReview?'Back to set':'Return to setup';$('summary-list').textContent=s.listName;$('summary-title').textContent=r.mastered===r.total?'Practice complete':'Practice ended';$('summary-stats').innerHTML='<div class="stat"><span class="hint">Words mastered</span><strong>'+Number(r.mastered)+' / '+Number(r.total)+'</strong><small class="hint">Two correct answers in a row.</small></div><div class="stat"><span class="hint">First-attempt accuracy</span><strong>'+(r.attempts?Number(r.accuracy)+'%':'Not assessed')+'</strong><small class="hint">Correct first answers ÷ first answers submitted.</small></div><div class="stat"><span class="hint">Incorrect retype attempts</span><strong>'+Number(r.retypes)+'</strong><small class="hint">Incorrect answers during the correction step.</small></div>';
  const list=$('missed-list');list.innerHTML='';r.missed.forEach(w=>{const li=document.createElement('li');li.textContent=w+(s.defs[w]?' — '+s.defs[w]:'');list.append(li);});$('missed-empty').hidden=!!r.missed.length;$('practice-missed').disabled=!r.missed.length;$('copy-missed').disabled=!r.missed.length;
- const hist=(state.history[s.listId]?.sessions||[]).slice().reverse(),h=$('history-list');h.innerHTML='';hist.forEach(x=>{const li=document.createElement('li');li.textContent=new Date(x.at).toLocaleDateString()+' · '+x.accuracy+'% · '+x.mastered+'/'+x.total+' mastered'+(Array.isArray(x.missed)&&x.missed.length?' · '+x.missed[0]:'');h.append(li);});
+ const hist=(state.history[s.listId]?.sessions||[]).slice().reverse(),h=$('history-list');h.innerHTML='';hist.forEach(x=>{const li=document.createElement('li');li.textContent=new Date(x.at).toLocaleDateString()+' · '+(x.attempts===0?'Not assessed':x.accuracy+'%')+' · '+x.mastered+'/'+x.total+' mastered'+(Array.isArray(x.missed)&&x.missed.length?' · '+x.missed[0]:'');h.append(li);});
 }
 function copy(text){if(navigator.clipboard?.writeText)return navigator.clipboard.writeText(text).then(()=>true,()=>fallbackCopy(text));return Promise.resolve(fallbackCopy(text));}
 function fallbackCopy(text){const t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';(document.querySelector('dialog[open]')||document.body).append(t);t.select();let ok=false;try{ok=document.execCommand('copy');}catch(e){}t.remove();return ok;}
 function download(file,text,type){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=file;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function practiceMissed(){const s=state.session;if(!s)return;const r=s.summary||summary(s);if(!Array.isArray(r.missed)||!r.missed.length)return;const l={id:s.listId,name:s.listName,words:s.words,defs:s.defs};state.session=null;save();start(r.missed,l,{retypeOnMiss:s.retypeOnMiss});}
-function finishToSetup(){const checkpoint=state.learningCheckpoint;if(state.session&&!state.session.summary)finish(false);state.session=null;state.learningSession=null;save();if(checkpoint)getStore(checkpoint.backend).then(store=>store.remove(checkpoint.key)).catch(()=>{});renderSetup();if(sharedReview)renderSharedReady();else showLanding();}
-function backToSetup(){if(state.settings.pin){$('pin-check').value='';$('pin-error').textContent='';$('pin-overlay').hidden=false;$('pin-check').focus();}else finishToSetup();}
+function backToSetup(){const checkpoint=state.learningCheckpoint;if(state.session&&!state.session.summary)finish(false);state.session=null;state.learningSession=null;save();if(checkpoint)getStore(checkpoint.backend).then(store=>store.remove(checkpoint.key)).catch(()=>{});renderSetup();if(sharedReview)renderSharedReady();else showLanding();}
 function validBackup(x){if(!x||x.v!==1||!Array.isArray(x.lists)||!x.lists.every(listOK))throw Error('Choose a WordLab backup with a valid lists array.');return x.lists.map(l=>({id:l.id,name:l.name,words:wordsUnique(l.words),defs:dictionary(l.defs),updatedAt:now()}));}
 function runTests(){
  const out=[],assert=(v,m)=>{if(!v)throw Error(m||'assertion failed');},test=(n,f)=>{try{f();out.push([n,true,'']);}catch(e){out.push([n,false,e.message]);}};
@@ -192,11 +201,11 @@ function runTests(){
   assert(validBackup({v:1,lists:[{id:'legacy',name:'Legacy',words}]})[0].words.length===201);
  });
  test('migration carries settings, progress and an unfinished spelling session',()=>{
-  const raw={v:1,lists:[{id:'a',name:'Legacy',words:['dog'],defs:{dog:'A pet.'}}],settings:{pin:'1234',selected:{a:['dog']}},
+  const raw={v:1,lists:[{id:'a',name:'Legacy',words:['dog'],defs:{dog:'A pet.'}}],settings:{selected:{a:['dog']}},
    progress:{a:{words:{dog:{misses:4}}}},history:{a:{sessions:[{attempts:1}]}},
    session:{v:1,listId:'a',words:['dog'],defs:{dog:'A pet.'},queue:[],current:'dog',perWord:{dog:{}},log:[],round:1,phase:'prompt'}};
   const migrated=clean(raw), again=clean(JSON.parse(JSON.stringify(migrated)));
-  assert(again.v===2&&again.settings.pin==='1234'&&again.settings.selected.a[0]==='dog'&&again.progress.a.words.dog.misses===4&&
+  assert(again.v===2&&again.settings.selected.a[0]==='dog'&&again.progress.a.words.dog.misses===4&&
    again.history.a.sessions[0].attempts===1&&again.session.current==='dog'&&again.lists[0].defs.dog==='A pet.');
  });
  test('RANDOM.ORG receipts must map each position exactly once',()=>{
@@ -216,7 +225,7 @@ function renderTheme(){$('theme-select').value=themePreference.value;}
 $('theme-select').onchange=event=>themePreference.set(event.target.value);
 renderTheme();
 
-function settingsChanged(){state.settings.roundSize=clamp($('round-size').value,1,20,7);state.settings.retypeOnMiss=$('retype-toggle').checked;state.settings.autoAdvanceMs=clamp($('auto-advance').value,0,5000,600);state.settings.feedbackMs=clamp($('feedback-delay').value,300,10000,1800);state.settings.voiceURI=$('voice-select').value;state.settings.rate=Math.max(.5,Math.min(1.2,Number($('speech-rate').value)||.85));state.settings.pin=/^\d{4}$/.test($('pin-entry').value)?$('pin-entry').value:'';state.settings.allowVariants=$('allow-variants').checked;save();}
+function settingsChanged(){state.settings.roundSize=clamp($('round-size').value,1,20,7);state.settings.retypeOnMiss=$('retype-toggle').checked;state.settings.autoAdvanceMs=clamp($('auto-advance').value,0,5000,600);state.settings.feedbackMs=clamp($('feedback-delay').value,300,10000,1800);state.settings.voiceURI=$('voice-select').value;state.settings.rate=Math.max(.5,Math.min(1.2,Number($('speech-rate').value)||.85));state.settings.allowVariants=$('allow-variants').checked;save();}
 $('list-select').onchange=()=>{listId=$('list-select').value;renderSetup();status('');};
 let listDraft=null,importRequest=0;
 function draftWords(){return wordsUnique($('create-list-words').value.split(/\r?\n/));}
@@ -327,8 +336,16 @@ $('copy-list').onclick=()=>{
 };
 $('preview-voice').onclick=()=>speak('The quick brown fox jumps over the lazy dog.',state.settings.rate);
 $('open-tools').onclick=()=>{
- $('tools-api-keys').hidden=entryPage==='student';
- $('tools-teaching-options').hidden=entryPage==='student';
+ const student=entryPage==='student', teacherPage=entryPage==='teacher';
+ const signedInTeacher=!student&&ai.role==='teacher'&&!!ai.token;
+ $('tools-api-keys').hidden=student;
+ $('tools-grade-defaults').hidden=!signedInTeacher;
+ $('tools-recovery').hidden=!signedInTeacher;
+ $('tools-teaching-options').hidden=entryPage!=='offline';
+ $('tools-advanced').hidden=entryPage!=='offline';
+ $('local-audio-settings').hidden=teacherPage;
+ $('tools-audio').open=false;
+ $('tools-save-help').textContent=teacherPage?'Use Save on the API keys and grade defaults screens.':'Practice and audio preferences save automatically on this device.';
  $('local-teaching-defaults').hidden=!!sharedReview;
  for(const id of ['retype-toggle','allow-variants'])$(id).disabled=!!sharedReview;
  const savedRules=sharedReview?.practice;
@@ -338,10 +355,10 @@ $('open-tools').onclick=()=>{
 };
 $('close-tools').onclick=()=>$('tools-dialog').close();
 $('done-tools').onclick=()=>$('tools-dialog').close();
-['round-size','retype-toggle','auto-advance','feedback-delay','voice-select','pin-entry','allow-variants'].forEach(id=>$(id).addEventListener('change',()=>{state.settings.roundSize=clamp($('round-size').value,1,20,7);state.settings.retypeOnMiss=$('retype-toggle').checked;state.settings.autoAdvanceMs=clamp($('auto-advance').value,0,5000,600);state.settings.feedbackMs=clamp($('feedback-delay').value,300,10000,1800);state.settings.voiceURI=$('voice-select').value;state.settings.rate=Math.max(.5,Math.min(1.2,Number($('speech-rate').value)||.85));state.settings.pin=/^\d{4}$/.test($('pin-entry').value)?$('pin-entry').value:'';state.settings.allowVariants=$('allow-variants').checked;save();}));
+['round-size','retype-toggle','auto-advance','feedback-delay','voice-select','allow-variants'].forEach(id=>$(id).addEventListener('change',settingsChanged));
 $('speech-rate').oninput=()=>{$('rate-label').textContent=Number($('speech-rate').value).toFixed(2);state.settings.rate=Number($('speech-rate').value);save();};
 $('start-session').onclick=beginCoach;
-$('answer-form').onsubmit=e=>{e.preventDefault();const s=state.session;if(!s)return;const wasRetype=s.phase==='retype',r=wasRetype?retype(s,$('answer-input').value):submit(s,$('answer-input').value);if(!r)return;$('answer-input').value='';if(wasRetype&&!r.ok){renderPractice(false);$('answer-input').focus();}else renderPractice(s.phase==='prompt'&&r.ok);};
+$('answer-form').onsubmit=e=>{e.preventDefault();const s=state.session;if(!s||$('submit-answer').disabled)return;const wasRetype=s.phase==='retype',r=wasRetype?retype(s,$('answer-input').value):submit(s,$('answer-input').value);if(!r)return;$('answer-input').value='';if(wasRetype&&!r.ok){renderPractice(false);$('answer-input').focus();}else renderPractice(s.phase==='prompt'&&r.ok);};
 $('dont-know').onclick=()=>{$('answer-input').value='';$('answer-form').requestSubmit();};
 $('replay-button').onclick=()=>playPracticeRecording(state.settings.rate);
 $('slow-replay').onclick=()=>playPracticeRecording(state.settings.rate*.6,true);
@@ -352,14 +369,11 @@ $('back-setup').onclick=()=>{$('pause-overlay').hidden=true;backToSetup();};
 function resumeActivity(){const s=state.session;if(state.learningSession){Learning.resume(state.learningSession.session);Learning.upgradePractice(state.learningSession.session);state.learningSession.recorded=false;save();renderLearning(true);return;}if(!s)return;if(s.phase==='done'&&s.summary){showSummary(s.summary);return;}s.phase=s.phase==='paused'?(s.resumePhase||'prompt'):s.phase;delete s.resumePhase;save();renderPractice(s.phase==='prompt');}
 $('resume-button').onclick=resumeActivity;
 $('end-saved-button').onclick=()=>{if(!state.learningSession){end();return;}Learning.finish(state.learningSession.session);finishLearningReport();};
-$('pin-form').onsubmit=e=>{e.preventDefault();if($('pin-check').value!==state.settings.pin){$('pin-error').textContent='That PIN did not match.';return;}$('pin-overlay').hidden=true;finishToSetup();};
-$('cancel-pin').onclick=()=>{$('pin-overlay').hidden=true;if(state.learningSession)renderLearning(false);else if(state.session?.summary)showSummary(state.session.summary);else if(state.session)$('pause-overlay').hidden=false;};
-$('reset-pin').onclick=()=>{if(confirm('Clear the saved PIN? Lists and progress will stay.')){state.settings.pin='';save();$('pin-overlay').hidden=true;if(state.learningSession)renderLearning(false);else if(state.session&&!state.session.summary)$('pause-overlay').hidden=false;else finishToSetup();}};
 $('summary-setup').onclick=backToSetup;
 $('practice-missed').onclick=practiceMissed;
 $('copy-missed').onclick=()=>{const s=state.session;if(!s)return;const r=s.summary||summary(s);copy(r.missed.map(w=>csv(w)+','+csv(s.defs[w]||'')).join('\r\n')).then(ok=>{$('copy-missed').textContent=ok?'Copied':'Copy failed';setTimeout(()=>$('copy-missed').textContent='Copy missed words',1300);});};
 document.addEventListener('keydown',e=>{
- if(e.key==='Escape'){if(!$('pin-overlay').hidden){$('pin-overlay').hidden=true;if(state.session&&!state.session.summary)$('pause-overlay').hidden=false;return;}if(!$('pause-overlay').hidden)return;if(!$('practice-screen').hidden){e.preventDefault();$('pause-button').click();}else if(!$('learning-screen').hidden){e.preventDefault();pauseLearning();}return;}
+ if(e.key==='Escape'){if(!$('pause-overlay').hidden)return;if(!$('practice-screen').hidden){e.preventDefault();$('pause-button').click();}else if(!$('learning-screen').hidden){e.preventDefault();pauseLearning();}return;}
  if(e.altKey||e.ctrlKey||e.metaKey||e.shiftKey||/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName||''))return;
  const next=$('learning-next');
  if(e.key==='Enter'&&!e.isComposing&&!e.defaultPrevented&&!$('learning-screen').hidden&&!next.hidden&&!next.disabled&&

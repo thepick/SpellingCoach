@@ -17,3 +17,8 @@ assert.match(html, /id="teacher-signin-screen"/);
 assert.match(html, /id="ai-preview"/);
 assert.match(fs.readFileSync('practice/index.html', 'utf8'), /<body data-entry="student">/);
 assert.match(fs.readFileSync('WordLab v0.2.0.html', 'utf8'), /<body data-entry="offline">/);
+
+const parentPIN = /\b(?:pin-entry|pin-overlay|pin-form|pin-check|pin-error|cancel-pin|reset-pin|parent-pin-help|local-pin-setting)\b|\b(?:state\.settings|x)\.pin\b|Parent access PIN|Forgot PIN/i;
+for (const file of ['src/app.js', 'src/page.html', 'src/styles.css', 'index.html', 'practice/index.html', 'WordLab v0.2.0.html']) {
+ assert.doesNotMatch(fs.readFileSync(file,'utf8'), parentPIN, file + ' contains an obsolete parent PIN control or handler');
+}

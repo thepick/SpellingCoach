@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const {createHash} = require('node:crypto');
 const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n');
 const sources = ['vocabulary', 'learning', 'generation-settings', 'state', 'dictation', 'coach', 'dictation-ui', 'teacher', 'shared-review'];
@@ -8,14 +9,18 @@ const sample = JSON.stringify(JSON.parse(read('examples/weekly-vocabulary-sample
 const code = read('src/app.js')
   .replace('// BUILD:MODULES', () => 'const SAMPLE_PACK = ' + sample + ';\n' + modules)
   .replace('// BUILD:STARTUP', 'initCoach();');
-const page = read('src/page.html').replace('<!-- BUILD:STYLE -->', () => read('src/styles.css'))
+let page = read('src/page.html').replace('<!-- BUILD:STYLE -->', () => read('src/styles.css'))
   .replace('<!-- BUILD:SCRIPT -->', () => code)
   .replace('@@BRAND_ICON@@', () => fs.readFileSync(path.join(root, 'favicon.ico')).toString('base64'));
+const buildId = createHash('sha256').update(page).digest('hex').slice(0,12);
+page = page.replace('@@BUILD_ID@@',buildId);
 const entry = (html, kind) => html.replace('<body>', `<body data-entry="${kind}">`);
 const student = page.replace(/(<link rel="(?:icon|apple-touch-icon|manifest)"[^\n]*?href=")/g, '$1../');
 const offline = page.replace(/^<link rel="(?:icon|apple-touch-icon|manifest)"[^\n]*\n/gm, '');
 const outputs = { 'index.html': entry(page, 'teacher'), 'practice/index.html': entry(student, 'student'),
  'WordLab v0.2.0.html': entry(offline, 'offline') };
+outputs['release.json'] = JSON.stringify({buildId,assets:Object.fromEntries(Object.entries(outputs).map(([file,content])=>
+ [file,createHash('sha256').update(content).digest('hex')]))},null,2)+'\n';
 for (const [file, contents] of Object.entries(outputs)) {
   const target = path.join(root, file);
   if (process.argv.includes('--check')) {

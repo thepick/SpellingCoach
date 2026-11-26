@@ -94,6 +94,8 @@ function clearParkedActivity(id) {
 async function renderSharedReady() {
  const review = sharedReview;
  if (!review) return;
+ $('shared-progress-details').open=!storageOK;
+ $('shared-save-summary').textContent=studentPreview?'Preview progress is temporary.':storageOK?'Progress saves in this browser.':'Progress cannot be saved in this browser.';
  $('shared-progress-note').textContent=studentPreview ? 'Student preview: progress and audio preferences are not saved.' : storageOK
   ? 'Progress saves locally. Reopen this set in the same browser and browser profile to continue. Clearing site data or closing private browsing can remove it.'
   : 'Progress could not be saved in this browser. Keep this page open to retain your current session.';

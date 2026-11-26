@@ -126,7 +126,7 @@ test('partial progress is distinct from mastered count and reserves 100 percent 
 
 test('legacy spelling shows half credit for each first answer and preserves it on restore',()=>{
  const h=harness(),app=fs.readFileSync('src/app.js','utf8');
- vm.runInContext(app.slice(app.indexOf('function renderPractice('),app.indexOf('\nfunction advance(')),h.context);
+ vm.runInContext(app.slice(app.indexOf('function setSpellingAnswerEnabled('),app.indexOf('\nfunction advance(')),h.context);
  h.run("state.session={listName:'Test',round:1,phase:'prompt',current:'one',words:Array.from({length:12},(_,i)=>String(i)),perWord:Object.fromEntries(Array.from({length:12},(_,i)=>[String(i),{streak:1,mastered:false}])),defs:{},log:[]};renderPractice(false)");
  const meter=h.elements.get('spelling-mastery');
  assert.equal(meter.querySelector('.mastery-percent').textContent,'50%');

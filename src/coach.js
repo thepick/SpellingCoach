@@ -624,8 +624,11 @@ function renderStudy() {
  const cards = studyCards(), study = studyState;
  study.index = Math.max(0, Math.min(study.index, cards.length - 1));
  const card = cards[study.index], reverse = $('study-reverse').checked;
+ const noUnfamiliar = !card && $('study-unfamiliar').checked;
  show('study-screen');
- $('study-count').textContent = card ? 'Card ' + (study.index + 1) + ' of ' + cards.length : 'No unfamiliar cards in this selection.';
+ $('study-count').textContent = card ? 'Card ' + (study.index + 1) + ' of ' + cards.length :
+  noUnfamiliar ? 'No unfamiliar cards in this selection.' : 'No flashcards in this selection.';
+ $('study-show-all').hidden = !noUnfamiliar;
  $('study-front').textContent = card?.front || '';
  $('study-back').hidden = !study.revealed || !card;
  $('study-back').replaceChildren();
@@ -853,6 +856,7 @@ let editorToken = '';
 let vocabularyEditorRequest = 0;
 let editorRevision = null;
 let editorSaving = false;
+let editorSelection = {word: '', search: '', filter: '', values: []};
 const editorPageSize = 30;
 const fields = {
  definition: 'vocab-definition', examples: 'vocab-examples', meaningDistractors: 'vocab-distractors',
@@ -860,13 +864,34 @@ const fields = {
 };
 const lines = value => value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
 const editorStatusText = message => { $('vocab-status').textContent = message; };
+const editableVocabularyFields = [...Object.values(fields), 'vocab-cloze', 'vocab-explanations'];
+const vocabularyFieldValues = () => editableVocabularyFields.map(id => $(id).value);
+const isVocabularyDraft = row => row.vocabulary && row.vocabulary.status !== 'approved';
+
+function nextVocabularyDraft(rows, index) {
+ return rows.slice(index + 1).find(isVocabularyDraft) || rows.slice(0, index).find(isVocabularyDraft);
+}
+
+function canLeaveVocabularyEditor() {
+ if (editorSaving) {
+  editorStatusText('Wait for the vocabulary save to finish.');
+  return false;
+ }
+ if (!editorInline && !$('vocab-dialog').open) return true;
+ return !editorSelection.values.some((value,index) => value !== $(editableVocabularyFields[index]).value) ||
+  confirm('Discard unsaved changes to “' + editorSelection.word + '”?');
+}
+
+function filteredEditorRecords() {
+ const search = wordKey($('vocab-search').value), filter = $('vocab-filter').value;
+ return editorRecords.filter(row => wordKey(row.word).includes(search) &&
+  (!filter || (filter === 'draft' ? isVocabularyDraft(row) :
+   (row.vocabulary?.status || 'missing') === filter)));
+}
 
 function renderVocabularyEditor(preferred) {
- const search = wordKey($('vocab-search').value), filter = $('vocab-filter').value;
  const chosen = preferred || $('vocab-word').value;
- const filtered = editorRecords.filter(row => wordKey(row.word).includes(search) &&
-  (!filter || (filter === 'draft' ? row.vocabulary && row.vocabulary.status !== 'approved' :
-   (row.vocabulary?.status || 'missing') === filter)));
+ const filtered = filteredEditorRecords();
  const lastPage = Math.max(0, Math.ceil(filtered.length / editorPageSize) - 1);
  editorPage = Math.min(editorPage, lastPage);
  const index = filtered.findIndex(row => row.word === preferred);
@@ -886,17 +911,45 @@ function renderVocabularyEditor(preferred) {
   const status = row.vocabulary?.status === 'approved' ? 'Approved' : row.vocabulary ? 'Review' : 'Missing';
   select.add(new Option(row.word + ' · ' + status, row.word));
  }
+ select.disabled = !page.length;
+ if (!page.length) select.add(new Option('No matching words', ''));
  select.value = page.some(row => row.word === chosen) ? chosen : page[0]?.word || '';
  $('vocab-undo').disabled = !undoVocabulary;
- $('vocab-bulk').disabled = !editorRecords.some(row => row.vocabulary && row.vocabulary.status !== 'approved');
- renderEditFields();
+ $('vocab-bulk').disabled = !editorRecords.some(isVocabularyDraft);
+ renderEditFields(filtered);
 }
 
-function renderEditFields() {
- const row = editorRecords.find(item => item.word === $('vocab-word').value);
+function displayVocabularyEditor(editing) {
+ const toggle = $('vocab-edit-toggle');
+ toggle.textContent = editing ? 'Preview wording' : 'Edit wording';
+ toggle.setAttribute('aria-expanded', String(editing));
+ $('vocab-edit-fields').hidden = !editing;
+ $('vocab-save-draft').hidden = !editing;
+ $('vocab-review-content').hidden = editing;
+ if (editing) return;
+ $('vocab-review-definition').textContent = $('vocab-definition').value;
+ for (const [target, source] of [['vocab-review-examples', 'vocab-examples'], ['vocab-review-cloze', 'vocab-cloze']]) {
+  const container = $(target), sentences = lines($(source).value);
+  container.hidden = !sentences.length;
+  container.replaceChildren();
+  for (const sentence of sentences) {
+   const paragraph = document.createElement('p');
+   paragraph.textContent = sentence;
+   container.append(paragraph);
+  }
+ }
+}
+
+function renderEditFields(filtered = filteredEditorRecords()) {
+ const word = $('vocab-word').value, index = filtered.findIndex(row => row.word === word);
+ const row = filtered[index];
+ editorSelection = {word, search: $('vocab-search').value, filter: $('vocab-filter').value, values: []};
+ $('vocab-word-prev').disabled = index < 1;
+ $('vocab-word-next').disabled = index < 0 || index + 1 >= filtered.length;
  $('vocab-form').hidden = !row;
- if (!row) return;
- const v = row.vocabulary;
+ const v = row?.vocabulary;
+ $('vocab-edit-toggle').hidden = !v;
+ if (!row) { $('vocab-review-content').hidden = true; return; }
  prefillTroySentence(row);
  for (const [key, id] of Object.entries(fields)) {
   const value = v?.[key];
@@ -904,17 +957,21 @@ function renderEditFields() {
  }
  $('vocab-cloze').value = (v?.clozeQuestions || []).map(question => question.sentence).join('\n');
  $('vocab-explanations').value = (v?.clozeQuestions || []).map(question => question.explanation).join('\n');
+ editorSelection.values = vocabularyFieldValues();
+ displayVocabularyEditor(!v);
+ $('vocab-approve').textContent = v?.status === 'approved' ? 'Save changes' :
+  nextVocabularyDraft(filtered, index) ? 'Approve & next' : 'Save and approve';
  $('vocab-regenerate').disabled = !v || ai.role !== 'teacher';
  renderRecordingControls();
 }
 
-async function changeVocabulary(next, preferred) {
+async function changeVocabulary(next, preferred, submittedValues) {
  if (editorSaving) throw Error('A vocabulary save is already in progress. Wait for it to finish before saving again.');
  const owner = state, token = ai.token, request = vocabularyEditorRequest;
  const list = editorList, before = editorRecords;
  const current = () => state === owner && ai.token === token && editorWorkspace === owner && editorToken === token && editorList === list && selectedList() === list && vocabularyEditorRequest === request;
  if (!list || !current()) throw Error('This workspace changed. Sign in again to continue.');
- const revision = editorRevision;
+ const revision = editorRevision, selection = editorSelection;
  if (!sameVocabularyRevision(list,revision)) throw Error(VOCABULARY_CHANGED);
  editorSaving = true;
  try {
@@ -946,14 +1003,29 @@ async function changeVocabulary(next, preferred) {
   editorRevision = writtenRevision;
   editorRecords = next;
   undoVocabulary = before;
+  const {word, values} = editorSelection;
+  const baseline = (selection === editorSelection && submittedValues) || values;
+  const unsaved = vocabularyFieldValues().map((value,index) => baseline.length && value !== baseline[index] ? value : undefined);
+  const hasUnsaved = unsaved.some(value => value !== undefined), editing = !$('vocab-edit-fields').hidden;
+  if (hasUnsaved) {
+   // Keep the edited word in view if saving changed its filter status.
+   if (!filteredEditorRecords().some(row => row.word === word)) $('vocab-filter').value = '';
+   preferred = word;
+  } else if (selection !== editorSelection) preferred = word;
   renderVocabularyEditor(preferred);
+  if (hasUnsaved) {
+   unsaved.forEach((value,index) => { if (value !== undefined) $(editableVocabularyFields[index]).value = value; });
+   displayVocabularyEditor(editing);
+  }
   if (editorInline && typeof refreshSetWorkspace === 'function') await refreshSetWorkspace();
+  return current();
  } finally {
   editorSaving = false;
  }
 }
 
-async function closeVocabularyEditor() {
+async function closeVocabularyEditor(discardConfirmed = false) {
+ if ((editorSaving || editorInline && !discardConfirmed) && !canLeaveVocabularyEditor()) return false;
  // Cancel an open that is still loading before its panel mounts.
  vocabularyEditorRequest++;
  if (!editorInline) return false;
@@ -969,12 +1041,15 @@ async function closeVocabularyEditor() {
 
 async function openVocabularyEditor(filter = '', inline = false) {
  const list = selectedList();
- if (!list) return;
+ if (!list || !canLeaveVocabularyEditor()) return;
+ const selection = editorSelection, values = vocabularyFieldValues();
  const owner = state, token = ai.token, revision = vocabularyRevision(list), request = ++vocabularyEditorRequest;
  const current = () => state === owner && ai.token === token && selectedList() === list && sameVocabularyRevision(list,revision) && vocabularyEditorRequest === request;
  try {
   const records = await loadVocabulary(list);
   if (!current()) return;
+  const changed = selection !== editorSelection || values.some((value,index) => value !== $(editableVocabularyFields[index]).value);
+  if ((editorSaving || changed) && !canLeaveVocabularyEditor()) return;
   editorRecords = records;
   editorRevision = revision;
   editorList = list; editorPage = 0; undoVocabulary = null;
@@ -1048,6 +1123,11 @@ function initCoach() {
  for (const id of ['study-reverse', 'study-unfamiliar']) $(id).onchange = () => {
   studyState.index = 0; studyState.revealed = false; renderStudy();
  };
+ $('study-show-all').onclick = () => {
+  $('study-unfamiliar').checked = false;
+  $('study-unfamiliar').onchange();
+  if (!$('study-reveal').disabled) $('study-reveal').focus();
+ };
  $('study-listen').onclick = () => {
   const card = studyCards()[studyState.index];
   if (card) playStudyRecordings(card);
@@ -1062,15 +1142,41 @@ function initCoach() {
   const key = wordKey(card.word), previous = state.familiar[list] || [];
   state.familiar[list] = previous.includes(key) ? previous.filter(word => word !== key) : previous.concat(key);
   studyState.revealed = false; save(); renderStudy();
+  if (!$('study-show-all').hidden) $('study-show-all').focus();
  };
  $('study-shuffle').onclick = () => openShuffle('study');
  $('shuffle-undo').onclick = () => undoWordShuffle('list');
  $('study-shuffle-undo').onclick = () => undoWordShuffle('study');
- $('vocab-close').onclick = () => editorInline ? closeVocabularyEditor() : $('vocab-dialog').close();
- for (const id of ['vocab-search', 'vocab-filter']) $(id).oninput = () => { editorPage = 0; renderVocabularyEditor(); };
- $('vocab-prev').onclick = () => { editorPage--; renderVocabularyEditor(); };
- $('vocab-next').onclick = () => { editorPage++; renderVocabularyEditor(); };
- $('vocab-word').onchange = () => { editorStatusText(''); renderEditFields(); };
+ $('vocab-close').onclick = () => {
+  if (editorInline) return closeVocabularyEditor();
+  if (canLeaveVocabularyEditor()) $('vocab-dialog').close();
+ };
+ $('vocab-dialog').addEventListener('cancel', event => { if (!canLeaveVocabularyEditor()) event.preventDefault(); });
+ for (const key of ['search', 'filter']) $('vocab-' + key).oninput = () => {
+  if (!canLeaveVocabularyEditor()) { $('vocab-' + key).value = editorSelection[key]; return; }
+  editorPage = 0; editorStatusText(''); renderVocabularyEditor();
+ };
+ for (const [direction, delta] of [['prev', -1], ['next', 1]]) {
+  $('vocab-' + direction).onclick = () => {
+   if (!canLeaveVocabularyEditor()) return;
+   editorPage += delta; editorStatusText(''); renderVocabularyEditor();
+  };
+  $('vocab-word-' + direction).onclick = () => {
+   const filtered = filteredEditorRecords(), index = filtered.findIndex(row => row.word === editorSelection.word);
+   const next = filtered[index + delta];
+   if (index < 0 || !next || !canLeaveVocabularyEditor()) return;
+   editorStatusText(''); renderVocabularyEditor(next.word);
+  };
+ }
+ $('vocab-word').onchange = () => {
+  if (!canLeaveVocabularyEditor()) { $('vocab-word').value = editorSelection.word; return; }
+  editorStatusText(''); renderEditFields();
+ };
+ $('vocab-edit-toggle').onclick = () => {
+  const editing = $('vocab-edit-fields').hidden;
+  displayVocabularyEditor(editing);
+  if (editing) $('vocab-definition').focus();
+ };
  $('vocab-form').onsubmit = async event => {
   event.preventDefault();
   const word = $('vocab-word').value, before = editorRecords.find(row => row.word === word)?.vocabulary;
@@ -1089,12 +1195,20 @@ function initCoach() {
      sentence, answer: word, explanation: explanations[index]?.trim() || 'The context gives clues to the word.'
     }))
    });
-   await changeVocabulary(editorRecords.map(row => row.word === word ? {word, vocabulary: record} : row), word);
-   editorStatusText('Saved ' + word + '.');
+   let preferred = word;
+   if (record.status === 'approved' && before?.status !== 'approved') {
+    const queue = filteredEditorRecords(), index = queue.findIndex(row => row.word === word);
+    preferred = nextVocabularyDraft(queue, index)?.word || word;
+   }
+   if (await changeVocabulary(editorRecords.map(row => row.word === word ? {word, vocabulary: record} : row), preferred, vocabularyFieldValues())) {
+    editorStatusText((record.status === 'approved' ? 'Approved ' : 'Saved ') + word + '.');
+    if ($('vocab-form').hidden) $('vocab-close').focus();
+   }
   } catch (error) { editorStatusText(error.message); }
   finally { if (submitter) submitter.disabled = false; }
  };
  $('vocab-form').addEventListener('invalid', event => {
+  if ($('vocab-edit-fields').hidden) displayVocabularyEditor(true);
   const section = event.target.closest('details');
   if (section) section.open = true;
  }, true);
@@ -1104,9 +1218,10 @@ function initCoach() {
   catch (error) { editorStatusText(error.message); }
  };
  $('vocab-bulk').onclick = async () => {
-  if (!confirm('Approve all drafts in this list that you have reviewed?')) return;
+  const count = editorRecords.filter(isVocabularyDraft).length;
+  if (!count || !confirm('Approve all drafts in this set (' + count + '), including drafts you haven’t opened or reviewed? This uses the saved wording.')) return;
   try {
-   const next = editorRecords.map(row => row.vocabulary && row.vocabulary.status !== 'approved' ?
+   const next = editorRecords.map(row => isVocabularyDraft(row) ?
     {word: row.word, vocabulary: Vocabulary.validateRecord(row.word, {...row.vocabulary, status: 'approved'})} : row);
    await changeVocabulary(next, $('vocab-word').value); editorStatusText('Drafts approved.');
   } catch (error) { editorStatusText(error.message); }

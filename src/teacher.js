@@ -138,6 +138,7 @@ function renderTeacherView(view) {
  }
  $('teacher-dialog').dataset.view=view;
  $('teacher-settings-menu').hidden=view!=='settings';
+ $('teacher-settings-back').hidden=entryPage!=='teacher' || !ai.token || !['setup','presets','administration'].includes(view);
  $('settings-administration').hidden=!ai.teacher?.isAdmin;
  $('teacher-title').textContent=(titles[view] || titles.tools)+(['prepare','share'].includes(view)&&list?' · '+list.name:'');
  $('teacher-connect').hidden=!!ai.token;
@@ -171,15 +172,18 @@ function renderSetWorkspace() {
  const list=sharing.list, rows=sharing.records || [], vocabulary=rows.filter(row=>row.vocabulary);
  const approved=vocabulary.filter(row=>row.vocabulary.status==='approved').length;
  const allApproved=rows.length===list.words.length && approved===rows.length;
- $('workspace-title').textContent='Prepare & share · '+list.name;
+ $('workspace-title').textContent='Prepare & share';
+ $('workspace-set-name').textContent=list.name;
+ $('workspace-words-summary').textContent='· '+list.words.length+' words';
  $('workspace-vocabulary-summary').textContent=allApproved ? 'All '+approved+' words approved' :
   approved+' approved · '+(vocabulary.length-approved)+' to review · '+(list.words.length-vocabulary.length)+' missing';
  const settings=GenerationSettings.validate(list.generationSettings) || GenerationSettings.defaults();
  $('workspace-settings-summary').textContent='Grade '+settings.readingLevel+' · '+settings.practiceSentences+
   ' practice '+(settings.practiceSentences===1?'sentence':'sentences')+' · '+settings.exampleSentences+
   (settings.exampleSentences===1?' example':' examples');
- $('teacher-draft-form').hidden=!ai.config.generationEnabled || allApproved;
- $('workspace-vocabulary-settings').hidden=allApproved;
+ $('teacher-draft-form').hidden=!ai.config.generationEnabled;
+ $('workspace-vocabulary-settings').hidden=false;
+ $('ai-context-wrap').hidden=allApproved;
  $('workspace-edit-vocabulary').textContent=allApproved?'Edit vocabulary':vocabulary.length?'Review vocabulary':'Add vocabulary by hand';
  $('workspace-edit-vocabulary').disabled=workspaceSavePending() || !sharing.records;
  $('ai-generate').hidden=rows.length===list.words.length && vocabulary.length===rows.length;
@@ -195,10 +199,12 @@ function renderSetWorkspace() {
  $('ai-retry-words').disabled=!!pendingGeneration;
  const audio=list.audioStatus, clips=(audio?.recordings || []).filter(clip=>/-s$/.test(clip.key));
  const ready=clips.filter(clip=>clip.status==='ready').length;
+ $('workspace-fix-keys').hidden=ready===list.words.length || !!ai.keys?.openrouter;
  $('audio-word-summary').textContent=ready===list.words.length ? 'Word audio ready · Paul' :
   audio?.pending ? 'Preparing word audio · '+ready+' of '+list.words.length+' ready' :
    'Word audio needs attention · '+ready+' of '+list.words.length+' ready';
  $('workspace-save-retry').hidden=!workspaceEdit?.error;
+ if(workspaceEdit?.error)$('workspace-words-editor').open=true;
  $('workspace-refresh-link').hidden=sharing.linkLookup!=='error';
  $('ai-generate').textContent='Generate vocabulary and audio';
  $('ai-only-missing').checked=true;
@@ -563,7 +569,7 @@ async function refreshTeacherAccounts() {
 function initTeacherAccounts() {
  $('teacher-test-keys').onclick = teacherAction(async ()=>{
   const {root,token} = ai; $('teacher-test-keys').disabled = true;
-  $('teacher-account-status').textContent = 'Testing saved connections without generating speech or text…';
+  $('teacher-account-status').textContent = 'Testing saved keys without generating speech or text…';
   try {
    const result = await service('/teacher/testkeys',{root,token,method:'POST'});
    if (ai.token !== token) return;
@@ -582,13 +588,14 @@ function initTeacherAccounts() {
   } catch (error) { if (ai.token === token) $('teacher-account-status').textContent = error.message; }
   finally {
    if (ai.token === token) {
-    for (const provider of ['groq','openrouter']) $('teacher-' + provider + '-key').value = '';
     $('teacher-keys-save').disabled = !ai.token;
    }
   }
  };
- $('teacher-reload-sets').onclick = teacherAction(async ()=>{
+ $('teacher-reload-sets').onclick = async ()=>{
+  try {
   if (!confirm('Reload server copies? Export a backup first if this browser has unsaved edits.')) return;
+  $('tools-recovery-status').textContent='Loading saved server copies…';
   // Reload explicitly replaces local revisions, including a locally newer conflicting copy.
   const {token,root} = ai, response = await service('/teacher/sets',{root,token});
   if (ai.token !== token) return;
@@ -609,8 +616,9 @@ function initTeacherAccounts() {
    }
   } finally { restoringTeacherSets = false; }
   renderSetup(); renderPrivateAudio(); watchPrivateAudio();
-  $('teacher-account-status').textContent = 'Saved sets reloaded.';
- });
+  $('tools-recovery-status').textContent = 'Saved server copies reloaded.';
+  } catch(error) { $('tools-recovery-status').textContent=error.message; }
+ };
  $('teacher-retry-audio').onclick = teacherAction(async ()=>{
   const list = selectedList(), {root,token} = ai; if (!list) return;
   $('teacher-retry-audio').disabled = true;
@@ -827,6 +835,7 @@ function linkLookupProblem() {
 
 function renderSharing() {
  const mode = $('shared-mode').value;
+ $('shared-practice-summary').textContent='· '+($('shared-hints').checked?'Hints on':'Hints off')+' · '+($('shared-retype').checked?'Corrections on':'Corrections off');
  const info = sharing.records && SharedReview.sharingContent(sharing.records, mode);
  const {approved, drafts, missing} = info || {approved:[], drafts:[], missing:[]};
  const clips = sharing.list?.audioStatus?.recordings || [];
@@ -839,7 +848,7 @@ function renderSharing() {
  const existingLink=!!ai.published && ai.publishedListId===sharing.list?.id;
  const hasLink = !lookupProblem && currentStudentLink();
  const legacyRules=existingLink && (typeof ai.publishedRetype!=='boolean' || typeof ai.publishedVariants!=='boolean');
- $('ai-publish-readiness').textContent = sharing.list?.remoteConflict ? 'Resolve this set’s version conflict in API keys before sharing. Your published link is unchanged.' : workspaceSavePending() ? 'Finish saving valid words before preparing or sharing this set.' : lookupProblem || (!sharing.list ? 'Create or select a set first.' :
+ $('ai-publish-readiness').textContent = sharing.list?.remoteConflict ? 'This set has a version conflict. Export a backup, then use Tools → Recover saved sets. Your published link is unchanged.' : workspaceSavePending() ? 'Finish saving valid words before preparing or sharing this set.' : lookupProblem || (!sharing.list ? 'Create or select a set first.' :
   !info ? 'Checking which words are ready…' : info.ready && !audioReady ?
    (!ai.config.dictationEnabled ? ai.keys?.openrouter ? 'Paul audio is unavailable. Check API keys and retry before creating this student link.' : 'Connect OpenRouter in API keys to prepare paid Paul recordings before creating this student link.' : 'Waiting for recordings. Open Recording details under Words to check progress or retry failed recordings.') : mode === 'spelling' ?
    'Ready to share. Students will spell all ' + info.words.length + ' words.' : drafts.length ?
@@ -869,6 +878,7 @@ function renderSharing() {
  const incomplete = audioStatus && audioStatus.ready < audioStatus.total;
  const waitingForAudio = !!pending || !!incomplete && !!ai.config.dictationEnabled;
  if(hasLink)$('ai-publish').disabled=publishing || waitingForAudio;
+ $('ai-preview').textContent=hasLink?'Preview shared set':'Preview draft (device voice)';
  $('ai-preview').disabled = workspaceSavePending() || !!lookupProblem || (entryPage === 'teacher' ? !info?.ready || publishing : !hasLink || !!pending);
  $('ai-link-actions').hidden = !existingLink;
  $('ai-publish-options').hidden = !ai.teacher?.isAdmin || !ai.config.draftingAvailable;
@@ -1015,6 +1025,7 @@ function showTeacherEntry() {
   $('setup-list-label').textContent = 'Practice set';
   $('new-list').textContent = 'Create a set';
   $('edit-list').textContent = 'Edit words';
+  $('delete-list').textContent = 'Delete private set';
   $('open-vocabulary').textContent = 'Edit vocabulary';
   $('open-vocabulary').hidden = true;
   $(selectedList() ? 'list-select' : 'new-list').focus();
@@ -1037,6 +1048,9 @@ function showTeacherEntry() {
 function initTeacher() {
  initTeacherViewNavigation();
  $('workspace-teacher-settings').onclick=()=>showTeacherTools('settings');
+ $('tools-open-presets').onclick=()=>showTeacherTools('presets');
+ $('workspace-fix-keys').onclick=()=>showTeacherTools('setup');
+ $('teacher-settings-back').onclick=()=>showTeacherTools('settings');
  for(const [id,view] of [['settings-connections','setup'],['settings-presets','presets'],['settings-administration','administration']])
   $(id).onclick=teacherAction(async()=>{await showTeacherTools(view);if(view==='administration')await refreshTeacherAccounts();});
  $('teacher-dialog').addEventListener('close',()=>{
@@ -1058,7 +1072,8 @@ function initTeacher() {
  $('workspace-refresh-link').onclick=()=>showTeacherTools('workspace');
  $('workspace-back').onclick=async()=>{
   if(workspaceEdit?.pending && !await flushWorkspaceWords())return;
-  if(typeof closeVocabularyEditor==='function')await closeVocabularyEditor();
+  if(typeof canLeaveVocabularyEditor==='function' && !canLeaveVocabularyEditor())return;
+  if(typeof closeVocabularyEditor==='function')await closeVocabularyEditor(true);
   clearTimeout(workspaceSaveTimer);
   workspaceEdit=null;
   renderSetup();show('setup-screen');$('teacher-open-publishing').focus();
@@ -1066,7 +1081,8 @@ function initTeacher() {
  $('workspace-edit-vocabulary').onclick=teacherAction(async()=>{
   if(workspaceSavePending())return;
   $('workspace-vocabulary').open=true;
-  await openVocabularyEditor('',true);
+  const filter=sharing.records?.some(row=>row.vocabulary && row.vocabulary.status!=='approved')?'draft':'';
+  await openVocabularyEditor(filter,true);
  });
  $('teacher-open-drafting').onclick = ()=>showTeacherTools('workspace');
  $('teacher-open-connections').onclick = ()=>showTeacherTools('setup');

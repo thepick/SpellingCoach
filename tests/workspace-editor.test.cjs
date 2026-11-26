@@ -3,6 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const Vocabulary=require('../src/vocabulary.js');
+const Learning=require('../src/learning.js');
 const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};};
 const row=()=>({word:'solid',vocabulary:{senseId:'primary',partOfSpeech:'noun',definition:'A material that keeps its shape.',
  examples:['The solid keeps its shape.'],clozeQuestions:[{id:'q1',sentence:'The _____ keeps its shape.',answer:'solid',explanation:'It keeps its shape.'}],
@@ -15,15 +16,15 @@ function harness() {
   add(node){this.append(node);},replaceChildren(){for(const child of this.children)child.parentElement=null;this.children=[];},
   addEventListener(type,callback){(this.listeners[type]??=[]).push(callback);},
   showModal(){this.open=true;events.push('modal');},close(){this.open=false;events.push('close:'+id);for(const callback of this.listeners.close||[])callback();},
-  setCustomValidity(value){this.validation=value;},reportValidity(){},focus(){},reset(){},querySelector(){return element('child');},
+  setCustomValidity(value){this.validation=value;},setAttribute(){},reportValidity(){},focus(){},reset(){},querySelector(){return element('child');},
  });
  const get=id=>{if(!elements.has(id))elements.set(id,element(id));return elements.get(id);};
- const context=vm.createContext({Vocabulary,structuredClone,Option:function(text,value){return {...element('option'),textContent:text,value};},
+ const context=vm.createContext({Vocabulary,Learning,structuredClone,Option:function(text,value){return {...element('option'),textContent:text,value};},
   $:get,document:{createElement:()=>element('created')},location:{protocol:'https:'},entryPage:'teacher',
   ai:{role:'teacher',token:'teacher-a'},state:{lists:[],learning:{},familiar:{},settings:{selected:{}}},
   save:()=>true,now:()=> 'now',newListId:()=> 'new-id',status:message=>events.push('status:'+message),
   initTeacher(){},initDictation(){},initSharedReview(){},prefillTroySentence(){},renderRecordingControls(){},
-  backToSetup(){},
+  backToSetup(){},show(){},speech:false,sharedReview:null,
   stopRecording:()=>events.push('stop'),refreshSetWorkspace:async()=>events.push('refresh'),confirm:()=>true,
  });
  vm.runInContext(fs.readFileSync('src/coach.js','utf8'),context);
@@ -33,6 +34,114 @@ function harness() {
  get('vocab-dialog').append(get('vocab-editor-panel'));get('workspace-review').hidden=true;
  return {context,run,elements,events,get};
 }
+
+test('canceling vocabulary navigation keeps the same word, page, filters, and unsaved fields',async()=>{
+ const h=harness();h.context.rows.push(...Array.from({length:30},(_,index)=>({word:'word '+index,vocabulary:null})));
+ await h.run('openVocabularyEditor("",true)');
+ h.context.confirm=()=>false;h.get('vocab-definition').value='Unfinished correction';
+ h.get('vocab-word').value='word 0';h.get('vocab-word').onchange();
+ assert.equal(h.get('vocab-word').value,'solid');
+ h.get('vocab-search').value='word';h.get('vocab-search').oninput();
+ assert.equal(h.get('vocab-search').value,'');
+ h.get('vocab-filter').value='missing';h.get('vocab-filter').oninput();
+ assert.equal(h.get('vocab-filter').value,'');
+ h.get('vocab-next').onclick();
+ assert.equal(h.get('vocab-page').textContent,'Page 1 of 2');
+ await h.get('vocab-close').onclick();
+ assert.equal(h.get('workspace-review').hidden,false);
+ assert.equal(h.get('vocab-definition').value,'Unfinished correction');
+ assert.equal(h.run('canLeaveVocabularyEditor()'),false);
+ h.context.confirm=()=>true;
+ h.get('vocab-word').value='word 0';h.get('vocab-word').onchange();
+ assert.equal(h.get('vocab-word').value,'word 0');assert.equal(h.get('vocab-definition').value,'');
+});
+
+test('Escape and Close protect unsaved vocabulary in the modal',async()=>{
+ const h=harness();await h.run('openVocabularyEditor()');
+ const dialog=h.get('vocab-dialog');let canceled=false;
+ h.context.confirm=()=>false;h.get('vocab-explanations').value='Unfinished feedback';
+ for(const handler of dialog.listeners.cancel || []) handler({preventDefault(){canceled=true;}});
+ assert.equal(canceled,true);
+ h.get('vocab-close').onclick();assert.equal(dialog.open,true);
+ assert.equal(h.get('vocab-explanations').value,'Unfinished feedback');
+ h.context.confirm=()=>true;
+ h.get('vocab-close').onclick();assert.equal(dialog.open,false);
+});
+
+test('word navigation crosses pages and Save and approve advances to the next draft',async()=>{
+ const h=harness();
+ h.context.rows.push(...Array.from({length:29},(_,index)=>({word:'word '+index,vocabulary:null})),
+  {word:'liquid',vocabulary:{...row().vocabulary,examples:[],clozeQuestions:[]}});
+ await h.run('openVocabularyEditor("",true)');
+ h.get('vocab-word').value='word 28';h.get('vocab-word').onchange();
+ h.get('vocab-word-next').onclick?.();
+ assert.equal(h.get('vocab-word').value,'liquid');assert.equal(h.get('vocab-page').textContent,'Page 2 of 2');
+ h.get('vocab-word-prev').onclick();assert.equal(h.get('vocab-word').value,'word 28');
+ h.get('vocab-filter').value='draft';h.get('vocab-filter').oninput();
+ assert.equal(h.get('vocab-word').value,'solid');
+ await h.get('vocab-form').onsubmit({preventDefault(){},submitter:{id:'vocab-approve'}});
+ assert.equal(h.run('editorRecords[0].vocabulary.status'),'approved');
+ assert.equal(h.get('vocab-word').value,'liquid');assert.equal(h.get('vocab-form').hidden,false);
+ await h.get('vocab-form').onsubmit({preventDefault(){},submitter:{id:'vocab-approve'}});
+ assert.equal(h.get('vocab-form').hidden,true);assert.equal(h.get('vocab-review-content').hidden,true);
+ assert.equal(h.get('vocab-edit-toggle').hidden,true);
+});
+
+test('bulk approval discloses that drafts outside the filter and unopened drafts are included',async()=>{
+ const h=harness();
+ h.context.rows.push({word:'liquid',vocabulary:{...row().vocabulary,examples:[],clozeQuestions:[]}});
+ await h.run('openVocabularyEditor("draft",true)');
+ h.get('vocab-search').value='solid';h.get('vocab-search').oninput();
+ let message;h.context.confirm=text=>{message=text;return false;};
+ await h.get('vocab-bulk').onclick();
+ assert.match(message,/all.*drafts/i);assert.match(message,/haven.t opened or reviewed/i);
+ assert.equal(h.run('editorRecords[1].vocabulary.status'),'draft');
+ h.context.confirm=()=>true;await h.get('vocab-bulk').onclick();
+ assert.equal(h.run('editorRecords[1].vocabulary.status'),'approved');
+});
+
+test('a save completing after more typing keeps the newer edit instead of advancing',async()=>{
+ const h=harness(),saved=deferred();
+ h.context.rows.push({word:'liquid',vocabulary:{...row().vocabulary,examples:[],clozeQuestions:[]}});
+ await h.run('openVocabularyEditor("draft",true)');
+ h.context.saved=saved.promise;h.run('saveVocabulary=async()=>{await saved;return vocabularyRevision(selected)}');
+ const pending=h.get('vocab-form').onsubmit({preventDefault(){},submitter:{id:'vocab-approve'}});
+ h.get('vocab-definition').value='A new correction while saving';saved.resolve();await pending;
+ assert.equal(h.get('vocab-word').value,'solid');
+ assert.equal(h.get('vocab-definition').value,'A new correction while saving');
+ h.context.confirm=()=>false;assert.equal(h.run('canLeaveVocabularyEditor()'),false);
+});
+
+test('Show all cards restores an empty unfamiliar queue without changing familiarity or mastery',()=>{
+ const h=harness();
+ h.run('rows[0].vocabulary.status="approved";state.familiar.set=["solid"];beginStudy(selected,rows)');
+ assert.equal(h.get('study-show-all').hidden,true);
+ h.get('study-unfamiliar').checked=true;h.get('study-unfamiliar').onchange();
+ assert.equal(h.get('study-show-all').hidden,false);
+ h.get('study-show-all').onclick?.();
+ assert.equal(h.get('study-unfamiliar').checked,false);assert.equal(h.get('study-show-all').hidden,true);
+ assert.equal(h.get('study-front').textContent,'solid');
+ assert.equal(h.run('state.familiar.set[0]'),'solid');assert.equal(h.run('state.learning.set'),undefined);
+});
+
+test('existing vocabulary opens as a readable preview and toggling editing keeps typed wording',async()=>{
+ const h=harness();h.context.rows.push({word:'liquid',vocabulary:null});
+ await h.run('openVocabularyEditor("",true)');
+ assert.equal(h.get('vocab-review-content').hidden,false);assert.equal(h.get('vocab-edit-fields').hidden,true);
+ assert.equal(h.get('vocab-review-definition').textContent,row().vocabulary.definition);
+ assert.equal(h.get('vocab-review-examples').children[0].textContent,'The solid keeps its shape.');
+ assert.equal(h.get('vocab-review-cloze').children[0].textContent,'The _____ keeps its shape.');
+ assert.equal(h.get('vocab-save-draft').hidden,true);
+ h.get('vocab-edit-toggle').onclick();
+ assert.equal(h.get('vocab-review-content').hidden,true);assert.equal(h.get('vocab-save-draft').hidden,false);
+ h.get('vocab-definition').value='A clearer definition';
+ h.get('vocab-edit-toggle').onclick();
+ assert.equal(h.get('vocab-review-definition').textContent,'A clearer definition');
+ h.get('vocab-edit-toggle').onclick();
+ assert.equal(h.get('vocab-definition').value,'A clearer definition');
+ h.get('vocab-word').value='liquid';h.get('vocab-word').onchange();
+ assert.equal(h.get('vocab-edit-toggle').hidden,true);assert.equal(h.get('vocab-edit-fields').hidden,false);
+});
 
 test('inline review moves the same editor and Finish restores it before refreshing the workspace',async()=>{
  const h=harness(),panel=h.get('vocab-editor-panel'),form=h.get('vocab-form'),handler=form.onsubmit;
@@ -112,12 +221,29 @@ test('a newer editor request wins over a late load and finishing an old owner ca
  assert.equal(h.events.filter(event=>event==='refresh').length,0);assert.equal(h.get('workspace-review').hidden,true);
 });
 
-test('a save completing after a newer editor open does not replace its unsaved fields',async()=>{
- const h=harness(),saved=deferred();await h.run('openVocabularyEditor("",true)');
- h.context.saved=saved.promise;h.run('saveVocabulary=()=>saved');
- const pending=h.run('changeVocabulary([{...editorRecords[0],vocabulary:{...editorRecords[0].vocabulary,status:"approved"}}],"solid")');
- await h.run('openVocabularyEditor("",true)');h.get('vocab-definition').value='Unsaved new text';saved.resolve();await pending;
- assert.equal(h.get('vocab-definition').value,'Unsaved new text');assert.equal(h.events.filter(event=>event==='refresh').length,0);
+test('finishing, closing, or reopening review during a save does not cancel a pending approval',async()=>{
+ for(const action of ['finish','back','reopen','close','escape']) {
+  const h=harness(),started=deferred(),release=deferred(),stored=new Map();
+  const inline=!['close','escape'].includes(action);
+  await h.run(`openVocabularyEditor("",${inline})`);
+  h.context.getStore=async()=>({kind:'indexedDB',async put(key,records){stored.set(key,records);started.resolve();await release.promise;},
+   async remove(key){stored.delete(key);}});
+  h.run('saveVocabulary=originalSaveVocabulary;restoringTeacherSets=true;renderSetup=()=>{}');
+  const pending=h.get('vocab-form').onsubmit({preventDefault(){},submitter:{id:'vocab-approve'}});
+  await started.promise;
+  let canceled=false;
+  if(action==='back')await h.run('closeVocabularyEditor(true)');
+  else if(action==='reopen')await h.run('openVocabularyEditor("draft",true)');
+  else if(action==='escape')for(const handler of h.get('vocab-dialog').listeners.cancel)handler({preventDefault(){canceled=true;}});
+  else await h.get('vocab-close').onclick();
+  const remainedOpen=inline?!h.get('workspace-review').hidden:h.get('vocab-dialog').open;
+  release.resolve();await pending;
+  assert.equal(stored.get(h.run('selected.vocabKey'))?.[0].vocabulary.status,'approved',action);
+  assert.equal(remainedOpen,true,action);
+  if(action==='escape')assert.equal(canceled,true);
+  await h.get('vocab-close').onclick();
+  assert.equal(inline?h.get('workspace-review').hidden:!h.get('vocab-dialog').open,true,action);
+ }
 });
 
 test('leaving before an inline load finishes prevents its panel from mounting afterward',async()=>{
