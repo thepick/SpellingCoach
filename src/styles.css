@@ -152,7 +152,8 @@ body[data-entry=teacher] #setup-set-summary { margin: 0; }
 #tools-dialog #backup-status:empty { display: none; }
 @media (max-width: 640px) { #audio-settings-grid { grid-template-columns: 1fr; } }
 
-#shared-study:not([hidden]) { display: block; margin: .85rem auto 0; }
+.shared-ready-actions { display: flex; flex-direction: column; align-items: center; gap: .875rem; margin-top: 1rem; }
+.shared-ready-actions > button { max-width: 100%; margin: 0; }
 
 #prepare-share-screen { max-width: 54rem; margin-inline: auto; }
 .workspace-heading { align-items: flex-start; gap: 1rem; }
