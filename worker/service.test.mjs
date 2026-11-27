@@ -27,6 +27,53 @@ const draft = (word) => {
   return { word, definition, partOfSpeech, examples, clozeQuestions: clozeQuestions.map(({ id, ...question }) => question), meaningDistractors, acceptedSpellings };
 };
 
+test('generation carries supplied meanings through saved jobs and bypasses unrelated cached vocabulary',async()=>{
+  const {cacheKey,DEFAULT_SETTINGS}=await import('./validation.mjs');
+  let received;
+  const f=fixture({},async request=>{received=request;return {records:request.words.map(draft),tokens:100};});
+  f.db.prepare('INSERT INTO cache VALUES (?, ?, ?, ?)').run(cacheKey('textile',DEFAULT_SETTINGS),'older-pack','textile',JSON.stringify(approved('textile')));
+  const definitions=[{word:'textile',definition:'A woven material used for clothing.'}];
+  const created=await f.call('POST','/generate',{words:['textile'],definitions});
+  assert.equal(created.status,201);assert.equal(created.data.counts.cached,0);
+  assert.deepEqual((await f.call('GET','/jobs/'+created.data.id)).data.definitions,definitions);
+  const completed=await f.call('POST','/jobs/'+created.data.id+'/step');
+  assert.equal(completed.data.status,'complete');assert.deepEqual(received.definitions,definitions);
+  assert.equal(completed.data.words[0].vocabulary.definition,definitions[0].definition);
+  assert.equal(completed.data.words[0].vocabulary.clozeQuestions.length,5);
+});
+
+test('definition hints are bounded, matched to requested words, and available only to teachers',async()=>{
+  const f=fixture();
+  for(const definitions of [[{word:'other',definition:'A kind of fabric.'}],[{word:'textile',definition:'<invalid>'}],
+    [{word:'textile',definition:'A'.repeat(301)}],[{word:'textile',definition:'A fabric.'},{word:'textile',definition:'Another fabric.'}]]) {
+    assert.equal((await f.call('POST','/generate',{words:['textile'],definitions})).status,400);
+  }
+  const token=await f.createClass('student');
+  assert.equal((await f.call('POST','/generate',{words:['textile'],definitions:[{word:'textile',definition:'A kind of fabric.'}]},token)).status,400);
+  const words=Array.from({length:200},(_,i)=>'word'+i);
+  const definitions=words.map(word=>({word,definition:'A material '+ 'used in the classroom. '.repeat(10)}));
+  const created=await f.call('POST','/generate',{words,definitions});
+  assert.equal(created.status,201);assert.equal(created.data.counts.total,200);
+});
+
+test('provider receives the selected grade and only the meanings for its batch with simple contextual sentence instructions',async()=>{
+  const {DEFAULT_SETTINGS}=await import('./validation.mjs');
+  const {tokenBudget}=await import('./provider.mjs');
+  const definitions=[{word:'textile',definition:'A woven material used for clothing.'},{word:'bank',definition:'The side of a river.'}];
+  const settings={...DEFAULT_SETTINGS,readingLevel:4,context:'Materials and clothing'};
+  assert(tokenBudget(['textile'],settings,null,definitions).reservedTokens>tokenBudget(['textile'],settings).reservedTokens);
+  await requestVocabulary({target:{provider:'groq',endpoint:'https://api.groq.com/openai/v1/chat/completions',model:'openai/gpt-oss-120b',key:'fake'},
+    words:['textile'],settings,definitions,maxCompletionTokens:3000,fetchRequest:async(url,init)=>{
+      const body=JSON.parse(init.body),data=JSON.parse(body.messages[1].content);
+      assert.equal(data.readingLevel,4);assert.equal(data.context,'Materials and clothing');
+      assert.deepEqual(data.definitions,definitions.slice(0,1));
+      assert.match(body.messages[0].content,/clear, simple sentences/);
+      assert.match(body.messages[0].content,/five-underscore blank/);
+      assert.match(body.messages[0].content,/meaning consistent/);
+      return Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify({records:[draft('textile')]})}}]});
+    }});
+});
+
 function fixture(vars = {}, fetcher = async ({ words }) => ({ records: words.map(draft), tokens: 100 }), speechFetcher) {
   const db = new DatabaseSync(':memory:');
   let clock = Date.parse('2026-11-25T01:00:00Z');

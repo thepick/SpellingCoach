@@ -445,9 +445,9 @@ details > summary { cursor: pointer; }
   <p id="audio-word-summary" class="hint" role="status"></p><button id="workspace-fix-keys" type="button" class="secondary" hidden>Connect OpenRouter for recordings</button>
   <details id="workspace-audio-details"><summary>Recording details</summary><div id="workspace-audio-slot"></div></details>
  </section>
+ <section class="workspace-section stack" aria-label="Generate sentences and audio"><h2>Sentences and audio</h2><p id="workspace-settings-summary" class="hint"></p><p class="hint">One button creates missing examples, fill-in-the-blank sentences, and their audio at this set's reading grade. Existing wording and recordings are kept. Review the results below before sharing.</p><div id="workspace-generation-slot"></div></section>
  <div id="workspace-mode-slot" class="workspace-section"></div>
  <details id="workspace-vocabulary" class="workspace-section"><summary>Vocabulary <span id="workspace-vocabulary-summary" class="hint">Optional</span></summary><div class="workspace-vocabulary-body stack">
-  <p id="workspace-settings-summary" class="hint"></p><div id="workspace-generation-slot"></div>
   <div class="actions"><button id="workspace-edit-vocabulary" type="button" class="secondary">Edit vocabulary</button></div>
   <details><summary>Image display</summary><div class="stack"><p id="images-storage-usage" class="hint" role="status"></p><label for="images-display">Show images in</label><select id="images-display"><option value="practice">Study and vocabulary practice</option><option value="study">Study only</option><option value="hidden">Hide images</option></select><label class="checkline"><input id="images-tests" type="checkbox"> Also allow images in formal vocabulary tests</label><p class="hint">Images stay hidden during spelling. Save privately, then update the student link to share changes.</p></div></details><div id="workspace-generated-list" class="stack" aria-label="Generated vocabulary and recordings"></div>
   <div id="workspace-review" hidden aria-label="Vocabulary review"></div>
@@ -478,7 +478,7 @@ details > summary { cursor: pointer; }
    <div><label for="speech-rate">Local playback speed <span id="rate-label">0.85</span></label><input id="speech-rate" aria-describedby="device-rate-help" type="range" min="0.5" max="1.2" step="0.05"><div id="device-rate-help" class="hint">Changes device speech and recordings saved on this device, including local Paul clips. Use Listen slowly for shared recordings.</div></div>
   </div><div class="actions"><button id="preview-voice" class="ghost small">Preview device voice</button></div></div><div class="actions"><a id="offline-download" href="WordLab%20v0.2.0.html" download>Download offline app</a></div>
  </details>
- <div class="row between tools-footer"><div><p id="tools-save-help" class="hint">Local practice settings save automatically. API keys have their own Save button.</p><span id="tools-version" class="hint">WordLab v0.2.0</span><span id="release-build" class="hint">Build 8fde097ad68b</span></div><button id="done-tools">Close</button></div>
+ <div class="row between tools-footer"><div><p id="tools-save-help" class="hint">Local practice settings save automatically. API keys have their own Save button.</p><span id="tools-version" class="hint">WordLab v0.2.0</span><span id="release-build" class="hint">Build 3f6225e06f27</span></div><button id="done-tools">Close</button></div>
 </div></dialog><dialog id="create-list-dialog" class="tools-dialog create-list-dialog" aria-labelledby="create-list-title"><form id="create-list-form" class="tools-panel create-list-form"><div class="tools-heading"><h1 id="create-list-title">Create a word list</h1><p id="create-list-intro" class="subhead">Give your list a name, then add or import the words to practice.</p></div><div class="stack"><div><label for="create-list-name">Name</label><input id="create-list-name" type="text" maxlength="80" autocomplete="off" placeholder="For example, Week 3 spelling" required autofocus></div><div id="create-list-grade-field"><label for="create-list-grade">Grade preset for this new set</label><select id="create-list-grade"><option value="3">Grade 3</option><option value="4">Grade 4</option><option value="5" selected>Grade 5</option><option value="6">Grade 6</option><option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option></select><p class="hint">Copies your grade defaults into this set. You can adjust them in Prepare &amp; share.</p></div><div><label for="create-list-words">Words or phrases</label><textarea id="create-list-words" spellcheck="false" placeholder="because&#10;different&#10;important" aria-describedby="create-list-help" required></textarea><div id="create-list-help" class="hint">Enter up to 200 words or phrases, one per line. Repeated words are removed.</div></div></div><div class="actions"><button id="create-import-terms" type="button" class="secondary">Import terms, definitions, and images</button><button id="import-csv" type="button" class="secondary">Import words only (CSV)</button><button id="split-list" type="button" class="secondary" hidden>Split into lists</button><details><summary>Export words</summary><button id="copy-list" type="button" class="ghost">Copy as CSV</button></details></div><p class="hint">CSV: words on separate lines or separated by commas. No headings needed.</p><input id="csv-file" type="file" accept=".csv,text/csv" hidden><div id="list-editor-status" class="status" role="status" aria-live="polite"></div><div class="row between"><button id="cancel-create-list" type="button" class="ghost">Cancel</button><button id="save-list-draft" type="submit">Create this list</button></div></form></dialog>
 <section id="practice-screen" class="screen practice panel" hidden><div class="practice-head"><div><div id="list-name-practice" class="hint"></div><h1>Listen, then spell</h1></div><button id="pause-button" class="ghost">Pause practice <span class="kbd">Esc</span></button></div><div id="spelling-mastery" class="mastery-meter"><div class="mastery-meta"><span class="mastery-label">Progress toward mastery</span><span class="mastery-percent"></span></div><div id="mastery-progress" class="progressline" role="progressbar" aria-label="Progress toward mastery" aria-valuemax="100" aria-valuemin="0" aria-valuenow="0"><div id="progress-fill" class="progressfill"></div></div><div class="mastery-foot"><span id="progress-text" class="mastery-count" aria-live="polite"></span><span id="round-text"></span></div><p class="hint">Two correct spellings in a row to master each word.</p></div><div id="tiles" class="tiles" aria-label="Word progress"></div>
 <div class="prompt"><div class="actions" style="justify-content:center"><button id="replay-button" class="secondary">Replay word <span class="kbd">R</span></button><button id="slow-replay" class="ghost">Replay slowly <span class="kbd">S</span></button></div><div id="definition" class="definition"></div><form id="answer-form"><div id="spelling-correction" class="correction" hidden><span>Correct answer</span><strong></strong><span>Type it to continue.</span><p class="correction-detail" hidden></p></div><label class="sr" for="answer-input">Type the word you hear</label><input id="answer-input" class="word-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"><div class="hint">Type the word and press Enter to submit your answer.</div><div class="actions" style="justify-content:center;margin-top:10px"><button id="dont-know" type="button" class="ghost">I’m not sure</button><button id="submit-answer" type="submit">Submit answer</button></div></form></div><div id="feedback" class="feedback" aria-live="polite"></div></section>
@@ -585,7 +585,7 @@ details > summary { cursor: pointer; }
     <label class="checkline"><input type="checkbox" id="ai-only-missing" checked> Skip words with vocabulary</label>
    </div></details>
    </div></details>
-   <div class="actions"><button type="button" id="ai-generate">Generate vocabulary and audio</button></div>
+   <div class="actions"><button type="button" id="ai-generate">Generate sentences and audio</button></div>
   </div>
   <p id="ai-progress" class="hint" role="status"></p>
   <div id="teacher-job-actions" class="actions" hidden><button type="button" id="ai-apply">Save drafts to this set</button><button type="button" id="ai-pause" class="secondary">Pause</button><button type="button" id="ai-resume" class="secondary">Resume</button><button type="button" id="ai-cancel" class="ghost">Cancel remaining work</button><button type="button" id="ai-retry-words" class="ghost">Retry failed words</button><button type="button" id="ai-review-saved" class="secondary" hidden>Review saved drafts</button></div>
@@ -6365,6 +6365,23 @@ let pendingPresetSave = null;
 let presetEditVersion = 0;
 let hydratedGenerationList = null;
 let hydratedGenerationText = '';
+function needsSentences(row) {
+ const vocabulary = row.vocabulary;
+ return !vocabulary || Array.isArray(vocabulary.examples) && !vocabulary.examples.length ||
+  Array.isArray(vocabulary.clozeQuestions) && !vocabulary.clozeQuestions.length;
+}
+function sentenceDefinitions(records) {
+ return records.filter(row => needsSentences(row) && row.vocabulary).map(row => ({word:row.word,definition:row.vocabulary.definition}));
+}
+function completeSentenceDraft(row, generated) {
+ if (!row.vocabulary) return generated;
+ const previous = row.vocabulary;
+ const vocabulary = {...generated,definition:previous.definition,
+  examples:previous.examples.length ? previous.examples : generated.examples,
+  clozeQuestions:previous.clozeQuestions.length ? previous.clozeQuestions : generated.clozeQuestions,
+  acceptedSpellings:previous.acceptedSpellings,status:'draft'};
+ return Vocabulary.validateRecord(row.word,vocabulary);
+}
 const generationFields = {readingLevel:'grade',practiceSentences:'sentences',exampleSentences:'examples',
  reuseApproved:'reuse',esl:'esl',distractors:'distractors',explanations:'explanations',dialect:'dialect',context:'context',sense:'sense'};
 
@@ -6521,17 +6538,20 @@ function renderSetWorkspace() {
  $('workspace-words-summary').textContent='· '+list.words.length+' words';
  $('workspace-vocabulary-summary').textContent=allApproved ? 'All '+approved+' words approved' :
   approved+' approved · '+(vocabulary.length-approved)+' to review · '+(list.words.length-vocabulary.length)+' missing';
+ const sentenceGaps=rows.filter(needsSentences).length;
+ if(sentenceGaps)$('workspace-vocabulary-summary').textContent+=' - '+sentenceGaps+' need sentences';
  const settings=GenerationSettings.validate(list.generationSettings) || GenerationSettings.defaults();
  $('workspace-settings-summary').textContent='Grade '+settings.readingLevel+' · '+settings.practiceSentences+
   ' practice '+(settings.practiceSentences===1?'sentence':'sentences')+' · '+settings.exampleSentences+
   (settings.exampleSentences===1?' example':' examples');
- $('teacher-draft-form').hidden=!ai.config.generationEnabled;
+ $('teacher-draft-form').hidden=false;
  $('workspace-vocabulary-settings').hidden=false;
  $('ai-context-wrap').hidden=allApproved || rows.length > 0 && vocabulary.length===rows.length;
  $('workspace-edit-vocabulary').textContent=allApproved?'Edit vocabulary':vocabulary.length?'Review vocabulary':'Add vocabulary by hand';
  $('workspace-edit-vocabulary').disabled=workspaceSavePending() || !sharing.records;
- $('ai-generate').hidden=rows.length===list.words.length && vocabulary.length===rows.length;
- $('ai-generate').disabled=!!pendingGeneration || !ai.config.generationEnabled || !list.words.length || workspaceSavePending() || ['ready','processing','paused'].includes(ai.job?.status);
+ $('ai-generate').hidden=false;
+ const missingSentences=rows.some(needsSentences);
+ $('ai-generate').disabled=!!pendingGeneration || missingSentences && !ai.config.generationEnabled || !list.words.length || workspaceSavePending() || ['ready','processing'].includes(ai.job?.status) || ai.job?.status==='paused' && ai.listId!==list.id;
  $('teacher-draft-intro').hidden=true;
  $('teacher-selection').hidden=true;
  $('ai-publish-review').hidden=true;
@@ -6550,7 +6570,11 @@ function renderSetWorkspace() {
  $('workspace-save-retry').hidden=!workspaceEdit?.error;
  if(workspaceEdit?.error)$('workspace-words-editor').open=true;
  $('workspace-refresh-link').hidden=sharing.linkLookup!=='error';
- $('ai-generate').textContent='Generate vocabulary and audio';
+ $('ai-generate').textContent=ai.listId===list.id && ai.job?.status==='paused' ? 'Continue sentences and audio' : 'Generate sentences and audio';
+ $('teacher-retry-audio').hidden=true;
+ $('ai-prepare-audio').hidden=true;
+ $('ai-retry-words').hidden=true;
+ $('ai-resume').hidden=true;
  $('ai-only-missing').checked=true;
  $('ai-only-missing').disabled=true;
  $('ai-share-audio').hidden=!ai.audioStatus || ai.audioStatus.ready===ai.audioStatus.total;
@@ -6892,6 +6916,17 @@ function renderPrivateAudio() {
  renderTeacherView($('teacher-dialog').dataset.view || 'setup');
 }
 
+async function retrySetAudio(list,{root,token,owner}) {
+ if(ai.token!==token || state!==owner || selectedList()!==list)return;
+ const audio=list.audioStatus;
+ if(audio && !audio.pending && audio.ready<audio.total) {
+  const response=await service('/teacher/sets/'+encodeURIComponent(list.packId || list.id)+'/retry',{root,token,method:'POST'});
+  if(ai.token!==token || state!==owner || selectedList()!==list)return;
+  list.audioStatus=response.audioStatus;
+ }
+ renderPrivateAudio();watchPrivateAudio();renderSetWorkspace();
+}
+
 function watchPrivateAudio() {
  clearTimeout(privateAudioTimer);
  const list = selectedList(), {root,token} = ai;
@@ -6935,8 +6970,10 @@ async function applyTeacherDrafts() {
  const previous = await loadVocabulary(list);
  if (ai.token !== token || ai.job !== job || !state.lists.includes(list)) return;
  if(list.updatedAt!==revision || list.vocabKey!==vocabKey || list.packVersion!==version)throw Error('Vocabulary changed while drafts were loading. Reopen this set to recover the completed drafts.');
- const records = previous.map(row=>lookup.has(wordKey(row.word)) && !row.vocabulary ?
-  {...row,vocabulary:lookup.get(wordKey(row.word))} : row);
+ const records = previous.map(row=>lookup.has(wordKey(row.word)) && needsSentences(row) &&
+  (!row.vocabulary || job.definitions?.some(entry=>entry.word===row.word && entry.definition===row.vocabulary.definition)) ?
+  {...row,vocabulary:completeSentenceDraft(row,lookup.get(wordKey(row.word))),
+   ...(row.vocabulary?.contentType==='definition'?{promptType:'sentence'}:{})} : row);
  if (JSON.stringify(records) === JSON.stringify(previous)) { ai.reviewDrafts = job.words.length; refreshTeacher(); return; }
  await saveVocabulary(list,records,{packVersion:(list.packVersion || 0)+1});
  if (ai.token !== token || ai.job !== job) return;
@@ -7616,12 +7653,23 @@ function initTeacher() {
   else { state = loadState(); listId = state.lists[0]?.id || ''; renderSetup(); }
  };
  $('ai-generate').onclick = teacherAction(async () => {
-  if(pendingGeneration || ['ready','processing','paused'].includes(ai.job?.status))return;
+  if(pendingGeneration || ['ready','processing'].includes(ai.job?.status))return;
   if(workspaceSavePending())throw Error('Finish saving valid words before generating vocabulary.');
   const {root,token} = ai, owner = state;
   const list = selectedList();
   if(!list)return;
   if (!canLeaveVocabularyEditor()) return;
+  if(ai.job?.status==='paused') {
+   if(ai.listId!==list.id)return;
+   const request={list};pendingGeneration=request;
+   try {
+    await closeVocabularyEditor(true);
+    if(ai.token!==token || state!==owner || selectedList()!==list)return;
+    await jobAction('resume');
+    if(ai.token===token && state===owner && selectedList()===list)await retrySetAudio(list,{root,token,owner});
+   } finally {if(pendingGeneration===request)pendingGeneration=null;if(ai.token===token && state===owner)refreshTeacher();}
+   return;
+  }
   const request={list,stamp:list.updatedAt,version:list.packVersion,settings:aiSettings()};
   pendingGeneration=request;$('ai-generate').disabled=true;
   try {
@@ -7630,15 +7678,27 @@ function initTeacher() {
    renderWorkspaceVocabulary();
    const records = ai.role === 'teacher' ? await loadVocabulary(list) : selectedRecords();
    if(ai.token!==token || state!==owner || selectedList()!==list || list.updatedAt!==request.stamp || list.packVersion!==request.version || workspaceSavePending())return;
-   const words=(ai.role==='teacher' || $('ai-only-missing').checked ? records.filter(row=>!row.vocabulary) : records).map(row=>row.word);
-   if(!words.length)throw Error('Every word already has vocabulary. Review the drafts, or edit an individual item to replace it.');
+   const words=(ai.role==='teacher' || $('ai-only-missing').checked ? records.filter(needsSentences) : records).map(row=>row.word);
+   if(ai.role==='teacher') {
+    await autosaveTeacherSet(list);
+    if(ai.token!==token || state!==owner || selectedList()!==list || list.updatedAt!==request.stamp || list.packVersion!==request.version || workspaceSavePending())return;
+   }
+   if(!words.length) {
+    if(ai.role==='teacher')await retrySetAudio(list,{root,token,owner});
+    return;
+   }
    ai.listId = list.id;
    ai.autoApply = true; ai.recoveringJob = false;
-   const job = await service('/generate', {root,token,method: 'POST', body: {words, settings: request.settings}, requestId: newListId()});
+   const definitions=ai.role==='teacher'?sentenceDefinitions(records):[];
+   const job = await service('/generate', {root,token,method: 'POST', body: {words, settings: request.settings,...(definitions.length?{definitions}:{})}, requestId: newListId()});
    if (ai.token !== token || state !== owner || !owner.lists.includes(list)) return;
    ai.listId=list.id;
    applyJob(job);
    await runJob();
+   if(ai.role==='teacher' && ai.token===token && state===owner && selectedList()===list) {
+    await autosaveTeacherSet(list);
+    if(ai.token===token && state===owner && selectedList()===list)await retrySetAudio(list,{root,token,owner});
+   }
   } finally { if(pendingGeneration===request)pendingGeneration=null;if(ai.token===token && state===owner)refreshTeacher(); }
  });
  for (const action of ['pause', 'resume', 'cancel']) $('ai-' + action).onclick = teacherAction(() => jobAction(action));
@@ -7823,10 +7883,11 @@ function initTeacher() {
    const rows=await loadVocabulary(list);
    if(ai.token!==token || state!==owner || selectedList()!==list || list.updatedAt!==request.stamp || list.packVersion!==request.version || workspaceSavePending())return;
    const failed=new Set(ai.job?.failedWords || []);
-   const words=rows.filter(row=>failed.has(row.word) && !row.vocabulary).map(row=>row.word);
+   const words=rows.filter(row=>failed.has(row.word) && needsSentences(row)).map(row=>row.word);
    if (!words.length) return;
    ai.autoApply = true; ai.recoveringJob = false;
-   const job = await service('/generate', {root,token,method: 'POST', body: {words, settings: request.settings}, requestId: newListId()});
+   const definitions=sentenceDefinitions(rows).filter(row=>words.includes(row.word));
+   const job = await service('/generate', {root,token,method: 'POST', body: {words, settings: request.settings,...(definitions.length?{definitions}:{})}, requestId: newListId()});
    if (ai.token !== token || state !== owner || !owner.lists.includes(list)) return;
    ai.listId=list.id;applyJob(job);await runJob();
   } finally {if(pendingGeneration===request)pendingGeneration=null;if(ai.token===token && state===owner)refreshTeacher();}

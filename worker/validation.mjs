@@ -75,6 +75,18 @@ export function parseSettings(input, teacher) {
   return settings;
 }
 
+export function parseDefinitions(input,words,teacher) {
+  if (input === undefined) return [];
+  requireInput(teacher && list(input,MAX_WORDS), 'Definition context is for teachers and must contain up to 200 entries.');
+  const targets = new Set(words);
+  const definitions = input.map(entry => {
+    requireInput(shape(entry,['word','definition']) && targets.has(entry.word) && safeContent(entry.definition,300), 'Supply a valid definition for a requested word.');
+    return {word:entry.word,definition:entry.definition.trim()};
+  });
+  requireInput(unique(definitions.map(entry=>entry.word)), 'Supply each definition only once.');
+  return definitions;
+}
+
 export function cacheKey(word, settings) {
   const { reuseApproved, ...contentSettings } = settings;
   return JSON.stringify(['prompt-1', 'schema-1', word, contentSettings]);

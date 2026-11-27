@@ -90,9 +90,9 @@ const themePreference = (() => {
   <p id="audio-word-summary" class="hint" role="status"></p><button id="workspace-fix-keys" type="button" class="secondary" hidden>Connect OpenRouter for recordings</button>
   <details id="workspace-audio-details"><summary>Recording details</summary><div id="workspace-audio-slot"></div></details>
  </section>
+ <section class="workspace-section stack" aria-label="Generate sentences and audio"><h2>Sentences and audio</h2><p id="workspace-settings-summary" class="hint"></p><p class="hint">One button creates missing examples, fill-in-the-blank sentences, and their audio at this set's reading grade. Existing wording and recordings are kept. Review the results below before sharing.</p><div id="workspace-generation-slot"></div></section>
  <div id="workspace-mode-slot" class="workspace-section"></div>
  <details id="workspace-vocabulary" class="workspace-section"><summary>Vocabulary <span id="workspace-vocabulary-summary" class="hint">Optional</span></summary><div class="workspace-vocabulary-body stack">
-  <p id="workspace-settings-summary" class="hint"></p><div id="workspace-generation-slot"></div>
   <div class="actions"><button id="workspace-edit-vocabulary" type="button" class="secondary">Edit vocabulary</button></div>
   <details><summary>Image display</summary><div class="stack"><p id="images-storage-usage" class="hint" role="status"></p><label for="images-display">Show images in</label><select id="images-display"><option value="practice">Study and vocabulary practice</option><option value="study">Study only</option><option value="hidden">Hide images</option></select><label class="checkline"><input id="images-tests" type="checkbox"> Also allow images in formal vocabulary tests</label><p class="hint">Images stay hidden during spelling. Save privately, then update the student link to share changes.</p></div></details><div id="workspace-generated-list" class="stack" aria-label="Generated vocabulary and recordings"></div>
   <div id="workspace-review" hidden aria-label="Vocabulary review"></div>
@@ -230,7 +230,7 @@ const themePreference = (() => {
     <label class="checkline"><input type="checkbox" id="ai-only-missing" checked> Skip words with vocabulary</label>
    </div></details>
    </div></details>
-   <div class="actions"><button type="button" id="ai-generate">Generate vocabulary and audio</button></div>
+   <div class="actions"><button type="button" id="ai-generate">Generate sentences and audio</button></div>
   </div>
   <p id="ai-progress" class="hint" role="status"></p>
   <div id="teacher-job-actions" class="actions" hidden><button type="button" id="ai-apply">Save drafts to this set</button><button type="button" id="ai-pause" class="secondary">Pause</button><button type="button" id="ai-resume" class="secondary">Resume</button><button type="button" id="ai-cancel" class="ghost">Cancel remaining work</button><button type="button" id="ai-retry-words" class="ghost">Retry failed words</button><button type="button" id="ai-review-saved" class="secondary" hidden>Review saved drafts</button></div>

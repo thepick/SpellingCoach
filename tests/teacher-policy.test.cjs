@@ -272,6 +272,59 @@ test('reopening recovers completed missing drafts without making another generat
  await h.run("showTeacherTools('workspace')");
  assert.equal(h.run('records[0].vocabulary.definition'),'Recovered draft');assert.equal(h.run('generations'),0);
  h.run("$('prepare-share-screen').hidden=false;ai.config.generationEnabled=true;renderSetWorkspace()");
- assert.equal(h.nodes.get('ai-generate').hidden,true);
+ assert.equal(h.nodes.get('ai-generate').hidden,false);
  assert.equal(h.nodes.get('workspace-edit-vocabulary').textContent,'Review vocabulary');
+});
+
+test('one click fills imported definitions at the set grade and prepares all audio without publishing',async()=>{
+ const h=harness();
+ h.context.generated={senseId:'primary',partOfSpeech:'noun',definition:'A tiny piece of matter.',
+  examples:['An atom is too small to see.'],clozeQuestions:[{id:'q1',sentence:'An _____ is a tiny part of matter.',answer:'atom',explanation:'It is a small part of matter.'}],
+  meaningDistractors:['A large cloud.','A loud sound.','A kind of food.'],acceptedSpellings:[],readingLevel:4,status:'draft'};
+ h.context.RealVocabulary=require('../src/vocabulary.js');
+ h.run(`Vocabulary=RealVocabulary;wordKey=Vocabulary.wordKey;let calls=[];let saves=0;
+  list.generationSettings=GenerationSettings.defaults(4);hydrateGenerationSettings(list);
+  records=[{word:'atom',promptType:'definition',image:{id:'keep-image'},vocabulary:{...generated,definition:'A tiny part of matter.',examples:[],clozeQuestions:[],meaningDistractors:[],contentType:'definition',status:'approved'}}];
+  autosaveTeacherSet=async()=>{saves++;list.audioStatus={ready:1,total:3,pending:false};};
+  saveVocabulary=async(target,rows,metadata)=>{records=rows;sharing.records=rows;Object.assign(target,metadata)};
+  renderPrivateAudio=()=>{};watchPrivateAudio=()=>{};renderSetWorkspace=()=>{};
+  ai.config.generationEnabled=true;sharing={list,records};
+  service=async(path,options)=>{calls.push({path,body:options.body});if(path==='/generate')return {id:'job',status:'complete',words:[{word:'atom',vocabulary:generated}],definitions:options.body.definitions};if(path.endsWith('/retry'))return {audioStatus:{ready:1,total:3,pending:true}};throw Error('Unexpected endpoint '+path);};
+  applyJob=job=>{ai.job=job};runJob=async()=>applyTeacherDrafts();`);
+ await h.nodes.get('ai-generate').onclick();
+ assert.deepEqual(JSON.parse(h.run('JSON.stringify(calls.map(call=>call.path))')),['/generate','/teacher/sets/pack/retry']);
+ assert.equal(h.run('calls[0].body.settings.readingLevel'),4);
+ assert.equal(h.run('calls[0].body.definitions[0].definition'),'A tiny part of matter.');
+ assert.equal(h.run('records[0].vocabulary.definition'),'A tiny part of matter.');
+ assert.equal(h.run('records[0].vocabulary.clozeQuestions.length'),1);
+ assert.equal(h.run('records[0].vocabulary.examples.length'),1);
+ assert.equal(h.run('records[0].vocabulary.contentType'),undefined);
+ assert.equal(h.run('records[0].vocabulary.status'),'draft');
+ assert.equal(h.run('records[0].promptType'),'sentence');
+ assert(require('../src/learning.js').practiceAudioPrompts(JSON.parse(h.run('JSON.stringify(records[0])')),0).some(prompt=>prompt.skill==='vocabulary' && /blank/.test(prompt.text)));
+ assert.equal(h.run('records[0].image.id'),'keep-image');
+ assert.equal(h.run('list.audioStatus.pending'),true);
+ assert.equal(h.run('saves'),2);
+});
+
+test('the same main button retries audio for completed vocabulary without generating replacement sentences',async()=>{
+ const h=harness();
+ h.run(`let retries=0,saves=0;records=[{word:'atom',vocabulary:{examples:['Keep this example.'],clozeQuestions:[{sentence:'Keep this _____.'}]}}];
+  aiSettings=()=>({readingLevel:4});autosaveTeacherSet=async()=>{saves++;};
+  list.audioStatus={ready:1,total:3,pending:false};renderPrivateAudio=()=>{};watchPrivateAudio=()=>{};renderSetWorkspace=()=>{};
+  service=async path=>{assertRetryPath=path;retries++;return {audioStatus:{ready:1,total:3,pending:true}}};`);
+ await h.nodes.get('ai-generate').onclick();
+ assert.equal(h.run('retries'),1);assert.equal(h.run('saves'),1);
+ assert.equal(h.run('assertRetryPath'),'/teacher/sets/pack/retry');
+ assert.equal(h.run('records[0].vocabulary.examples[0]'),'Keep this example.');
+});
+
+test('a supplied definition edited while generation runs keeps its existing content',async()=>{
+ const h=harness();
+ h.run(`wordKey=word=>word;Vocabulary.validateRecord=(word,value)=>value;let saves=0;
+  records=[{word:'atom',vocabulary:{definition:'A newer teacher meaning.',examples:[],clozeQuestions:[]}}];
+  ai.listId=list.id;ai.job={words:[{word:'atom',vocabulary:{definition:'Old meaning.'}}],definitions:[{word:'atom',definition:'Old meaning.'}]};
+  saveVocabulary=async()=>{saves++;};`);
+ await h.run('applyTeacherDrafts()');
+ assert.equal(h.run('saves'),0);assert.equal(h.run('records[0].vocabulary.definition'),'A newer teacher meaning.');
 });

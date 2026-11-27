@@ -25,6 +25,23 @@ let pendingPresetSave = null;
 let presetEditVersion = 0;
 let hydratedGenerationList = null;
 let hydratedGenerationText = '';
+function needsSentences(row) {
+ const vocabulary = row.vocabulary;
+ return !vocabulary || Array.isArray(vocabulary.examples) && !vocabulary.examples.length ||
+  Array.isArray(vocabulary.clozeQuestions) && !vocabulary.clozeQuestions.length;
+}
+function sentenceDefinitions(records) {
+ return records.filter(row => needsSentences(row) && row.vocabulary).map(row => ({word:row.word,definition:row.vocabulary.definition}));
+}
+function completeSentenceDraft(row, generated) {
+ if (!row.vocabulary) return generated;
+ const previous = row.vocabulary;
+ const vocabulary = {...generated,definition:previous.definition,
+  examples:previous.examples.length ? previous.examples : generated.examples,
+  clozeQuestions:previous.clozeQuestions.length ? previous.clozeQuestions : generated.clozeQuestions,
+  acceptedSpellings:previous.acceptedSpellings,status:'draft'};
+ return Vocabulary.validateRecord(row.word,vocabulary);
+}
 const generationFields = {readingLevel:'grade',practiceSentences:'sentences',exampleSentences:'examples',
  reuseApproved:'reuse',esl:'esl',distractors:'distractors',explanations:'explanations',dialect:'dialect',context:'context',sense:'sense'};
 
@@ -181,17 +198,20 @@ function renderSetWorkspace() {
  $('workspace-words-summary').textContent='· '+list.words.length+' words';
  $('workspace-vocabulary-summary').textContent=allApproved ? 'All '+approved+' words approved' :
   approved+' approved · '+(vocabulary.length-approved)+' to review · '+(list.words.length-vocabulary.length)+' missing';
+ const sentenceGaps=rows.filter(needsSentences).length;
+ if(sentenceGaps)$('workspace-vocabulary-summary').textContent+=' - '+sentenceGaps+' need sentences';
  const settings=GenerationSettings.validate(list.generationSettings) || GenerationSettings.defaults();
  $('workspace-settings-summary').textContent='Grade '+settings.readingLevel+' · '+settings.practiceSentences+
   ' practice '+(settings.practiceSentences===1?'sentence':'sentences')+' · '+settings.exampleSentences+
   (settings.exampleSentences===1?' example':' examples');
- $('teacher-draft-form').hidden=!ai.config.generationEnabled;
+ $('teacher-draft-form').hidden=false;
  $('workspace-vocabulary-settings').hidden=false;
  $('ai-context-wrap').hidden=allApproved || rows.length > 0 && vocabulary.length===rows.length;
  $('workspace-edit-vocabulary').textContent=allApproved?'Edit vocabulary':vocabulary.length?'Review vocabulary':'Add vocabulary by hand';
  $('workspace-edit-vocabulary').disabled=workspaceSavePending() || !sharing.records;
- $('ai-generate').hidden=rows.length===list.words.length && vocabulary.length===rows.length;
- $('ai-generate').disabled=!!pendingGeneration || !ai.config.generationEnabled || !list.words.length || workspaceSavePending() || ['ready','processing','paused'].includes(ai.job?.status);
+ $('ai-generate').hidden=false;
+ const missingSentences=rows.some(needsSentences);
+ $('ai-generate').disabled=!!pendingGeneration || missingSentences && !ai.config.generationEnabled || !list.words.length || workspaceSavePending() || ['ready','processing'].includes(ai.job?.status) || ai.job?.status==='paused' && ai.listId!==list.id;
  $('teacher-draft-intro').hidden=true;
  $('teacher-selection').hidden=true;
  $('ai-publish-review').hidden=true;
@@ -210,7 +230,11 @@ function renderSetWorkspace() {
  $('workspace-save-retry').hidden=!workspaceEdit?.error;
  if(workspaceEdit?.error)$('workspace-words-editor').open=true;
  $('workspace-refresh-link').hidden=sharing.linkLookup!=='error';
- $('ai-generate').textContent='Generate vocabulary and audio';
+ $('ai-generate').textContent=ai.listId===list.id && ai.job?.status==='paused' ? 'Continue sentences and audio' : 'Generate sentences and audio';
+ $('teacher-retry-audio').hidden=true;
+ $('ai-prepare-audio').hidden=true;
+ $('ai-retry-words').hidden=true;
+ $('ai-resume').hidden=true;
  $('ai-only-missing').checked=true;
  $('ai-only-missing').disabled=true;
  $('ai-share-audio').hidden=!ai.audioStatus || ai.audioStatus.ready===ai.audioStatus.total;
@@ -552,6 +576,17 @@ function renderPrivateAudio() {
  renderTeacherView($('teacher-dialog').dataset.view || 'setup');
 }
 
+async function retrySetAudio(list,{root,token,owner}) {
+ if(ai.token!==token || state!==owner || selectedList()!==list)return;
+ const audio=list.audioStatus;
+ if(audio && !audio.pending && audio.ready<audio.total) {
+  const response=await service('/teacher/sets/'+encodeURIComponent(list.packId || list.id)+'/retry',{root,token,method:'POST'});
+  if(ai.token!==token || state!==owner || selectedList()!==list)return;
+  list.audioStatus=response.audioStatus;
+ }
+ renderPrivateAudio();watchPrivateAudio();renderSetWorkspace();
+}
+
 function watchPrivateAudio() {
  clearTimeout(privateAudioTimer);
  const list = selectedList(), {root,token} = ai;
@@ -595,8 +630,10 @@ async function applyTeacherDrafts() {
  const previous = await loadVocabulary(list);
  if (ai.token !== token || ai.job !== job || !state.lists.includes(list)) return;
  if(list.updatedAt!==revision || list.vocabKey!==vocabKey || list.packVersion!==version)throw Error('Vocabulary changed while drafts were loading. Reopen this set to recover the completed drafts.');
- const records = previous.map(row=>lookup.has(wordKey(row.word)) && !row.vocabulary ?
-  {...row,vocabulary:lookup.get(wordKey(row.word))} : row);
+ const records = previous.map(row=>lookup.has(wordKey(row.word)) && needsSentences(row) &&
+  (!row.vocabulary || job.definitions?.some(entry=>entry.word===row.word && entry.definition===row.vocabulary.definition)) ?
+  {...row,vocabulary:completeSentenceDraft(row,lookup.get(wordKey(row.word))),
+   ...(row.vocabulary?.contentType==='definition'?{promptType:'sentence'}:{})} : row);
  if (JSON.stringify(records) === JSON.stringify(previous)) { ai.reviewDrafts = job.words.length; refreshTeacher(); return; }
  await saveVocabulary(list,records,{packVersion:(list.packVersion || 0)+1});
  if (ai.token !== token || ai.job !== job) return;
@@ -1276,12 +1313,23 @@ function initTeacher() {
   else { state = loadState(); listId = state.lists[0]?.id || ''; renderSetup(); }
  };
  $('ai-generate').onclick = teacherAction(async () => {
-  if(pendingGeneration || ['ready','processing','paused'].includes(ai.job?.status))return;
+  if(pendingGeneration || ['ready','processing'].includes(ai.job?.status))return;
   if(workspaceSavePending())throw Error('Finish saving valid words before generating vocabulary.');
   const {root,token} = ai, owner = state;
   const list = selectedList();
   if(!list)return;
   if (!canLeaveVocabularyEditor()) return;
+  if(ai.job?.status==='paused') {
+   if(ai.listId!==list.id)return;
+   const request={list};pendingGeneration=request;
+   try {
+    await closeVocabularyEditor(true);
+    if(ai.token!==token || state!==owner || selectedList()!==list)return;
+    await jobAction('resume');
+    if(ai.token===token && state===owner && selectedList()===list)await retrySetAudio(list,{root,token,owner});
+   } finally {if(pendingGeneration===request)pendingGeneration=null;if(ai.token===token && state===owner)refreshTeacher();}
+   return;
+  }
   const request={list,stamp:list.updatedAt,version:list.packVersion,settings:aiSettings()};
   pendingGeneration=request;$('ai-generate').disabled=true;
   try {
@@ -1290,15 +1338,27 @@ function initTeacher() {
    renderWorkspaceVocabulary();
    const records = ai.role === 'teacher' ? await loadVocabulary(list) : selectedRecords();
    if(ai.token!==token || state!==owner || selectedList()!==list || list.updatedAt!==request.stamp || list.packVersion!==request.version || workspaceSavePending())return;
-   const words=(ai.role==='teacher' || $('ai-only-missing').checked ? records.filter(row=>!row.vocabulary) : records).map(row=>row.word);
-   if(!words.length)throw Error('Every word already has vocabulary. Review the drafts, or edit an individual item to replace it.');
+   const words=(ai.role==='teacher' || $('ai-only-missing').checked ? records.filter(needsSentences) : records).map(row=>row.word);
+   if(ai.role==='teacher') {
+    await autosaveTeacherSet(list);
+    if(ai.token!==token || state!==owner || selectedList()!==list || list.updatedAt!==request.stamp || list.packVersion!==request.version || workspaceSavePending())return;
+   }
+   if(!words.length) {
+    if(ai.role==='teacher')await retrySetAudio(list,{root,token,owner});
+    return;
+   }
    ai.listId = list.id;
    ai.autoApply = true; ai.recoveringJob = false;
-   const job = await service('/generate', {root,token,method: 'POST', body: {words, settings: request.settings}, requestId: newListId()});
+   const definitions=ai.role==='teacher'?sentenceDefinitions(records):[];
+   const job = await service('/generate', {root,token,method: 'POST', body: {words, settings: request.settings,...(definitions.length?{definitions}:{})}, requestId: newListId()});
    if (ai.token !== token || state !== owner || !owner.lists.includes(list)) return;
    ai.listId=list.id;
    applyJob(job);
    await runJob();
+   if(ai.role==='teacher' && ai.token===token && state===owner && selectedList()===list) {
+    await autosaveTeacherSet(list);
+    if(ai.token===token && state===owner && selectedList()===list)await retrySetAudio(list,{root,token,owner});
+   }
   } finally { if(pendingGeneration===request)pendingGeneration=null;if(ai.token===token && state===owner)refreshTeacher(); }
  });
  for (const action of ['pause', 'resume', 'cancel']) $('ai-' + action).onclick = teacherAction(() => jobAction(action));
@@ -1483,10 +1543,11 @@ function initTeacher() {
    const rows=await loadVocabulary(list);
    if(ai.token!==token || state!==owner || selectedList()!==list || list.updatedAt!==request.stamp || list.packVersion!==request.version || workspaceSavePending())return;
    const failed=new Set(ai.job?.failedWords || []);
-   const words=rows.filter(row=>failed.has(row.word) && !row.vocabulary).map(row=>row.word);
+   const words=rows.filter(row=>failed.has(row.word) && needsSentences(row)).map(row=>row.word);
    if (!words.length) return;
    ai.autoApply = true; ai.recoveringJob = false;
-   const job = await service('/generate', {root,token,method: 'POST', body: {words, settings: request.settings}, requestId: newListId()});
+   const definitions=sentenceDefinitions(rows).filter(row=>words.includes(row.word));
+   const job = await service('/generate', {root,token,method: 'POST', body: {words, settings: request.settings,...(definitions.length?{definitions}:{})}, requestId: newListId()});
    if (ai.token !== token || state !== owner || !owner.lists.includes(list)) return;
    ai.listId=list.id;applyJob(job);await runJob();
   } finally {if(pendingGeneration===request)pendingGeneration=null;if(ai.token===token && state===owner)refreshTeacher();}

@@ -1,6 +1,6 @@
 import {
   ApiError, DEFAULT_SETTINGS, MAX_WORD_LENGTH, MAX_WORDS, cacheEligible, cacheKey, dictationText, generatedRecords, integer,
-  normalizedWords, parseSettings, requireInput, shape, shortId, validatePack, validatedRecord, vocabularyWord, wordKey
+  normalizedWords, parseSettings, parseDefinitions, requireInput, shape, shortId, validatePack, validatedRecord, vocabularyWord, wordKey
 } from './validation.mjs';
 import { GROQ_MODELS, providerChoices, requestVocabulary, tokenBudget } from './provider.mjs';
 import { hasSpeechSignal, synthesizeDictation } from './dictation.mjs';
@@ -347,6 +347,7 @@ export class VocabularyService {
       id: job.id, status, counts,
       words: words.filter((word) => word.content).map((word) => JSON.parse(word.content)),
       failedWords: words.filter((word) => word.status === 'failed').map((word) => word.word),
+      definitions: job.definitions || [],
       ...(job.retryAt ? { retryAt: job.retryAt } : {}),
       ...(job.message ? { message: job.message } : {})
     };
@@ -355,9 +356,10 @@ export class VocabularyService {
   createJob(input, identity, idempotencyKey, regenerate) {
     const teacher = identity.role === 'teacher';
     requireInput(shape(input, regenerate
-      ? ['word', 'settings', 'item', 'questionId', 'previous'] : ['words', 'settings']), 'Unrecognized generation parameters.');
+      ? ['word', 'settings', 'item', 'questionId', 'previous'] : ['words', 'settings','definitions']), 'Unrecognized generation parameters.');
     const settings = parseSettings(input.settings ?? {}, teacher);
     const words = normalizedWords(regenerate ? [input.word] : input.words);
+    const definitions = parseDefinitions(input.definitions,words,teacher);
     let regeneration = null;
     if (regenerate) {
       const item = input.item ?? 'all';
@@ -372,7 +374,7 @@ export class VocabularyService {
       regeneration = { item, previous: input.previous, questionId: input.questionId };
     }
     if (idempotencyKey !== null) requireInput(shortId(idempotencyKey), 'Invalid request identifier.');
-    const fingerprint = JSON.stringify({ words, settings, regeneration });
+    const fingerprint = JSON.stringify({ words, settings, regeneration,...(definitions.length?{definitions}:{}) });
     return this.atomic(() => {
       const now = this.now();
       const day = localDay(now);
@@ -388,7 +390,7 @@ export class VocabularyService {
         }
       }
       const entries = words.map((word) => {
-        const cache = settings.reuseApproved && !regenerate
+        const cache = settings.reuseApproved && !regenerate && !definitions.some(entry=>entry.word===word)
           ? this.one('SELECT content FROM cache WHERE key = ?', cacheKey(word, settings)) : null;
         const entry = cache && JSON.parse(cache.content);
         return { word, status: entry?.word === word ? 'cached' : 'pending', content: entry?.word === word ? cache.content : null };
@@ -425,7 +427,7 @@ export class VocabularyService {
       if (cached) this.charge(day, 'cacheHits', cached);
       this.charge(day, 'wordLookups', entries.length);
       const job = {
-        id: crypto.randomUUID(), classId: identity.classId, epoch: identity.epoch, createdAt: now, settings, regeneration,
+        id: crypto.randomUUID(), classId: identity.classId, epoch: identity.epoch, createdAt: now, settings, regeneration, definitions,
         status: uncached ? 'ready' : 'complete', batchSize: INITIAL_BATCH, failures: 0, idempotencyKey, fingerprint
       };
       this.sql.exec('INSERT INTO jobs VALUES (?, ?, ?, ?)', job.id, identity.sid, now, JSON.stringify(job));
@@ -492,13 +494,13 @@ export class VocabularyService {
       }
       const day = localDay(now);
       const words = batch.map(({ word }) => word);
-      let budget = tokenBudget(words, job.settings, job.regeneration);
+      let budget = tokenBudget(words, job.settings, job.regeneration,job.definitions);
       const prefix = identity.role === 'teacher' && !identity.isAdmin ? identity.teacherId + ':' : '';
       const tokensLeft = LIMITS.tokens - this.meter(day, prefix + 'tokens');
       while (words.length > 1 && budget.reservedTokens > tokensLeft) {
         words.pop();
         batch.pop();
-        budget = tokenBudget(words, job.settings, job.regeneration);
+        budget = tokenBudget(words, job.settings, job.regeneration,job.definitions);
       }
       if (this.meter(day, prefix + 'calls') >= LIMITS.calls || budget.reservedTokens > tokensLeft) {
         return { detail: this.defer(job, 'The daily AI budget is used up.', nextDay(now)) };
@@ -517,7 +519,7 @@ export class VocabularyService {
       while (target.provider === 'groq' && words.length > 1 && budget.providerTokens > 8000) {
         words.pop();
         batch.pop();
-        budget = tokenBudget(words, job.settings, job.regeneration);
+        budget = tokenBudget(words, job.settings, job.regeneration,job.definitions);
       }
       const lease = randomId();
       this.sql.exec('INSERT INTO leases VALUES (?, ?, ?)', lease, id, now + LEASE);
@@ -547,13 +549,16 @@ export class VocabularyService {
     let result;
     try {
       result = await this.fetcher({
-        target, words, settings: reservedJob.settings, regeneration: reservedJob.regeneration,
+        target, words, settings: reservedJob.settings, regeneration: reservedJob.regeneration,definitions:reservedJob.definitions,
         maxCompletionTokens: budget.maxCompletionTokens, now
       });
     } catch {
       result = { records: [], unavailable: true };
     }
-    const valid = generatedRecords(result.records, words, reservedJob.settings, reservedJob.regeneration);
+    const definitions = new Map((reservedJob.definitions || []).map(entry=>[entry.word,entry.definition]));
+    const records = Array.isArray(result.records) ? result.records.map(record=>record && definitions.has(record.word)
+      ? {...record,definition:definitions.get(record.word)} : record) : result.records;
+    const valid = generatedRecords(records, words, reservedJob.settings, reservedJob.regeneration);
     return this.atomic(() => {
       const job = this.readJob(id, identity);
       // An expired reservation stays charged when its outcome is unknown.
@@ -962,7 +967,7 @@ export class VocabularyService {
     }
     if ((pathname === '/api/generate' || pathname === '/api/regenerate') && method === 'POST') {
       const identity = await this.principal(request);
-      const input = await bodyOf(request);
+      const input = await bodyOf(request,identity.role==='teacher'?400_000:24_000);
       const { detail, existing } = this.createJob(input, identity, request.headers.get('Idempotency-Key'), pathname.endsWith('/regenerate'));
       return json(detail, existing ? 200 : 201);
     }
